@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:app_links/app_links.dart';
-import 'card_config.dart';
 import 'v2/identity_manager.dart';
+import 'v2/identity_card_surface.dart';
 
 void main() {
   runApp(const OneOfUsApp());
@@ -261,78 +259,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       future: _identityManager.getPublicKeyJson(),
       builder: (context, snapshot) {
         final jsonKey = snapshot.data != null ? jsonEncode(snapshot.data) : 'no-key';
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final screenW = constraints.maxWidth;
-            final screenH = constraints.maxHeight;
-
-            final vertMargin = isLandscape ? CardConfig.verticalMarginL : CardConfig.verticalMarginP;
-            final horizMargin = isLandscape ? CardConfig.horizontalMarginL : CardConfig.horizontalMarginP;
-            final contentPadding = isLandscape ? CardConfig.contentPaddingL : CardConfig.contentPaddingP;
-            final qrRatio = isLandscape ? CardConfig.qrHeightRatioL : CardConfig.qrHeightRatioP;
-
-            final availW = screenW * (1 - 2 * horizMargin);
-            final availH = screenH * (1 - 2 * vertMargin);
-            final scale = min(availW / CardConfig.cardW, availH / CardConfig.cardH);
-
-            final imgW = CardConfig.imgW * scale;
-            final imgH = CardConfig.imgH * scale;
-            final cardW = CardConfig.cardW * scale;
-            final cardH = CardConfig.cardH * scale;
-            final padding = cardW * contentPadding;
-            final qrSize = min(cardH - (2 * padding), cardH * qrRatio);
-
-            return Center(
-              child: SizedBox(
-                width: screenW,
-                height: screenH,
-                child: OverflowBox(
-                  minWidth: imgW, maxWidth: imgW, minHeight: imgH, maxHeight: imgH,
-                  child: Stack(
-                    children: [
-                      Image.asset('assets/card_background.png', width: imgW, height: imgH, fit: BoxFit.fill),
-                      Positioned(
-                        left: CardConfig.cardL * scale, top: CardConfig.cardT * scale, width: cardW, height: cardH,
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: padding, top: padding,
-                              child: QrImageView(
-                                data: jsonKey,
-                                version: QrVersions.auto,
-                                size: qrSize,
-                                backgroundColor: Colors.transparent,
-                                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
-                                dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
-                              ),
-                            ),
-                            Positioned(
-                              right: padding, top: padding,
-                              child: Text('Me', style: TextStyle(fontSize: cardH * 0.20, fontWeight: FontWeight.w900, color: Colors.black87, fontFamily: 'serif')),
-                            ),
-                            Positioned(
-                              right: padding, bottom: padding, width: cardW * 0.4,
-                              child: Text(
-                                'Human, capable, acting in good faith', 
-                                textAlign: TextAlign.right, 
-                                style: TextStyle(
-                                  fontSize: cardH * 0.06, 
-                                  fontWeight: FontWeight.w800, 
-                                  fontStyle: FontStyle.italic, 
-                                  color: Colors.black38, 
-                                  fontFamily: 'serif'
-                                )
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
+        return IdentityCardSurface(
+          isLandscape: isLandscape,
+          jsonKey: jsonKey,
         );
       }
     );
