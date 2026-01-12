@@ -12,11 +12,15 @@ class CardConfig {
   static double get cardW => cardR - cardL;
   static double get cardH => cardB - cardT;
 
-  // User Specifications (Percentages)
-  static const double verticalMargin = 0.02;   // 2% top/bottom margin
-  static const double horizontalMargin = 0.02; // 2% left/right margin (safety)
-  static const double contentPadding = 0.03;   // 4% padding for QR and text
-  
-  // Ratio of QR height relative to card height
-  static const double qrHeightRatio = 0.90;
+  // Portrait Specifications
+  static const double verticalMarginP = 0.02;
+  static const double horizontalMarginP = 0.02;
+  static const double contentPaddingP = 0.03;
+  static const double qrHeightRatioP = 0.90;
+
+  // Landscape Specifications (Initially identical, can be tuned)
+  static const double verticalMarginL = 0.02;
+  static const double horizontalMarginL = 0.02;
+  static const double contentPaddingL = 0.06;
+  static const double qrHeightRatioL = 0.85;
 }

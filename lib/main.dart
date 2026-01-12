@@ -202,8 +202,14 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         final screenW = constraints.maxWidth;
         final screenH = constraints.maxHeight;
 
-        final availW = screenW * (1 - 2 * CardConfig.horizontalMargin);
-        final availH = screenH * (1 - 2 * CardConfig.verticalMargin);
+        // Use orientation-specific config
+        final vertMargin = isLandscape ? CardConfig.verticalMarginL : CardConfig.verticalMarginP;
+        final horizMargin = isLandscape ? CardConfig.horizontalMarginL : CardConfig.horizontalMarginP;
+        final contentPadding = isLandscape ? CardConfig.contentPaddingL : CardConfig.contentPaddingP;
+        final qrRatio = isLandscape ? CardConfig.qrHeightRatioL : CardConfig.qrHeightRatioP;
+
+        final availW = screenW * (1 - 2 * horizMargin);
+        final availH = screenH * (1 - 2 * vertMargin);
 
         final scaleW = availW / CardConfig.cardW;
         final scaleH = availH / CardConfig.cardH;
@@ -215,9 +221,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         final cardW = CardConfig.cardW * scale;
         final cardH = CardConfig.cardH * scale;
 
-        final padding = cardW * CardConfig.contentPadding;
+        final padding = cardW * contentPadding;
         final maxQrSize = cardH - (2 * padding);
-        final qrSize = min(maxQrSize, cardH * CardConfig.qrHeightRatio);
+        final qrSize = min(maxQrSize, cardH * qrRatio);
 
         return Center(
           child: SizedBox(
@@ -238,7 +244,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     errorBuilder: (context, _, __) => Container(color: Colors.grey.shade300),
                   ),
                   
-                  // The Card Area with Temporary Blue Debug Box
                   Positioned(
                     left: CardConfig.cardL * scale,
                     top: CardConfig.cardT * scale,
