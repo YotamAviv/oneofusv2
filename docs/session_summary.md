@@ -1,5 +1,11 @@
 # Session Summary
 
+## Human plan for sooner rather than later:
+- Get going on play store tracks or whatever so that I can validate, be less nervous
+  - read / write same secure storage, access my current private key
+  - "magic" (what do you call that thing?) progress, get nerdster.org webapp to carry out a back and forth
+  - Play Protect.. read/write Firestore database
+
 ## Goal
 
 The primary goal is to rewrite the `oneofus` mobile app (V2) to improve its user interface and architecture, while maintaining compatibility with the existing data and "legacy" app versions. The new version should be more user-friendly, attractive, and easier to maintain.
