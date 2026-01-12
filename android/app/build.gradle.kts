@@ -35,6 +35,13 @@ android {
         versionName = flutter.versionName
     }
 
+    packaging {
+        // Support 16 KB page sizes for Android 15+
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties["keyAlias"] as String?

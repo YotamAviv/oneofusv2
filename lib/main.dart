@@ -257,16 +257,15 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildMePage(bool isLandscape) {
-    return FutureBuilder<String?>(
-      future: _identityManager.getIdentityToken(),
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _identityManager.getPublicKeyJson(),
       builder: (context, snapshot) {
-        final token = snapshot.data ?? 'no-token';
+        final jsonKey = snapshot.data != null ? jsonEncode(snapshot.data) : 'no-key';
         return LayoutBuilder(
           builder: (context, constraints) {
             final screenW = constraints.maxWidth;
             final screenH = constraints.maxHeight;
 
-            // Use orientation-specific config
             final vertMargin = isLandscape ? CardConfig.verticalMarginL : CardConfig.verticalMarginP;
             final horizMargin = isLandscape ? CardConfig.horizontalMarginL : CardConfig.horizontalMarginP;
             final contentPadding = isLandscape ? CardConfig.contentPaddingL : CardConfig.contentPaddingP;
@@ -274,17 +273,14 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
             final availW = screenW * (1 - 2 * horizMargin);
             final availH = screenH * (1 - 2 * vertMargin);
-
             final scale = min(availW / CardConfig.cardW, availH / CardConfig.cardH);
 
             final imgW = CardConfig.imgW * scale;
             final imgH = CardConfig.imgH * scale;
             final cardW = CardConfig.cardW * scale;
             final cardH = CardConfig.cardH * scale;
-
             final padding = cardW * contentPadding;
-            final maxQrSize = cardH - (2 * padding);
-            final qrSize = min(maxQrSize, cardH * qrRatio);
+            final qrSize = min(cardH - (2 * padding), cardH * qrRatio);
 
             return Center(
               child: SizedBox(
@@ -302,7 +298,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                             Positioned(
                               left: padding, top: padding,
                               child: QrImageView(
-                                data: 'one-of-us:$token',
+                                data: jsonKey,
                                 version: QrVersions.auto,
                                 size: qrSize,
                                 backgroundColor: Colors.transparent,
@@ -312,17 +308,20 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                             ),
                             Positioned(
                               right: padding, top: padding,
-                              child: Text(
-                                'Me', 
-                                style: TextStyle(fontSize: cardH * 0.20, fontWeight: FontWeight.w900, color: Colors.black54, fontFamily: 'serif')
-                              ),
+                              child: Text('Me', style: TextStyle(fontSize: cardH * 0.20, fontWeight: FontWeight.w900, color: Colors.black87, fontFamily: 'serif')),
                             ),
                             Positioned(
                               right: padding, bottom: padding, width: cardW * 0.4,
                               child: Text(
                                 'Human, capable, acting in good faith', 
                                 textAlign: TextAlign.right, 
-                                style: TextStyle(fontSize: cardH * 0.06, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic, color: Colors.black38, fontFamily: 'serif')
+                                style: TextStyle(
+                                  fontSize: cardH * 0.06, 
+                                  fontWeight: FontWeight.w800, 
+                                  fontStyle: FontStyle.italic, 
+                                  color: Colors.black38, 
+                                  fontFamily: 'serif'
+                                )
                               ),
                             ),
                           ],
