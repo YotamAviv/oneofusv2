@@ -1,0 +1,53 @@
+Image dimensions
+
+Image size: 800 × 533 px
+
+Card bounds (pixel-accurate)
+
+By examining color transitions between the uniform pink background and the uniform card surface:
+
+Left edge of card: ~40 px
+
+Right edge of card: ~760 px
+
+Top edge of card: ~40 px
+
+Bottom edge of card: ~493 px
+
+So the card itself is approximately:
+
+Card width: 760 − 40 = 720 px
+
+Card height: 493 − 40 = 453 px
+
+Background extension (in pixels)
+
+Left background: 40 px
+
+Right background: 40 px
+
+Top background: 40 px
+
+Bottom background: 533 − 493 = 40 px
+
+(The image is very symmetrically composed.)
+
+Percentages (what you asked for)
+Relative to card width
+
+Left: 40 / 720 = 5.56%
+
+Right: 40 / 720 = 5.56%
+
+Relative to card height
+
+Top: 40 / 453 = 8.83%
+
+Bottom: 40 / 453 = 8.83%
+
+Final answer
+Side	Percentage
+Background left (vs card width)	5.56%
+Background right (vs card width)	5.56%
+Background top (vs card height)	8.83%
+Background bottom (vs card height)	8.83%

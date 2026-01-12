@@ -2,35 +2,40 @@
 
 ## Goal
 
-The primary goal is to rewrite the `oneofus` mobile app to improve its user interface and architecture, while maintaining compatibility with the existing data and "legacy" app versions. The new version should be more user-friendly and easier to maintain.
+The primary goal is to rewrite the `oneofus` mobile app (V2) to improve its user interface and architecture, while maintaining compatibility with the existing data and "legacy" app versions. The new version should be more user-friendly, attractive, and easier to maintain.
 
 ## Key Documents
 
-We have created two main documents to guide this effort:
-
-1.  **`docs/core_specification.md`**: Describes the `one-of-us.net` paradigm, including the core concepts of statements, keys, and the identity/delegate networks.
-2.  **`docs/requirements.md`**: Outlines the functional requirements for the mobile app, detailing use cases for building the network, managing statements, delegating to services, and key portability.
+1.  **`docs/core_specification.md`**: Describes the `one-of-us.net` paradigm.
+2.  **`docs/requirements.md`**: Outlines functional requirements.
+3.  **`docs/v2_ux_specification.md`**: Codifies the "Physical Utility" philosophy and the "Luxury Linen" Identity Card aesthetic.
+4.  **`lib/card_config.dart`**: Contains pixel-accurate geometry for the Identity Card background.
 
 ## Architectural Direction
 
--   **UI Rewrite:** We will replace the old, complex UI with a new, simpler interface based on a `BottomNavigationBar` and a central `FloatingActionButton`.
--   **Data Layer Rewrite:** We will replace the legacy `Fetcher` class with a new v2 data layer inspired by the `nerdster` project. This will be centered around a `StatementSource` interface with a `DirectFirestoreSource` implementation.
--   **Code Sharing:** We plan to create a common package (`oneofus_common`) to share core logic (data models, cryptography) between the `oneofus` and `nerdster` projects to avoid code duplication.
--   **Testing:** A major focus is on building a robust testing suite. We will use `integration_test` with `FakeFirebaseFirestore` and the `simpsons_demo` data to create UI-level tests that validate the app's behavior against a known state.
+-   **UI Rewrite:** Ultra-minimalist "Identity Card" interface. Swiping navigation (Me → People → Services → Info). Orientation-aware (Landscape is clean; Portrait shows Dashboard chrome).
+-   **Data Layer:** Centered around `oneofus_common` for shared crypto/models and a new V2 data layer (`StatementSource`, `DirectFirestoreSource`).
+-   **Code Sharing:** `oneofus_common` package is created and linked as a path dependency.
+-   **App Links:** Configured via `AndroidManifest.xml` and verified by `https://one-of-us.net/.well-known/assetlinks.json`.
 
 ## Current Status
 
--   The documentation (`core_specification.md` and `requirements.md`) is in a good state, capturing the core concepts and requirements.
--   We have created a `technical_design.md` document that outlines the proposed architecture for the v2 data layer, a code-sharing strategy, and a testing plan.
+-   **Visual Foundation:** Implemented the "Luxury Linen" business card metaphor.
+-   **Precision Geometry:** The card is mathematically framed to maintain a 2% safety margin on any device ratio. QR and "Me" label are accurately positioned.
+-   **Navigation:** `PageView` implemented for swiping between dashboard sections.
+-   **Privacy Alerts:** Pulsing red dot alert (top-right) implemented for private maintenance notifications.
+-   **Shared Package:** `oneofus_common` is set up with `Jsonish`, `Statement`, and `Crypto` logic.
 
 ## Next Steps
 
-The immediate next step is to begin implementing the technical design. This involves:
-1.  Creating the `oneofus_common` package (or deciding on an alternative code-sharing strategy).
-2.  Implementing the v2 data layer components (`StatementSource`, `DirectFirestoreSource`, `NotaryChainVerifier`).
-3.  Building out the integration tests using the `simpsons_demo` data.
-4.  Connecting the new v2 UI to the new v2 data layer.
+1.  **Identity Manager:** Implement `IdentityManager` to generate, persist (secure storage), and manage the notary chain.
+2.  **V2 Data Layer:** Complete `DirectFirestoreSource` to fetch real network health data (reciprocity, stale keys).
+3.  **Encounter Logic:** Implement the QR scanner and the "Vouch" / "Sign-in" workflows.
+4.  **Guided Wizards:** Build the "Lost Phone" recovery wizard and the "Compromised Key" replacement wizard.
+5.  **Remote Vouching:** Implement the option to vouch for someone without a physical encounter.
 
 ## Session Notes
-- A reference copy of the `nerdster` project exists locally at `nerdster-reference` to provide context and code for the v2 rewrite.
-- **Priority Task for Next Session:** Create the `oneofus_common` package to begin the code-sharing strategy.
+- Branding centered in top-left (Logo + Serif text).
+- "Me" label top-right on the card, top-aligned with the QR code.
+- Landscape mode is a dedicated "Show this to others" mode with zero clutter.
+- Swiping is the primary navigation between network views.
