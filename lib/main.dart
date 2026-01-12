@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:app_links/app_links.dart';
 import 'card_config.dart';
 import 'v2/identity_manager.dart';
 
@@ -39,6 +41,8 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   final IdentityManager _identityManager = IdentityManager();
+  final _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSubscription;
   
   bool _isLoading = true;
   bool _hasKey = false;
@@ -61,6 +65,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       curve: Curves.easeInOut,
     );
     _initIdentity();
+    _initDeepLinks();
   }
 
   Future<void> _initIdentity() async {
@@ -69,6 +74,29 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       _hasKey = found;
       _isLoading = false;
     });
+  }
+
+  void _initDeepLinks() {
+    _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
+      _handleIncomingLink(uri);
+    });
+    _appLinks.getInitialLink().then((uri) {
+      if (uri != null) _handleIncomingLink(uri);
+    });
+  }
+
+  void _handleIncomingLink(Uri uri) {
+    if (uri.path.contains('sign-in') || uri.host == 'sign-in') {
+      final data = uri.queryParameters['data'];
+      if (data != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Received Sign-in Request: $data'),
+            duration: const Duration(seconds: 10),
+          ),
+        );
+      }
+    }
   }
 
   void _handleDevClick() {
@@ -85,6 +113,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    _linkSubscription?.cancel();
     _pulseController.dispose();
     _pageController.dispose();
     super.dispose();
@@ -190,7 +219,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        onPressed: () {}, // Share
+                        onPressed: () => _showShareMenu(context),
                         icon: const Icon(Icons.ios_share_rounded, size: 32, color: Color(0xFF37474F)),
                       ),
                       IconButton(
@@ -236,6 +265,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           builder: (context, constraints) {
             final screenW = constraints.maxWidth;
             final screenH = constraints.maxHeight;
+
+            // Use orientation-specific config
             final vertMargin = isLandscape ? CardConfig.verticalMarginL : CardConfig.verticalMarginP;
             final horizMargin = isLandscape ? CardConfig.horizontalMarginL : CardConfig.horizontalMarginP;
             final contentPadding = isLandscape ? CardConfig.contentPaddingL : CardConfig.contentPaddingP;
@@ -243,14 +274,17 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
             final availW = screenW * (1 - 2 * horizMargin);
             final availH = screenH * (1 - 2 * vertMargin);
+
             final scale = min(availW / CardConfig.cardW, availH / CardConfig.cardH);
 
             final imgW = CardConfig.imgW * scale;
             final imgH = CardConfig.imgH * scale;
             final cardW = CardConfig.cardW * scale;
             final cardH = CardConfig.cardH * scale;
+
             final padding = cardW * contentPadding;
-            final qrSize = min(cardH - (2 * padding), cardH * qrRatio);
+            final maxQrSize = cardH - (2 * padding);
+            final qrSize = min(maxQrSize, cardH * qrRatio);
 
             return Center(
               child: SizedBox(
@@ -278,11 +312,18 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                             ),
                             Positioned(
                               right: padding, top: padding,
-                              child: Text('Me', style: TextStyle(fontSize: cardH * 0.20, fontWeight: FontWeight.w900, color: Colors.black87, fontFamily: 'serif')),
+                              child: Text(
+                                'Me', 
+                                style: TextStyle(fontSize: cardH * 0.20, fontWeight: FontWeight.w900, color: Colors.black54, fontFamily: 'serif')
+                              ),
                             ),
                             Positioned(
-                              right: padding, bottom: padding, width: cardW / 2,
-                              child: Text('\"Human, capable, acting in good faith\"', textAlign: TextAlign.left, style: TextStyle(fontSize: cardH * 0.07, fontWeight: FontWeight.w900, color: Colors.black54, fontFamily: 'serif')),
+                              right: padding, bottom: padding, width: cardW * 0.4,
+                              child: Text(
+                                'Human, capable, acting in good faith', 
+                                textAlign: TextAlign.right, 
+                                style: TextStyle(fontSize: cardH * 0.06, fontWeight: FontWeight.w800, fontStyle: FontStyle.italic, color: Colors.black38, fontFamily: 'serif')
+                              ),
                             ),
                           ],
                         ),
@@ -295,6 +336,49 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           },
         );
       }
+    );
+  }
+
+  void _showShareMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 20),
+            const Text('SHARE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
+            ListTile(leading: const Icon(Icons.qr_code_2), title: const Text('Show My Key QR'), onTap: () => Navigator.pop(context)),
+            ListTile(leading: const Icon(Icons.email_outlined), title: const Text('Email My Key (Text)'), onTap: () => Navigator.pop(context)),
+            ListTile(leading: const Icon(Icons.link), title: const Text('Share Homepage'), onTap: () => Navigator.pop(context)),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showManagementHub(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 32),
+            _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(1)),
+            _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
+            _HubTile(icon: Icons.info_outline_rounded, title: 'HELP & INFO', onTap: () => _pageController.jumpToPage(3)),
+            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV DIAGNOSTICS', onTap: () => _pageController.jumpToPage(4)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -315,7 +399,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         GestureDetector(
           onTap: _handleDevClick,
           child: const Center(
-            child: Text('V2.0.0 • BUILD 1', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+            child: Text('V2.0.0 • BUILD 78', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
           ),
         ),
         const SizedBox(height: 60),
@@ -343,29 +427,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           },
         ),
       ],
-    );
-  }
-
-  void _showManagementHub(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 32),
-            _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(1)),
-            _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
-            _HubTile(icon: Icons.info_outline_rounded, title: 'HELP & INFO', onTap: () => _pageController.jumpToPage(3)),
-            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV DIAGNOSTICS', onTap: () => _pageController.jumpToPage(4)),
-          ],
-        ),
-      ),
     );
   }
 

@@ -40,6 +40,7 @@ app.*.map.json
 
 # Reference data - don't commit the whole reference project
 nerdster-reference/
+oneofus-reference/
 
 # Secret/Sensitive files
 *.jks

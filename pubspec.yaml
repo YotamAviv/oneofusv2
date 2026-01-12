@@ -2,7 +2,7 @@ name: oneofus_phone
 description: "The ONE-OF-US.NET phone app (V2)."
 publish_to: 'none'
 
-version: 2.0.0+1
+version: 2.0.0+78
 
 environment:
   sdk: ^3.8.1
@@ -20,6 +20,7 @@ dependencies:
   cloud_firestore: ^6.0.0
   fake_cloud_firestore: ^4.0.1
   flutter_secure_storage: ^9.2.2
+  app_links: ^6.0.0
   
   # UI/UX requirements
   qr_flutter: ^4.1.0
