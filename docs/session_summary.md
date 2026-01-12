@@ -2,6 +2,7 @@
 
 ## Human plan for sooner rather than later:
 - Get going on play store tracks or whatever so that I can validate, be less nervous
+  - document Play Store tracks or whatever
   - read / write same secure storage, access my current private key
   - "magic" (what do you call that thing?) progress, get nerdster.org webapp to carry out a back and forth
   - Play Protect.. read/write Firestore database

@@ -19,6 +19,7 @@ dependencies:
   firebase_core: ^4.0.0
   cloud_firestore: ^6.0.0
   fake_cloud_firestore: ^4.0.1
+  flutter_secure_storage: ^9.2.2
   
   # UI/UX requirements
   qr_flutter: ^4.1.0

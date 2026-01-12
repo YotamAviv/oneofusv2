@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'card_config.dart';
+import 'v2/identity_manager.dart';
 
 void main() {
   runApp(const OneOfUsApp());
@@ -36,8 +38,13 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
-  bool _hasKey = true;
+  final IdentityManager _identityManager = IdentityManager();
+  
+  bool _isLoading = true;
+  bool _hasKey = false;
   bool _hasAlerts = true;
+  bool _isDevMode = false;
+  int _devClickCount = 0;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -53,6 +60,27 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       parent: _pulseController,
       curve: Curves.easeInOut,
     );
+    _initIdentity();
+  }
+
+  Future<void> _initIdentity() async {
+    final found = await _identityManager.loadIdentity();
+    setState(() {
+      _hasKey = found;
+      _isLoading = false;
+    });
+  }
+
+  void _handleDevClick() {
+    _devClickCount++;
+    if (_devClickCount >= 7 && !_isDevMode) {
+      setState(() {
+        _isDevMode = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Developer Mode Enabled')),
+      );
+    }
   }
 
   @override
@@ -73,7 +101,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    if (!_hasKey) return const Scaffold(body: Center(child: Text('Onboarding...')));
+    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (!_hasKey) return _buildOnboarding(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F0EF),
@@ -89,11 +118,12 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   _buildMePage(isLandscape),
                   const _SubPage(title: 'PEOPLE', icon: Icons.people_outline),
                   const _SubPage(title: 'SERVICES', icon: Icons.shield_moon_outlined),
-                  const _SubPage(title: 'INFO & ADVANCED', icon: Icons.tune_rounded),
+                  _buildInfoPage(),
+                  if (_isDevMode) _buildDevPage(),
                 ],
               ),
 
-              // Persistent Pulse Dot (Top Right)
+              // Persistent Pulse Dot
               Positioned(
                 top: isLandscape ? 20 : 60,
                 right: isLandscape ? 20 : 32,
@@ -124,6 +154,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               ),
 
               if (!isLandscape) ...[
+                // Branding
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
@@ -159,7 +190,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        onPressed: () => _showShareMenu(context),
+                        onPressed: () {}, // Share
                         icon: const Icon(Icons.ios_share_rounded, size: 32, color: Color(0xFF37474F)),
                       ),
                       IconButton(
@@ -197,137 +228,121 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildMePage(bool isLandscape) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenW = constraints.maxWidth;
-        final screenH = constraints.maxHeight;
+    return FutureBuilder<String?>(
+      future: _identityManager.getIdentityToken(),
+      builder: (context, snapshot) {
+        final token = snapshot.data ?? 'no-token';
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final screenW = constraints.maxWidth;
+            final screenH = constraints.maxHeight;
+            final vertMargin = isLandscape ? CardConfig.verticalMarginL : CardConfig.verticalMarginP;
+            final horizMargin = isLandscape ? CardConfig.horizontalMarginL : CardConfig.horizontalMarginP;
+            final contentPadding = isLandscape ? CardConfig.contentPaddingL : CardConfig.contentPaddingP;
+            final qrRatio = isLandscape ? CardConfig.qrHeightRatioL : CardConfig.qrHeightRatioP;
 
-        // Use orientation-specific config
-        final vertMargin = isLandscape ? CardConfig.verticalMarginL : CardConfig.verticalMarginP;
-        final horizMargin = isLandscape ? CardConfig.horizontalMarginL : CardConfig.horizontalMarginP;
-        final contentPadding = isLandscape ? CardConfig.contentPaddingL : CardConfig.contentPaddingP;
-        final qrRatio = isLandscape ? CardConfig.qrHeightRatioL : CardConfig.qrHeightRatioP;
+            final availW = screenW * (1 - 2 * horizMargin);
+            final availH = screenH * (1 - 2 * vertMargin);
+            final scale = min(availW / CardConfig.cardW, availH / CardConfig.cardH);
 
-        final availW = screenW * (1 - 2 * horizMargin);
-        final availH = screenH * (1 - 2 * vertMargin);
+            final imgW = CardConfig.imgW * scale;
+            final imgH = CardConfig.imgH * scale;
+            final cardW = CardConfig.cardW * scale;
+            final cardH = CardConfig.cardH * scale;
+            final padding = cardW * contentPadding;
+            final qrSize = min(cardH - (2 * padding), cardH * qrRatio);
 
-        final scaleW = availW / CardConfig.cardW;
-        final scaleH = availH / CardConfig.cardH;
-
-        final scale = min(scaleW, scaleH);
-
-        final imgW = CardConfig.imgW * scale;
-        final imgH = CardConfig.imgH * scale;
-        final cardW = CardConfig.cardW * scale;
-        final cardH = CardConfig.cardH * scale;
-
-        final padding = cardW * contentPadding;
-        final maxQrSize = cardH - (2 * padding);
-        final qrSize = min(maxQrSize, cardH * qrRatio);
-
-        return Center(
-          child: SizedBox(
-            width: screenW,
-            height: screenH,
-            child: OverflowBox(
-              minWidth: imgW,
-              maxWidth: imgW,
-              minHeight: imgH,
-              maxHeight: imgH,
-              child: Stack(
-                children: [
-                  Image.asset(
-                    'assets/card_background.png',
-                    width: imgW,
-                    height: imgH,
-                    fit: BoxFit.fill,
-                    errorBuilder: (context, _, __) => Container(color: Colors.grey.shade300),
-                  ),
-                  
-                  Positioned(
-                    left: CardConfig.cardL * scale,
-                    top: CardConfig.cardT * scale,
-                    width: cardW,
-                    height: cardH,
-                    child: Container(
-                      // DO NOT DELETE: This debug border is useful when swapping background images.
-                      // decoration: BoxDecoration(
-                      //   border: Border.all(color: Colors.blue, width: 2), // Debug border
-                      // ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            left: padding,
-                            top: padding,
-                            child: QrImageView(
-                              data: 'one-of-us:identity_token_placeholder',
-                              version: QrVersions.auto,
-                              size: qrSize,
-                              backgroundColor: Colors.transparent,
-                              eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
-                              dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
-                            ),
-                          ),
-                          
-                          Positioned(
-                            right: padding,
-                            top: padding,
-                            child: Text(
-                              'Me',
-                              style: TextStyle(
-                                fontSize: cardH * 0.20,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.black54,
-                                fontFamily: 'serif',
+            return Center(
+              child: SizedBox(
+                width: screenW,
+                height: screenH,
+                child: OverflowBox(
+                  minWidth: imgW, maxWidth: imgW, minHeight: imgH, maxHeight: imgH,
+                  child: Stack(
+                    children: [
+                      Image.asset('assets/card_background.png', width: imgW, height: imgH, fit: BoxFit.fill),
+                      Positioned(
+                        left: CardConfig.cardL * scale, top: CardConfig.cardT * scale, width: cardW, height: cardH,
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              left: padding, top: padding,
+                              child: QrImageView(
+                                data: 'one-of-us:$token',
+                                version: QrVersions.auto,
+                                size: qrSize,
+                                backgroundColor: Colors.transparent,
+                                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
+                                dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
                               ),
                             ),
-                          ),
-                          Positioned(
-                            right: padding,
-                            bottom: padding,
-                            width: cardW * 0.4,
-                            child: Text(
-                              'Human, capable, acting in good faith',
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                fontSize: cardH * 0.06,
-                                fontWeight: FontWeight.w800,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.black38,
-                                fontFamily: 'serif',
-                              ),
+                            Positioned(
+                              right: padding, top: padding,
+                              child: Text('Me', style: TextStyle(fontSize: cardH * 0.20, fontWeight: FontWeight.w900, color: Colors.black87, fontFamily: 'serif')),
                             ),
-                          ),
-                        ],
+                            Positioned(
+                              right: padding, bottom: padding, width: cardW / 2,
+                              child: Text('\"Human, capable, acting in good faith\"', textAlign: TextAlign.left, style: TextStyle(fontSize: cardH * 0.07, fontWeight: FontWeight.w900, color: Colors.black54, fontFamily: 'serif')),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
-      },
+      }
     );
   }
 
-  void _showShareMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 20),
-            const Text('SHARE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
-            ListTile(leading: const Icon(Icons.qr_code_2), title: const Text('Show My Key QR'), onTap: () => Navigator.pop(context)),
-            ListTile(leading: const Icon(Icons.email_outlined), title: const Text('Email My Key (Text)'), onTap: () => Navigator.pop(context)),
-            ListTile(leading: const Icon(Icons.link), title: const Text('Share Homepage'), onTap: () => Navigator.pop(context)),
-            const SizedBox(height: 20),
-          ],
+  Widget _buildInfoPage() {
+    return ListView(
+      padding: const EdgeInsets.all(40),
+      children: [
+        const Center(
+          child: Column(
+            children: [
+              Icon(Icons.shield_rounded, size: 80, color: Color(0xFF00897B)),
+              SizedBox(height: 24),
+              Text('ONE-OF-US.NET', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 4)),
+            ],
+          ),
         ),
-      ),
+        const SizedBox(height: 40),
+        GestureDetector(
+          onTap: _handleDevClick,
+          child: const Center(
+            child: Text('V2.0.0 • BUILD 1', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+          ),
+        ),
+        const SizedBox(height: 60),
+        const ListTile(title: Text('Help Page'), subtitle: Text('https://one-of-us.net/man.html')),
+        const ListTile(title: Text('Privacy Policy'), subtitle: Text('https://one-of-us.net/policy.html')),
+      ],
+    );
+  }
+
+  Widget _buildDevPage() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Text('DIAGNOSTICS (DEV)', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
+        const Divider(),
+        const Text('PRIVATE KEYS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
+        const SizedBox(height: 12),
+        FutureBuilder<Map<String, dynamic>>(
+          future: _identityManager.getAllKeyPairs(),
+          builder: (context, snapshot) {
+            return SelectableText(
+              const JsonEncoder.withIndent('  ').convert(snapshot.data ?? {}), 
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 10)
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -347,8 +362,31 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(1)),
             _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
             _HubTile(icon: Icons.info_outline_rounded, title: 'HELP & INFO', onTap: () => _pageController.jumpToPage(3)),
-            _HubTile(icon: Icons.tune_rounded, title: 'ADVANCED', onTap: () => _pageController.jumpToPage(3)),
+            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV DIAGNOSTICS', onTap: () => _pageController.jumpToPage(4)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOnboarding(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(48),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.shield_rounded, size: 100, color: Color(0xFF00897B)),
+              const SizedBox(height: 32),
+              const Text('ONE-OF-US.NET', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 4, color: Color(0xFF006064))),
+              const SizedBox(height: 64),
+              ElevatedButton(onPressed: () async {
+                await _identityManager.generateNewIdentity();
+                _initIdentity();
+              }, child: const Text('GENERATE NEW IDENTITY')),
+            ],
+          ),
         ),
       ),
     );

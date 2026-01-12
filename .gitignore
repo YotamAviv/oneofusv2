@@ -41,8 +41,9 @@ app.*.map.json
 # Reference data - don't commit the whole reference project
 nerdster-reference/
 
-# Secret/Sensitive files (if we add any local keys for testing)
+# Secret/Sensitive files
 *.jks
 *.keystore
+*.properties
 !debug.keystore
 google-services.json
