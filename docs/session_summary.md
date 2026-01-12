@@ -5,6 +5,15 @@
   - read / write same secure storage, access my current private key
   - "magic" (what do you call that thing?) progress, get nerdster.org webapp to carry out a back and forth
   - Play Protect.. read/write Firestore database
+- Document "Stable State"
+  - notification (pulsing dot) should be active unless we're in stable state
+  - our directly trusted associates
+    - none block or replace our key
+  - our key is backed up (we claim)
+  - our equivalent keys
+    - all are fully claimed replaced and revoked <since always> by our active key 
+  - our delegate keys
+    - all are delegated (irregardless of revoked status) by our active key
 
 ## Goal
 
