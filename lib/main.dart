@@ -202,16 +202,12 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         final screenW = constraints.maxWidth;
         final screenH = constraints.maxHeight;
 
-        // available space accounts for the 2% safety margins
         final availW = screenW * (1 - 2 * CardConfig.horizontalMargin);
         final availH = screenH * (1 - 2 * CardConfig.verticalMargin);
 
-        // Calculate scales to fit the card dimensions (Pixels) into available screen dimensions
         final scaleW = availW / CardConfig.cardW;
         final scaleH = availH / CardConfig.cardH;
 
-        // Use the MINIMUM scale to ensure the "entirety of the blank card" is visible.
-        // This prevents the "blow up" in portrait mode.
         final scale = min(scaleW, scaleH);
 
         final imgW = CardConfig.imgW * scale;
@@ -219,11 +215,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         final cardW = CardConfig.cardW * scale;
         final cardH = CardConfig.cardH * scale;
 
-        // Overlays padding (4% of card width)
         final padding = cardW * CardConfig.contentPadding;
-        
-        // Determine QR size based on available card height minus top/bottom padding
-        // Using the config's ratio as a maximum limit
         final maxQrSize = cardH - (2 * padding);
         final qrSize = min(maxQrSize, cardH * CardConfig.qrHeightRatio);
 
@@ -238,7 +230,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               maxHeight: imgH,
               child: Stack(
                 children: [
-                  // 1. Background image
                   Image.asset(
                     'assets/card_background.png',
                     width: imgW,
@@ -247,43 +238,47 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     errorBuilder: (context, _, __) => Container(color: Colors.grey.shade300),
                   ),
                   
-                  // 2. The Card Area
+                  // The Card Area with Temporary Blue Debug Box
                   Positioned(
                     left: CardConfig.cardL * scale,
                     top: CardConfig.cardT * scale,
                     width: cardW,
                     height: cardH,
-                    child: Stack(
-                      children: [
-                        // QR Code on the left
-                        Positioned(
-                          left: padding,
-                          top: padding,
-                          child: QrImageView(
-                            data: 'one-of-us:identity_token_placeholder',
-                            version: QrVersions.auto,
-                            size: qrSize,
-                            backgroundColor: Colors.transparent,
-                            eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
-                            dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
-                          ),
-                        ),
-                        
-                        // "Me" label on the right, top-aligned with QR
-                        Positioned(
-                          right: padding,
-                          top: padding,
-                          child: Text(
-                            'Me',
-                            style: TextStyle(
-                              fontSize: cardH * 0.12, // Font size relative to card height
-                              fontWeight: FontWeight.w900,
-                              color: Colors.black87,
-                              fontFamily: 'serif',
+                    child: Container(
+                      // DO NOT DELETE: This debug border is useful when swapping background images.
+                      // decoration: BoxDecoration(
+                      //   border: Border.all(color: Colors.blue, width: 2), // Debug border
+                      // ),
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: padding,
+                            top: padding,
+                            child: QrImageView(
+                              data: 'one-of-us:identity_token_placeholder',
+                              version: QrVersions.auto,
+                              size: qrSize,
+                              backgroundColor: Colors.transparent,
+                              eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
+                              dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
                             ),
                           ),
-                        ),
-                      ],
+                          
+                          Positioned(
+                            right: padding,
+                            top: padding,
+                            child: Text(
+                              'Me',
+                              style: TextStyle(
+                                fontSize: cardH * 0.12,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.black87,
+                                fontFamily: 'serif',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
