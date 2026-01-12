@@ -270,9 +270,25 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                             child: Text(
                               'Me',
                               style: TextStyle(
-                                fontSize: cardH * 0.12,
+                                fontSize: cardH * 0.20,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.black87,
+                                color: Colors.black54,
+                                fontFamily: 'serif',
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: padding,
+                            bottom: padding,
+                            width: cardW * 0.4,
+                            child: Text(
+                              'Human, capable, acting in good faith',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                fontSize: cardH * 0.06,
+                                fontWeight: FontWeight.w800,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.black38,
                                 fontFamily: 'serif',
                               ),
                             ),
