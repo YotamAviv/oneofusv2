@@ -5,6 +5,7 @@ import 'package:app_links/app_links.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'core/keys.dart';
 import 'ui/identity_card_surface.dart';
+import 'features/key_management_screen.dart';
 
 void main() {
   runApp(const OneOfUsApp());
@@ -39,10 +40,11 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
-  final Keys _keyRing = Keys();
+  final Keys _keys = Keys();
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSubscription;
   
+  int _currentPageIndex = 0;
   bool _isLoading = true;
   bool _hasKey = false;
   bool _hasAlerts = true;
@@ -55,6 +57,15 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
+
+    _pageController.addListener(() {
+      if (_pageController.page?.round() != _currentPageIndex) {
+        setState(() {
+          _currentPageIndex = _pageController.page!.round();
+        });
+      }
+    });
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -68,7 +79,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _initIdentity() async {
-    final found = await _keyRing.load();
+    final found = await _keys.load();
     setState(() {
       _hasKey = found;
       _isLoading = false;
@@ -94,7 +105,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   void _handleIncomingLink(Uri uri) {
     debugPrint('[DeepLink] Processing: scheme=${uri.scheme}, host=${uri.host}');
     
-    // Catch keymeid://signin
     if (uri.scheme == 'keymeid' && (uri.host == 'signin' || uri.path.contains('signin'))) {
       final params = uri.queryParameters['parameters'];
       if (params != null) {
@@ -148,6 +158,15 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (!_hasKey) return _buildOnboarding(context);
 
+    final pages = [
+      _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape),
+      const KeyManagementScreen(),
+      const _SubPage(title: 'PEOPLE', icon: Icons.people_outline),
+      const _SubPage(title: 'SERVICES', icon: Icons.shield_moon_outlined),
+      _buildInfoPage(),
+      if (_isDevMode) _buildDevPage(),
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF2F0EF),
       body: OrientationBuilder(
@@ -158,16 +177,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             children: [
               PageView(
                 controller: _pageController,
-                children: [
-                  _buildMePage(isLandscape),
-                  const _SubPage(title: 'PEOPLE', icon: Icons.people_outline),
-                  const _SubPage(title: 'SERVICES', icon: Icons.shield_moon_outlined),
-                  _buildInfoPage(),
-                  if (_isDevMode) _buildDevPage(),
-                ],
+                children: pages,
               ),
 
-              // Persistent Pulse Dot
               Positioned(
                 top: isLandscape ? 20 : 60,
                 right: isLandscape ? 20 : 32,
@@ -196,8 +208,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   },
                 ),
               ),
-
-              if (!isLandscape) ...[
+              
+              if (!isLandscape && _currentPageIndex == 0) ...[
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
@@ -272,7 +284,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   Widget _buildMePage(bool isLandscape) {
     return FutureBuilder<Json?>(
-      future: _keyRing.getIdentityPublicKeyJson(),
+      future: _keys.getIdentityPublicKeyJson(),
       builder: (context, snapshot) {
         final jsonKey = snapshot.data != null ? jsonEncode(snapshot.data) : 'no-key';
         return IdentityCardSurface(
@@ -316,10 +328,11 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 32),
-            _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(1)),
-            _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
-            _HubTile(icon: Icons.info_outline_rounded, title: 'HELP & INFO', onTap: () => _pageController.jumpToPage(3)),
-            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV DIAGNOSTICS', onTap: () => _pageController.jumpToPage(4)),
+            _HubTile(icon: Icons.vpn_key_outlined, title: 'KEY MANAGEMENT', onTap: () => _pageController.jumpToPage(1)),
+            _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(2)),
+            _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(3)),
+            _HubTile(icon: Icons.info_outline_rounded, title: 'HELP & INFO', onTap: () => _pageController.jumpToPage(4)),
+            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV DIAGNOSTICS', onTap: () => _pageController.jumpToPage(5)),
           ],
         ),
       ),
@@ -362,7 +375,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         const Text('PRIVATE KEYS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
         const SizedBox(height: 12),
         FutureBuilder<Map<String, Json>>(
-          future: _keyRing.getAllKeyJsons(),
+          future: _keys.getAllKeyJsons(),
           builder: (context, snapshot) {
             return SelectableText(
               const JsonEncoder.withIndent('  ').convert(snapshot.data ?? {}), 
@@ -387,7 +400,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               const Text('ONE-OF-US.NET', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 4, color: Color(0xFF006064))),
               const SizedBox(height: 64),
               ElevatedButton(onPressed: () async {
-                await _keyRing.newIdentity();
+                await _keys.newIdentity();
                 _initIdentity();
               }, child: const Text('GENERATE NEW IDENTITY')),
             ],

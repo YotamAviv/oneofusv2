@@ -85,6 +85,23 @@ class Keys {
     await _save();
     return newDelegate;
   }
+  
+  Future<void> importKeys(String jsonString) async {
+    // 1. Validate the JSON before saving.
+    final keyMap = jsonDecode(jsonString) as Map<String, dynamic>;
+    if (!keyMap.containsKey(kOneofusDomain)) {
+      throw Exception('Invalid key file: Missing primary identity key.');
+    }
+
+    // 2. Overwrite the raw string in secure storage.
+    await _storage.write(key: _storageKey, value: jsonString);
+
+    // 3. Reset the internal state to force a reload.
+    _keys = {};
+    _isLoaded = false;
+    await load();
+    assert(isLoaded);
+  }
 
   /// Returns the SHA-1 token of the current identity public key.
   Future<String?> getIdentityToken() async {
