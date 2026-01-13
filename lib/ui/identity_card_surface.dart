@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../card_config.dart';
+import 'card_config.dart';
 
 class IdentityCardSurface extends StatelessWidget {
   final bool isLandscape;

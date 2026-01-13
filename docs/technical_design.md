@@ -3,36 +3,17 @@
 This document outlines the proposed architecture for the `oneofus` mobile app's data layer, a strategy for sharing code with the `nerdster` project, and a plan for testing.
 
 ## From the human
-- check out the oneofus project minus .git and truly start from scratch?
-- get started on the "magic" connecting domain to app as that takes time.
-
+For some background check out:
+- oneofus-reference (the legacy phone app minus .git)
+- nerdster-reference (Nerdster webapp minus .git)
+- 
 ## 1. Problem Statement
 
-The current data-fetching logic (`Fetcher`) is complex and difficult to maintain. The `nerdster` project contains a more modern "v2" data layer, but simply copying this code is undesirable and leads to maintenance issues. The `oneofus` app also has different requirements than `nerdster`; it is primarily a writer of its own statements and does not need to read statements from many users in parallel.
+The legacy `oneofus` data-fetching logic (`Fetcher`) was complex and difficult to maintain. The `nerdster` project contains a more modern "v2" data layer, but simply copying this code is undesirable and leads to maintenance issues.
 
 ## 2. Proposed Architecture
 
 We will create a new, well-defined I/O layer within the `oneofus` project. This layer will be inspired by `nerdster`'s v2 architecture but tailored to the specific needs of the phone app.
-
-### 2.1. Components
-
--   **`lib/v2/statement_io.dart`**: An abstract interface defining the contracts for reading and writing statements.
-
-    ```dart
-    abstract class StatementSource<T extends Statement> {
-      Future<Map<String, List<T>>> fetch(Map<String, String?> keys);
-    }
-
-    abstract class StatementPusher {
-      Future<void> push(Statement statement);
-    }
-    ```
-
--   **`lib/v2/direct_firestore_source.dart`**: A concrete implementation of `StatementSource` and `StatementPusher`. This will be the **primary I/O component for the phone app**. It will read from and write directly to Firestore.
-
--   **`lib/v2/notary_chain_verifier.dart`**: A dedicated, testable class responsible for verifying the integrity of a fetched list of statements. It will check the `previous` token links and timestamps. This logic will be explicitly invoked by `DirectFirestoreSource` after a fetch.
-
--   **`lib/v2/source_factory.dart`**: A factory responsible for providing instances of the data sources. Initially, it will only create `DirectFirestoreSource`.
 
 ## 3. Code Sharing Strategy
 
@@ -43,22 +24,58 @@ To avoid code duplication, we should move the core, shared logic into a common p
 This new Flutter package would contain:
 -   **Core Data Models:** `statement.dart`, `trust_statement.dart`, `jsonish.dart`, etc.
 -   **Cryptography:** The `crypto` directory and its contents.
--   **Paradigm Constants:** `util.dart` (containing `kOneofusDomain`, etc.).
 
-This approach ensures that the fundamental data structures and cryptographic logic are identical and maintained in a single place.
+## Notes...
+
+Some logic is implemented in the Cloud Functions side:
+- singular disposition (see also, distincter)
+- notary chain verification
+
+### Data on phone and data in cloud
+This app doesn't deal with a lot of data.
+On the phone:
+- The user's identity key pair
+- The user's delegate key pairs (most likely just the Nerdster's)
+This is very little data and should load practically instantly.
+This is important data and is not available anywhere else.
+This data does not change unless this app changes it.
+
+In the cloud:
+The data in the cloud is not strictly speaking the user's.
+It can be fetched any time.
+It's not a lot of data, but fetching it is an asynchronous operation that could take seconds.
+We'll need to show a "Loading..." animation or something as we fetch it.
+This user's own statements are unlikely to change unless this app writes new ones, but it could.
+The user's trusted associates statements probably don't change often, but they need to be refreshed occasionally.
+
+The interesting data is
+- statements authored (signed and published) by the user's identity key
+  - also statements signed by identity keys "claimed" (using "replace" TrustStatement) by the user's identity key.
+- statements authored by keys the user has trusted (using "trust" TrustStatement). This is  so that we can show the user which of the people he's vouched for have or have not vouched back for him (and what moniker they chose for him).
+
+When / how
+Load (and have in memory) the user's data on the phone on startup and have it at all times.
+Load there cloud data whenever the user starts interacting with the app.
+Reload that data after any change made by the user (new trust, for example)
+
+## Plan
+
+- Import / export
+  - screen, UI
+  - keys.dart implementation
+- Cloud loading
+  - 
+- Sign and publish a statement
+  - "People" screen
+  - "Services" screen
+- Sign-in to service
+  - QR scan / keymeid://
+- 
 
 ## 4. Testing Strategy
 
--   **Unit Tests:**
-    -   A dedicated unit test file for `notary_chain_verifier_test.dart` must be created. It should be tested with valid chains, broken chains, and chains with timestamp violations.
-    -   `direct_firestore_source_test.dart` will use `FakeFirebaseFirestore` and will test that the source correctly fetches data and correctly invokes the `NotaryChainVerifier`.
-
--   **Integration Tests (`integration_test/app_test.dart`):**
-    -   These tests will continue to use `FakeFirebaseFirestore` populated with the `simpsons_demo` data.
-    -   They will simulate user UI interactions (tapping, scrolling) and verify that the UI correctly reflects the state from the fake database. This validates the entire stack, from UI to the I/O layer.
-
-## 5. Open Questions
-
-1.  **Shared Package Location:** Should the `oneofus_common` package be a local package within a monorepo, or should it be published as a private package?
-2.  **`DirectFirestoreSource` vs. `CloudFunctionsSource`:** The phone app's primary need is direct I/O. Is there any scenario where it would need to use the `CloudFunctionsSource` for reading? If not, we can omit it from the phone app's architecture entirely for simplicity.
-3.  **Migration Path:** How do we handle the transition from the legacy `MyKeys` and `MyStatements` classes to the new v2 I/O layer? Should the v2 layer be responsible for migrating the secure storage data, or should that be a separate, one-time process?
+-   **Testing:**
+Challenges / notes:
+- Firestore on Linux is not directly supported, which affects unit tests
+- FakeFirebaseFirestore has been useful
+- Firebase emulator has been useful

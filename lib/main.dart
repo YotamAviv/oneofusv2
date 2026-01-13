@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
-import 'v2/identity_manager.dart';
-import 'v2/identity_card_surface.dart';
+import 'package:oneofus_common/jsonish.dart';
+import 'core/keys.dart';
+import 'ui/identity_card_surface.dart';
 
 void main() {
   runApp(const OneOfUsApp());
@@ -38,7 +39,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
-  final IdentityManager _identityManager = IdentityManager();
+  final Keys _keyRing = Keys();
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSubscription;
   
@@ -67,7 +68,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _initIdentity() async {
-    final found = await _identityManager.loadIdentity();
+    final found = await _keyRing.load();
     setState(() {
       _hasKey = found;
       _isLoading = false;
@@ -270,8 +271,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildMePage(bool isLandscape) {
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _identityManager.getPublicKeyJson(),
+    return FutureBuilder<Json?>(
+      future: _keyRing.getIdentityPublicKeyJson(),
       builder: (context, snapshot) {
         final jsonKey = snapshot.data != null ? jsonEncode(snapshot.data) : 'no-key';
         return IdentityCardSurface(
@@ -360,8 +361,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         const Divider(),
         const Text('PRIVATE KEYS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
         const SizedBox(height: 12),
-        FutureBuilder<Map<String, dynamic>>(
-          future: _identityManager.getAllKeyPairs(),
+        FutureBuilder<Map<String, Json>>(
+          future: _keyRing.getAllKeyJsons(),
           builder: (context, snapshot) {
             return SelectableText(
               const JsonEncoder.withIndent('  ').convert(snapshot.data ?? {}), 
@@ -386,7 +387,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               const Text('ONE-OF-US.NET', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 4, color: Color(0xFF006064))),
               const SizedBox(height: 64),
               ElevatedButton(onPressed: () async {
-                await _identityManager.generateNewIdentity();
+                await _keyRing.newIdentity();
                 _initIdentity();
               }, child: const Text('GENERATE NEW IDENTITY')),
             ],
