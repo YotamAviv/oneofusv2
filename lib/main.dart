@@ -75,15 +75,13 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   void _initDeepLinks() {
-    debugPrint('[DeepLink] Initializing deep link listeners...');
+    debugPrint('[DeepLink] Initializing deep link listeners (keymeid://)...');
     
-    // Handle links when app is already running
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       debugPrint('[DeepLink] Received stream link: $uri');
       _handleIncomingLink(uri);
     });
 
-    // Handle link that launched the app
     _appLinks.getInitialLink().then((uri) {
       if (uri != null) {
         debugPrint('[DeepLink] Received initial launch link: $uri');
@@ -93,29 +91,25 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   void _handleIncomingLink(Uri uri) {
-    debugPrint('[DeepLink] Processing link: scheme=${uri.scheme}, host=${uri.host}, path=${uri.path}');
+    debugPrint('[DeepLink] Processing: scheme=${uri.scheme}, host=${uri.host}');
     
-    // Catch both oneofus://signin and https://one-of-us.net/sign-in
-    bool isSignIn = uri.path.contains('signin') || 
-                    uri.path.contains('sign-in') || 
-                    uri.host == 'signin';
-                    
-    if (isSignIn) {
+    // Catch keymeid://signin
+    if (uri.scheme == 'keymeid' && (uri.host == 'signin' || uri.path.contains('signin'))) {
       final params = uri.queryParameters['parameters'];
       if (params != null) {
         debugPrint('[DeepLink] Sign-in parameters found: $params');
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Received Magic Sign-in: $params'),
+            content: Text('Received keymeid Sign-in: $params'),
             duration: const Duration(seconds: 10),
           ),
         );
       } else {
-        debugPrint('[DeepLink] Error: Sign-in link received but "parameters" field is missing.');
+        debugPrint('[DeepLink] Error: keymeid link received but "parameters" field is missing.');
       }
     } else {
-      debugPrint('[DeepLink] Link ignored: Not a sign-in path.');
+      debugPrint('[DeepLink] Link ignored: Does not match keymeid://signin path.');
     }
   }
 
@@ -203,7 +197,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               ),
 
               if (!isLandscape) ...[
-                // Branding
                 SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),

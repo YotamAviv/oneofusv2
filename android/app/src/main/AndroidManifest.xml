@@ -12,13 +12,12 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
             
-            <!-- Custom Scheme (Generic Discovery) -->
-            <!-- Placeholder scheme: 'oneofus' remains until a better name is chosen -->
+            <!-- 1. The Chosen Paradigm Scheme -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="oneofus" />
+                <data android:scheme="keymeid" />
             </intent-filter>
 
             <intent-filter>

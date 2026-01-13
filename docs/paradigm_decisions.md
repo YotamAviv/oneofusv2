@@ -7,13 +7,9 @@ We have decided to fully reject **Android App Links** (the `https://one-of-us.ne
 
 ## Custom URI Schemes
 To facilitate decentralized discovery and provider-neutral handshakes, we will use **Custom URI Schemes**.
-- **Current Status**: Experimental support for `oneofus://` is in place to verify basic communication.
-- **Search for Generic Name**: We are seeking a "hip" and brand-neutral scheme name that represents the **Identify and Delegate** action.
-- **Candidates**:
-  - `vouch://` (Current lead)
-  - `notary://`
-  - `attest://`
-  - `key://`
+- **The Protocol**: **`keymeid://`** has been selected as the official paradigm scheme.
+- **Vibe**: It combines "Key," "Me," and "ID" into a distinctive, personal compound word that avoids collision with generic apps.
+- **Status**: Registered in the manifest and implemented in the handshake listener.
 
 ## Deep Linking Lessons (Emulator)
 We discovered that the Android emulator's intent registry can become stale. Decisive verification requires:
