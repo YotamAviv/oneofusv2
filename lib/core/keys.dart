@@ -6,13 +6,6 @@ import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
 
 /// A singleton class responsible for managing the user's cryptographic keys.
-///
-/// It handles loading keys from and saving them to secure storage
-/// Must maintain compatibility with the V1 app's data structure.
-///
-/// Source for
-/// - user's primary identity key
-/// - service delegate keys.
 class Keys {
   // --- Singleton Setup ---
   static final Keys _instance = Keys._internal();
@@ -34,14 +27,17 @@ class Keys {
   OouKeyPair? get identity => _keys[kOneofusDomain];
 
   /// Retrieves the delegate key pair for a specific service domain.
-  /// Returns null if no delegate key exists for that domain.
   OouKeyPair? delegate(String domain) => _keys[domain];
 
+  /// FOR TESTING ONLY: Loads a specific private key as the main identity.
+  Future<void> loadForTest(Json privateKey) async {
+    const factory = CryptoFactoryEd25519();
+    final keyPair = await factory.parseKeyPair(privateKey);
+    _keys = {kOneofusDomain: keyPair};
+    _isLoaded = true;
+  }
+
   /// Loads all keys from secure storage.
-  ///
-  /// Returns `true` if a primary identity key was found, `false` otherwise.
-  /// This is used by the UI to decide whether to show the main screen or
-  /// the onboarding flow.
   Future<bool> load() async {
     if (_isLoaded) return identity != null;
 
@@ -64,7 +60,7 @@ class Keys {
       _isLoaded = true;
       return identity != null;
     } catch (e) {
-      // Data is corrupted or in an unexpected format. Treat as no keys found.
+      // Data is corrupted. Treat as no keys found.
       _isLoaded = true;
       return false;
     }
@@ -87,20 +83,14 @@ class Keys {
   }
   
   Future<void> importKeys(String jsonString) async {
-    // 1. Validate the JSON before saving.
     final keyMap = jsonDecode(jsonString) as Map<String, dynamic>;
     if (!keyMap.containsKey(kOneofusDomain)) {
       throw Exception('Invalid key file: Missing primary identity key.');
     }
-
-    // 2. Overwrite the raw string in secure storage.
     await _storage.write(key: _storageKey, value: jsonString);
-
-    // 3. Reset the internal state to force a reload.
     _keys = {};
     _isLoaded = false;
     await load();
-    assert(isLoaded);
   }
 
   /// Returns the SHA-1 token of the current identity public key.

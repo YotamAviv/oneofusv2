@@ -71,7 +71,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-
     TrustStatement.init();
 
     _pageController.addListener(() {
@@ -90,23 +89,29 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       parent: _pulseController,
       curve: Curves.easeInOut,
     );
-    _initIdentity();
-
+    
+    _initIdentityAndLoadData();
+    
     if (!widget.isTesting) {
       _initDeepLinks();
-      _loadAllData();
+    }
+  }
+  
+  Future<void> _initIdentityAndLoadData() async {
+    final found = await _keys.load();
+    setState(() {
+      _hasKey = found;
+      _isLoading = false;
+    });
+
+    if (found) {
+      await _loadAllData();
     }
   }
 
   Future<void> _loadAllData() async {
-    // This function will be expanded later to load all necessary data.
-    // For now, it only loads Lisa's statements for the demo.
-    final lisaKeyJson = {
-      "crv": "Ed25519",
-      "kty": "OKP",
-      "x": "D6oXiGksgfL4AP6lf2vXnAoq54_t1p8k-3SXs1Bgm8g"
-    };
-    final lisaToken = getToken(lisaKeyJson);
+    final myToken = await _keys.getIdentityToken();
+    if (myToken == null) return;
     
     try {
       final source = CloudFunctionsSource<TrustStatement>(
@@ -114,23 +119,15 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         verifier: OouVerifier(),
       );
 
-      final results = await source.fetch({lisaToken: null});
-      if (mounted && results.containsKey(lisaToken)) {
+      final results = await source.fetch({myToken: null});
+      if (mounted && results.containsKey(myToken)) {
         setState(() {
-          _fetchedStatements = results[lisaToken]!;
+          _fetchedStatements = results[myToken]!;
         });
       }
     } catch (e) {
-      // Errors are now visible in the debug console.
+      // Errors will be printed to the debug console by the source.
     }
-  }
-
-  Future<void> _initIdentity() async {
-    final found = await _keys.load();
-    setState(() {
-      _hasKey = found;
-      _isLoading = false;
-    });
   }
 
   void _initDeepLinks() {
@@ -416,7 +413,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               const SizedBox(height: 64),
               ElevatedButton(onPressed: () async {
                 await _keys.newIdentity();
-                _initIdentity();
+                _initIdentityAndLoadData();
               }, child: const Text('GENERATE NEW IDENTITY')),
             ],
           ),
