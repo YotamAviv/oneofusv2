@@ -41,8 +41,8 @@ app.*.map.json
 /android/app/release
 
 # Reference data - don't commit the whole reference project
-# TEMP: nerdster-reference/
-# TEMP: oneofus-reference/
+nerdster-reference/
+oneofus-reference/
 
 # Secret/Sensitive files
 *.jks

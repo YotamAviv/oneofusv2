@@ -2,22 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
 
-class PeopleScreen extends StatefulWidget {
+class ServicesScreen extends StatefulWidget {
   final List<TrustStatement> statements;
   final VoidCallback? onRefresh;
 
-  const PeopleScreen({super.key, required this.statements, this.onRefresh});
+  const ServicesScreen({super.key, required this.statements, this.onRefresh});
 
   @override
-  State<PeopleScreen> createState() => PeopleScreenState();
+  State<ServicesScreen> createState() => ServicesScreenState();
 }
 
-class PeopleScreenState extends State<PeopleScreen> {
+class ServicesScreenState extends State<ServicesScreen> {
   @override
   Widget build(BuildContext context) {
-    final filteredStatements = widget.statements.where((s) => s.verb != TrustVerb.delegate).toList();
-
-    debugPrint("[UI] Building PeopleScreen with ${filteredStatements.length} statements (filtered from ${widget.statements.length}).");
+    // Filter for delegate statements
+    final delegates = widget.statements.where((s) => s.verb == TrustVerb.delegate).toList();
+    
+    debugPrint("[UI] Building ServicesScreen with ${delegates.length} delegates.");
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF2F0EF),
       body: SafeArea(
@@ -29,7 +31,7 @@ class PeopleScreenState extends State<PeopleScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'PEOPLE',
+                    'SERVICES',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
@@ -45,14 +47,15 @@ class PeopleScreenState extends State<PeopleScreen> {
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                itemCount: filteredStatements.length,
-                itemBuilder: (context, index) {
-                  final statement = filteredStatements[index];
-                  return _buildPersonCard(statement);
-                },
-              ),
+              child: delegates.isEmpty 
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    itemCount: delegates.length,
+                    itemBuilder: (context, index) {
+                      return _buildServiceCard(delegates[index]);
+                    },
+                  ),
             ),
           ],
         ),
@@ -60,7 +63,39 @@ class PeopleScreenState extends State<PeopleScreen> {
     );
   }
 
-  Widget _buildPersonCard(TrustStatement statement) {
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.shield_moon_outlined, size: 64, color: Colors.blueGrey.shade200),
+          const SizedBox(height: 16),
+          Text(
+            'No Authorized Delegates',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.blueGrey.shade400,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Text(
+              'Services you authorize will appear here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.blueGrey.shade300,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceCard(TrustStatement statement) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -82,7 +117,7 @@ class PeopleScreenState extends State<PeopleScreen> {
             children: [
               Container(
                 width: 6,
-                color: const Color(0xFF00897B),
+                color: const Color(0xFF006064), // Slightly different shade for services
               ),
               Expanded(
                 child: Padding(
@@ -94,7 +129,7 @@ class PeopleScreenState extends State<PeopleScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              statement.moniker ?? 'Unknown',
+                              statement.moniker ?? statement.domain ?? 'Unknown Service',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -103,14 +138,25 @@ class PeopleScreenState extends State<PeopleScreen> {
                             ),
                           ),
                           const Icon(
-                            Icons.check_circle_outline_rounded,
+                            Icons.verified_user_outlined,
                             size: 20,
-                            color: Colors.grey, // Would be green if "vouched back"
+                            color: Color(0xFF006064),
                           ),
                         ],
                       ),
+                      if (statement.domain != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          statement.domain!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.blueGrey.shade400,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                       if (statement.comment != null && statement.comment!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           statement.comment!,
                           style: TextStyle(
@@ -125,19 +171,13 @@ class PeopleScreenState extends State<PeopleScreen> {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           _ActionButton(
-                            icon: Icons.edit_outlined,
+                            icon: Icons.settings_outlined,
                             onTap: () {},
                           ),
                           const SizedBox(width: 8),
                           _ActionButton(
-                            icon: Icons.backspace_outlined,
-                            label: 'CLEAR',
-                            onTap: () {},
-                          ),
-                          const SizedBox(width: 8),
-                          _ActionButton(
-                            icon: Icons.block_flipped,
-                            label: 'BLOCK',
+                            icon: Icons.no_accounts_outlined,
+                            label: 'REVOKE',
                             color: Colors.red.shade400,
                             onTap: () {},
                           ),
@@ -170,7 +210,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = color ?? const Color(0xFF00897B);
+    final activeColor = color ?? const Color(0xFF006064);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),

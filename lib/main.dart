@@ -3,15 +3,21 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
 import 'package:oneofus_common/crypto.dart';
+import 'package:oneofus_common/crypto25519.dart';
 import 'package:oneofus_common/oou_verifier.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'core/config.dart';
 import 'core/keys.dart';
+import 'core/sign_in_service.dart';
 import 'ui/identity_card_surface.dart';
+import 'ui/qr_scanner.dart';
 import 'features/key_management_screen.dart';
 import 'features/people/people_screen.dart';
+import 'features/people/services_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -19,6 +25,14 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  if (Config.fireChoice == FireChoice.emulator) {
+    // Connect to local Firebase Emulators
+    // 10.0.2.2 is the magic IP for the Android Emulator to reach the host machine
+    FirebaseFirestore.instance.useFirestoreEmulator('10.0.2.2', 8081);
+    // Note: Cloud Functions emulator is typically on 5002 for the one-of-us-net project in your setup
+  }
+
   runApp(const OneOfUsApp());
 }
 
@@ -115,7 +129,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     
     try {
       final source = CloudFunctionsSource<TrustStatement>(
-        baseUrl: 'http://export.one-of-us.net',
+        baseUrl: Config.exportUrl,
         verifier: OouVerifier(),
       );
 
@@ -143,7 +157,56 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   void _handleIncomingLink(Uri uri) {
-    // Not relevant for this test
+    debugPrint("[DeepLink] Received: $uri");
+    if (uri.scheme == 'keymeid') {
+      // Legacy "Magic Sign-in" support
+      final dataBase64 = uri.queryParameters['parameters'];
+      if (dataBase64 != null) {
+        try {
+          final data = utf8.decode(base64Url.decode(dataBase64));
+          SignInService.signIn(data, context);
+        } catch (e) {
+          debugPrint("[DeepLink] Error decoding legacy magic link: $e");
+        }
+      }
+    } else if (uri.path.contains('sign-in')) {
+      // New Seamless Sign-in support
+      final data = uri.queryParameters['data'];
+      if (data != null) {
+        SignInService.signIn(data, context);
+      }
+    }
+  }
+
+  void _onScanPressed() async {
+    final scanned = await QrScanner.scan(
+      context,
+      title: 'Scan Sign-in or Personal Key',
+      validator: (data) async {
+        if (await SignInService.validateSignIn(data)) return true;
+        try {
+          final json = jsonDecode(data);
+          await const CryptoFactoryEd25519().parsePublicKey(json);
+          return true; // It's a valid public key
+        } catch (_) {
+          return false;
+        }
+      },
+    );
+
+    if (scanned != null && mounted) {
+      if (await SignInService.validateSignIn(scanned)) {
+        await SignInService.signIn(scanned, context);
+      } else {
+        _handlePersonalKeyScan(scanned);
+      }
+    }
+  }
+
+  void _handlePersonalKeyScan(String scanned) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Personal key scanned. Vouching flow (v2) coming soon.')),
+    );
   }
 
   void _handleDevClick() {
@@ -166,14 +229,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  void _onScanPressed() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Encounter Scanner...'),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -182,8 +237,14 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     final pages = [
       _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape),
       const KeyManagementScreen(),
-      PeopleScreen(statements: _fetchedStatements),
-      const _SubPage(title: 'SERVICES', icon: Icons.shield_moon_outlined),
+      PeopleScreen(
+        statements: _fetchedStatements,
+        onRefresh: _loadAllData,
+      ),
+      ServicesScreen(
+        statements: _fetchedStatements,
+        onRefresh: _loadAllData,
+      ),
       _buildInfoPage(),
       if (_isDevMode) _buildDevPage(),
     ];

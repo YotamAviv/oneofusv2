@@ -22,6 +22,7 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   app_links: ^6.4.1
   http: ^1.2.2
+  mobile_scanner: ^6.0.2
   
   # UI/UX requirements
   qr_flutter: ^4.1.0
