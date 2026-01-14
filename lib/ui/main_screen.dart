@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/io.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
@@ -476,7 +477,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             _HubTile(icon: Icons.vpn_key_outlined, title: 'KEY MANAGEMENT', onTap: () => _pageController.jumpToPage(1)),
             _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(2)),
             _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(3)),
-            _HubTile(icon: Icons.info_outline_rounded, title: 'HELP & INFO', onTap: () => _pageController.jumpToPage(4)),
+            _HubTile(icon: Icons.help_outline_rounded, title: 'HELP & INFO', onTap: () => _pageController.jumpToPage(4)),
             if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV DIAGNOSTICS', onTap: () => _pageController.jumpToPage(5)),
           ],
         ),
@@ -486,7 +487,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   Widget _buildInfoPage() {
     return ListView(
-      padding: const EdgeInsets.all(40),
+      padding: const EdgeInsets.all(32),
       children: [
         const Center(
           child: Column(
@@ -497,16 +498,64 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             ],
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 32),
         GestureDetector(
           onTap: _handleDevClick,
           child: const Center(
             child: Text('V2.0.0 • BUILD 80', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
           ),
         ),
-        const SizedBox(height: 60),
-        const ListTile(title: Text('Help Page'), subtitle: Text('https://one-of-us.net/man.html')),
-        const ListTile(title: Text('Privacy Policy'), subtitle: Text('https://one-of-us.net/policy.html')),
+        const SizedBox(height: 48),
+
+        const _InfoCategory(title: 'RESOURCES'),
+        _InfoLinkTile(
+          icon: Icons.home_outlined, 
+          title: 'Home', 
+          subtitle: 'https://one-of-us.net', 
+          url: 'https://one-of-us.net'
+        ),
+        _InfoLinkTile(
+          icon: Icons.menu_book_outlined, 
+          title: 'Manual', 
+          subtitle: 'Guides and documentation', 
+          url: 'https://one-of-us.net/man.html'
+        ),
+        
+        const SizedBox(height: 24),
+        const _InfoCategory(title: 'LEGAL & PRIVACY'),
+        _InfoLinkTile(
+          icon: Icons.privacy_tip_outlined, 
+          title: 'Privacy Policy', 
+          url: 'https://one-of-us.net/policy.html'
+        ),
+        _InfoLinkTile(
+          icon: Icons.gavel_outlined, 
+          title: 'Terms & Conditions', 
+          url: 'https://one-of-us.net/terms.html'
+        ),
+
+        const SizedBox(height: 24),
+        const _InfoCategory(title: 'SUPPORT'),
+        _InfoLinkTile(
+          icon: Icons.email_outlined, 
+          title: 'Contact Support', 
+          subtitle: 'contact@one-of-us.net', 
+          url: 'mailto:contact@one-of-us.net'
+        ),
+        _InfoLinkTile(
+          icon: Icons.report_problem_outlined, 
+          title: 'Report Abuse', 
+          subtitle: 'abuse@one-of-us.net', 
+          url: 'mailto:abuse@one-of-us.net'
+        ),
+        
+        const SizedBox(height: 40),
+        const Center(
+          child: Text(
+            'With ♡ from Clacker;)',
+            style: TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 0.5),
+          ),
+        ),
       ],
     );
   }
@@ -571,6 +620,52 @@ class _HubTile extends StatelessWidget {
         Navigator.pop(context);
         onTap();
       },
+    );
+  }
+}
+
+class _InfoCategory extends StatelessWidget {
+  final String title;
+  const _InfoCategory({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: Colors.blueGrey.shade300,
+          letterSpacing: 2.0,
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoLinkTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final String url;
+
+  const _InfoLinkTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.url,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF00897B)),
+      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF37474F))),
+      subtitle: subtitle != null ? Text(subtitle!, style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade600)) : null,
+      trailing: const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.grey),
+      onTap: () => launchUrl(Uri.parse(url)),
     );
   }
 }
