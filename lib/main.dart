@@ -2,12 +2,24 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:oneofus_common/direct_firestore_writer.dart';
+import 'package:oneofus_common/io.dart';
 import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/cloud_functions_source.dart';
+import 'package:oneofus_common/crypto.dart';
+import 'package:oneofus_common/oou_verifier.dart';
+import 'package:oneofus_common/trust_statement.dart';
 import 'core/keys.dart';
 import 'ui/identity_card_surface.dart';
 import 'features/key_management_screen.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const OneOfUsApp());
 }
 
@@ -50,6 +62,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   bool _hasAlerts = true;
   bool _isDevMode = false;
   int _devClickCount = 0;
+  String _testFetchResult = 'PENDING';
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -57,6 +70,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
+
+    TrustStatement.init();
+    _testFetchStatements();
 
     _pageController.addListener(() {
       if (_pageController.page?.round() != _currentPageIndex) {
@@ -74,8 +90,60 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       parent: _pulseController,
       curve: Curves.easeInOut,
     );
+
     _initIdentity();
     _initDeepLinks();
+  }
+
+  Future<void> _testFetchStatements() async {
+    final lisaKeyJson = {
+      "crv": "Ed25519",
+      "kty": "OKP",
+      "x": "D6oXiGksgfL4AP6lf2vXnAoq54_t1p8k-3SXs1Bgm8g"
+    };
+    final lisaToken = getToken(lisaKeyJson);
+    print('lisaToken=$lisaToken');
+    
+    try {
+      final StatementSource<TrustStatement> source = CloudFunctionsSource<TrustStatement>(
+        // Doesn't work: Fantasy: baseUrl: 'https://us-central1-one-of-us-net.cloudfunctions.net/v2',
+        // Doesn't work: permissions, I suspect: 'http://localhost:5002/one-of-us-net/us-central1/export',
+        // baseUrl: 'http://10.0.2.2:5002/one-of-us-net/us-central1/export', // Works: emulator on local machine.
+        baseUrl: 'http://export.one-of-us.net', // Works: production
+        verifier: OouVerifier(),
+      );
+
+      // NEXT: Verify that we can write
+      // final StatementWriter writer = DirectFirestoreWriter();
+
+      final Map<String, List<TrustStatement>> results = await source.fetch({lisaToken: null});
+      print('results=$results');
+
+      for (final MapEntry<String, List<TrustStatement>> entry in results.entries) {
+        for (final TrustStatement statement in entry.value) {
+          // print('statement=${statement.jsonish.ppJson}');
+          print('${statement.verb.label} ${statement.moniker} ${statement.domain} ${statement.comment}');
+        }
+      }
+
+      if (mounted) {
+        if (results.containsKey(lisaToken)) {
+          final statements = results[lisaToken]!;
+          if (statements.isNotEmpty) {
+            final allStatementsJson = statements.map((s) => jsonEncode(s.json)).join('\\n');
+            setState(() => _testFetchResult = allStatementsJson);
+          } else {
+            setState(() => _testFetchResult = 'SUCCESS: Fetched 0 statements for Lisa.');
+          }
+        } else {
+           setState(() => _testFetchResult = 'FAILURE: No statements found for Lisa.');
+        }
+      }
+    } catch (e, stackTrace) {
+      print(e);
+      print(stackTrace);
+      if (mounted) setState(() => _testFetchResult = 'FAILURE: ${e.toString()}');
+    }
   }
 
   Future<void> _initIdentity() async {
@@ -275,6 +343,12 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   ),
                 ),
               ],
+              
+              // Instrumentation for test driver
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Text(_testFetchResult, key: const ValueKey('test_fetch_result'), style: const TextStyle(fontSize: 0)),
+              ),
             ],
           );
         },
