@@ -2,10 +2,8 @@
 
 ## Human plan for sooner rather than later:
 - Get going on play store tracks or whatever so that I can validate, be less nervous
-  - [DONE] document Play Store tracks or whatever
-  - [DONE] read / write same secure storage, access my current private key
-  - [IN PROGRESS] "magic" (Deep Linking) progress, get nerdster.org webapp to carry out a back and forth
-  - [TODO] Play Protect.. read/write Firestore database
+  - document Play Store tracks or whatever
+  - read / write same secure storage, access my current private key
 - Document "Stable State"
   - notification (pulsing dot) should be active unless we're in stable state
   - our directly trusted associates

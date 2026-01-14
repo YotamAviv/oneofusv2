@@ -4,6 +4,7 @@ import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/statement.dart';
 import 'package:oneofus_common/util.dart';
 
+
 /// Writes statements directly to Firestore.
 class DirectFirestoreWriter implements StatementWriter {
   final FirebaseFirestore _fire;

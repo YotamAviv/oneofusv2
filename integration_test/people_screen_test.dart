@@ -37,7 +37,7 @@ void main() {
 
     // 3. Start the app.
     debugPrint("TEST: Calling tester.pumpWidget.");
-    await tester.pumpWidget(const app.OneOfUsApp());
+    await tester.pumpWidget(const app.App());
     await tester.pump(const Duration(seconds: 1)); // Let app initialize.
 
     // 4. Navigate to the People screen.
