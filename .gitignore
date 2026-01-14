@@ -20,9 +20,9 @@
 .idea/
 
 # Flutter/Dart/Pub related
-**/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+oneofus-nerdster.code-workspace
 .flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
