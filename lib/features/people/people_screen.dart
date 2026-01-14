@@ -4,14 +4,13 @@ import 'package:oneofus_common/jsonish.dart';
 
 class PeopleScreen extends StatefulWidget {
   final List<TrustStatement> statements;
-  // TODO: not nullable!
-  final String? myKeyToken;
+  final String myKeyToken;
   final VoidCallback? onRefresh;
 
   const PeopleScreen({
     super.key,
     required this.statements,
-    this.myKeyToken,
+    required this.myKeyToken,
     this.onRefresh,
   });
 
@@ -71,13 +70,10 @@ class PeopleScreenState extends State<PeopleScreen> {
   }
 
   Widget _buildPersonCard(TrustStatement statement) {
-    bool vouchesBack = false;
-    if (widget.myKeyToken != null) {
-      vouchesBack = widget.statements.any((s) =>
-          s.iToken == statement.subjectToken &&
-          s.subjectToken == widget.myKeyToken &&
-          s.verb == TrustVerb.trust);
-    }
+    final vouchesBack = widget.statements.any((s) =>
+        s.iToken == statement.subjectToken &&
+        s.subjectToken == widget.myKeyToken &&
+        s.verb == TrustVerb.trust);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

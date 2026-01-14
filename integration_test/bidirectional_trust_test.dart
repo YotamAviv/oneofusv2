@@ -39,7 +39,7 @@ void main() {
     debugPrint("TEST: Confirmed: Name is 'Me'.");
 
     // Get my token/identity info
-    final myToken = await Keys().getIdentityToken();
+    final myToken = Keys().identityToken;
     final myPublicKeyJson = await Keys().getIdentityPublicKeyJson();
     final myKeyPair = Keys().identity!;
 

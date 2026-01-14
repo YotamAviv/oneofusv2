@@ -18,6 +18,7 @@ class Keys {
 
   // --- Internal State ---
   Map<String, OouKeyPair> _keys = {};
+  String? _identityToken;
   bool _isLoaded = false;
 
   /// Returns true if the keyring has been loaded from secure storage.
@@ -25,6 +26,9 @@ class Keys {
 
   /// The user's primary identity key pair. Returns null if not loaded.
   OouKeyPair? get identity => _keys[kOneofusDomain];
+
+  /// Returns the SHA-1 token of the current identity public key.
+  String? get identityToken => _identityToken;
 
   /// Retrieves the delegate key pair for a specific service domain.
   OouKeyPair? delegate(String domain) => _keys[domain];
@@ -34,7 +38,18 @@ class Keys {
     const factory = CryptoFactoryEd25519();
     final keyPair = await factory.parseKeyPair(privateKey);
     _keys = {kOneofusDomain: keyPair};
+    await refreshIdentityToken();
     _isLoaded = true;
+  }
+
+  /// Refreshes the cached identity token from the current identity key pair.
+  Future<void> refreshIdentityToken() async {
+    if (identity == null) {
+      _identityToken = null;
+      return;
+    }
+    final pubKey = await identity!.publicKey;
+    _identityToken = getToken(await pubKey.json);
   }
 
   /// Loads all keys from secure storage.
@@ -57,6 +72,7 @@ class Keys {
         loadedKeys[entry.key] = await factory.parseKeyPair(keyJson);
       }
       _keys = loadedKeys;
+      await refreshIdentityToken();
       _isLoaded = true;
       return identity != null;
     } catch (e) {
@@ -70,6 +86,7 @@ class Keys {
   Future<OouKeyPair> newIdentity() async {
     final newIdentity = await const CryptoFactoryEd25519().createKeyPair();
     _keys[kOneofusDomain] = newIdentity;
+    await refreshIdentityToken();
     await _save();
     return newIdentity;
   }
@@ -91,14 +108,6 @@ class Keys {
     _keys = {};
     _isLoaded = false;
     await load();
-  }
-
-  /// Returns the SHA-1 token of the current identity public key.
-  Future<String?> getIdentityToken() async {
-    if (identity == null) return null;
-    final pubKey = await identity!.publicKey;
-    final json = await pubKey.json;
-    return getToken(json);
   }
 
   /// Returns the full public key JSON of the current identity.
@@ -131,6 +140,7 @@ class Keys {
   Future<void> clearAll() async {
     await _storage.delete(key: _storageKey);
     _keys.clear();
+    _identityToken = null;
     _isLoaded = false;
   }
 }

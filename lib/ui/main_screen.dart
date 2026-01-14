@@ -95,10 +95,13 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   
   Future<void> _initIdentityAndLoadData() async {
     final found = await _keys.load();
-    setState(() {
-      _hasKey = found;
-      _isLoading = false;
-    });
+    
+    if (mounted) {
+      setState(() {
+        _hasKey = found;
+        _isLoading = false;
+      });
+    }
 
     if (found) {
       await _loadAllData();
@@ -106,7 +109,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _loadAllData() async {
-    final myToken = await _keys.getIdentityToken();
+    final myToken = _keys.identityToken;
     if (myToken == null) return;
     
     setState(() => _isLoading = true);
@@ -233,159 +236,152 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    if (!_hasKey) return _buildOnboarding(context);
+    if (!_hasKey || _keys.identityToken == null) return _buildOnboarding(context);
 
-    return FutureBuilder<String?>(
-      future: _keys.getIdentityToken(),
-      builder: (context, tokenSnapshot) {
-        final myKeyToken = tokenSnapshot.data;
-        final allStatements = _source.allCachedStatements;
+    final allStatements = _source.allCachedStatements;
 
-        final pages = [
-          _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape, myKeyToken, allStatements),
-          const KeyManagementScreen(),
-          PeopleScreen(
-            statements: allStatements,
-            myKeyToken: myKeyToken,
-            onRefresh: _loadAllData,
-          ),
-          ServicesScreen(
-            statements: allStatements,
-            onRefresh: _loadAllData,
-          ),
-          _buildInfoPage(),
-          if (_isDevMode) _buildDevPage(),
-        ];
+    final pages = [
+      _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape, _keys.identityToken!, allStatements),
+      const KeyManagementScreen(),
+      PeopleScreen(
+        statements: allStatements,
+        myKeyToken: _keys.identityToken!,
+        onRefresh: _loadAllData,
+      ),
+      ServicesScreen(
+        statements: allStatements,
+        onRefresh: _loadAllData,
+      ),
+      _buildInfoPage(),
+      if (_isDevMode) _buildDevPage(),
+    ];
 
-        return Scaffold(
-          backgroundColor: const Color(0xFFF2F0EF),
-          body: OrientationBuilder(
-            builder: (context, orientation) {
-              bool isLandscape = orientation == Orientation.landscape;
+    return Scaffold(
+      backgroundColor: const Color(0xFFF2F0EF),
+      body: OrientationBuilder(
+        builder: (context, orientation) {
+          bool isLandscape = orientation == Orientation.landscape;
 
-              return Stack(
-                children: [
-                  PageView(
-                    controller: _pageController,
-                    children: pages,
-                  ),
+          return Stack(
+            children: [
+              PageView(
+                controller: _pageController,
+                children: pages,
+              ),
 
-                  Positioned(
-                    top: isLandscape ? 20 : 60,
-                    right: isLandscape ? 20 : 32,
-                    child: AnimatedBuilder(
-                      animation: _pulseAnimation,
-                      builder: (context, child) {
-                        return Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _hasAlerts
-                                ? Colors.redAccent.withOpacity(0.3 + (0.7 * _pulseAnimation.value))
-                                : Colors.grey.withOpacity(0.2),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  
-                  if (!isLandscape && _currentPageIndex == 0) ...[
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset(
-                              'assets/oneofus_1024.png',
-                              height: 36,
-                              errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 36, color: Color(0xFF00897B)),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'ONE-OF-US.NET',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 3.0,
-                                color: Color(0xFF37474F),
-                                fontFamily: 'serif',
-                              ),
-                            ),
-                          ],
+              Positioned(
+                top: isLandscape ? 20 : 60,
+                right: isLandscape ? 20 : 32,
+                child: AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) {
+                    return Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _hasAlerts
+                            ? Colors.redAccent.withOpacity(0.3 + (0.7 * _pulseAnimation.value))
+                            : Colors.grey.withOpacity(0.2),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              
+              if (!isLandscape && _currentPageIndex == 0) ...[
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/oneofus_1024.png',
+                          height: 36,
+                          errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 36, color: Color(0xFF00897B)),
                         ),
-                      ),
-                    ),
-
-                    Positioned(
-                      bottom: 30,
-                      left: 30,
-                      right: 30,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            onPressed: () => _showShareMenu(context),
-                            icon: const Icon(Icons.ios_share_rounded, size: 32, color: Color(0xFF37474F)),
-                          ),
-                          IconButton(
-                            onPressed: () => _showManagementHub(context),
-                            icon: const Icon(Icons.menu_rounded, size: 36, color: Color(0xFF37474F)),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 50),
-                        child: SizedBox(
-                          height: 72,
-                          width: 72,
-                          child: FloatingActionButton(
-                            onPressed: _onScanPressed,
-                            backgroundColor: const Color(0xFF37474F),
-                            foregroundColor: Colors.white,
-                            shape: const CircleBorder(),
-                            elevation: 6,
-                            child: const Icon(Icons.qr_code_scanner_rounded, size: 32),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'ONE-OF-US.NET',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 3.0,
+                            color: Color(0xFF37474F),
+                            fontFamily: 'serif',
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                Positioned(
+                  bottom: 30,
+                  left: 30,
+                  right: 30,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        onPressed: () => _showShareMenu(context),
+                        icon: const Icon(Icons.ios_share_rounded, size: 32, color: Color(0xFF37474F)),
+                      ),
+                      IconButton(
+                        onPressed: () => _showManagementHub(context),
+                        icon: const Icon(Icons.menu_rounded, size: 36, color: Color(0xFF37474F)),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 50),
+                    child: SizedBox(
+                      height: 72,
+                      width: 72,
+                      child: FloatingActionButton(
+                        onPressed: _onScanPressed,
+                        backgroundColor: const Color(0xFF37474F),
+                        foregroundColor: Colors.white,
+                        shape: const CircleBorder(),
+                        elevation: 6,
+                        child: const Icon(Icons.qr_code_scanner_rounded, size: 32),
                       ),
                     ),
-                  ],
-                ],
-              );
-            },
-          ),
-        );
-      }
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildMePage(bool isLandscape, String? myKeyToken, List<TrustStatement> allStatements) {
+  Widget _buildMePage(bool isLandscape, String myKeyToken, List<TrustStatement> allStatements) {
     return FutureBuilder<Json?>(
       future: _keys.getIdentityPublicKeyJson(),
       builder: (context, snapshot) {
         final jsonKey = snapshot.data != null ? jsonEncode(snapshot.data) : 'no-key';
         
         String myMoniker = 'Me';
-        if (myKeyToken != null) {
-          // Find people I trust
-          final trustedByMe = allStatements
-              .where((s) => s.iToken == myKeyToken && s.verb == TrustVerb.trust)
-              .map((s) => s.subjectToken)
-              .toSet();
+        
+        // Find people I trust
+        final trustedByMe = allStatements
+            .where((s) => s.iToken == myKeyToken && s.verb == TrustVerb.trust)
+            .map((s) => s.subjectToken)
+            .toSet();
 
-          // Find the most recent trust of ME from someone I trust
-          for (final s in allStatements) {
-            if (s.subjectToken == myKeyToken && trustedByMe.contains(s.iToken)) {
-              if (s.moniker != null && s.moniker!.isNotEmpty) {
-                myMoniker = s.moniker!;
-                break;
-              }
+        // Find the most recent trust of ME from someone I trust
+        for (final s in allStatements) {
+          if (s.subjectToken == myKeyToken && trustedByMe.contains(s.iToken)) {
+            if (s.moniker != null && s.moniker!.isNotEmpty) {
+              myMoniker = s.moniker!;
+              break;
             }
           }
         }
