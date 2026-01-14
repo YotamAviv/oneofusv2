@@ -5,9 +5,11 @@ enum FireChoice {
 }
 
 class Config {
+  // TODO: Would be nice to not edit code to use different environments.
   // Change this to switch between environments
-  static FireChoice fireChoice = FireChoice.prod;
-  // static FireChoice fireChoice = FireChoice.emulator;
+  // static FireChoice fireChoice = FireChoice.prod;
+  static FireChoice fireChoice = FireChoice.emulator;
+  // static FireChoice fireChoice = FireChoice.fake;
 
   static String get exportUrl {
     switch (fireChoice) {

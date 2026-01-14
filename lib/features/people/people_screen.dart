@@ -4,9 +4,16 @@ import 'package:oneofus_common/jsonish.dart';
 
 class PeopleScreen extends StatefulWidget {
   final List<TrustStatement> statements;
+  // TODO: not nullable!
+  final String? myKeyToken;
   final VoidCallback? onRefresh;
 
-  const PeopleScreen({super.key, required this.statements, this.onRefresh});
+  const PeopleScreen({
+    super.key,
+    required this.statements,
+    this.myKeyToken,
+    this.onRefresh,
+  });
 
   @override
   State<PeopleScreen> createState() => PeopleScreenState();
@@ -15,7 +22,10 @@ class PeopleScreen extends StatefulWidget {
 class PeopleScreenState extends State<PeopleScreen> {
   @override
   Widget build(BuildContext context) {
-    final filteredStatements = widget.statements.where((s) => s.verb != TrustVerb.delegate).toList();
+    // Only show people I (Me) trust. Statements from them about me are used for status, not for listing.
+    final filteredStatements = widget.statements
+        .where((s) => s.verb == TrustVerb.trust && s.iToken == widget.myKeyToken)
+        .toList();
 
     debugPrint("[UI] Building PeopleScreen with ${filteredStatements.length} statements (filtered from ${widget.statements.length}).");
     return Scaffold(
@@ -61,6 +71,14 @@ class PeopleScreenState extends State<PeopleScreen> {
   }
 
   Widget _buildPersonCard(TrustStatement statement) {
+    bool vouchesBack = false;
+    if (widget.myKeyToken != null) {
+      vouchesBack = widget.statements.any((s) =>
+          s.iToken == statement.subjectToken &&
+          s.subjectToken == widget.myKeyToken &&
+          s.verb == TrustVerb.trust);
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -102,10 +120,10 @@ class PeopleScreenState extends State<PeopleScreen> {
                               ),
                             ),
                           ),
-                          const Icon(
-                            Icons.check_circle_outline_rounded,
+                          Icon(
+                            vouchesBack ? Icons.check_circle : Icons.check_circle_outline_rounded,
                             size: 20,
-                            color: Colors.grey, // Would be green if "vouched back"
+                            color: vouchesBack ? const Color(0xFF00897B) : Colors.grey,
                           ),
                         ],
                       ),

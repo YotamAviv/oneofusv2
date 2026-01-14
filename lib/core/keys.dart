@@ -125,4 +125,12 @@ class Keys {
       value: jsonEncode(keyMapJson),
     );
   }
+
+  // s/clearAll/wipe
+  /// COMPLETELY WIPES all keys from memory and secure storage.
+  Future<void> clearAll() async {
+    await _storage.delete(key: _storageKey);
+    _keys.clear();
+    _isLoaded = false;
+  }
 }

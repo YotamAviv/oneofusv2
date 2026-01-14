@@ -59,13 +59,15 @@ The ONE-OF-US.NET phone app does not compute the identity network. It only build
 
 ## 3. Statement Verbs
 
-The paradigm defines five core verbs that can be used in statements:
+The paradigm defines exactly five core verbs that can be used in statements. A statement must contain exactly one of these verbs as a top-level field (the value being the subject's public key JSON):
 
--   **`trust`**: An assertion that the subject is a real human acting in good faith. This is the primary mechanism for building the identity network.
+-   **`trust`**: An assertion that the subject is a real human acting in good faith. This is the primary mechanism for building the identity network. Often referred to colloquially as "vouching".
 -   **`block`**: An assertion that the subject is a bad actor (e.g., a bot or spammer). This effectively creates a "non-edge" in the graph for the issuer.
 -   **`replace`**: Allows a user to transition their identity to a new key if their old key is lost or compromised. This statement is important for maintaining continuity in the network.
 -   **`delegate`**: Links a user's Identity Key to a service-specific Delegate Key, allowing them to interact with third-party services.
 -   **`clear`**: Acts as an eraser, revoking any previous statement the issuer has made about a specific subject.
+
+There are no other supported verbs or boolean flags like "vouch" at the top level.
 
 ## 4. Secondary Function: Delegating to Services
 
@@ -109,7 +111,7 @@ Any service or user can now recognize that content signed by this delegate key t
     "signature": "<Crypto Signature>"
   }
   ```
-  - **`<verb>`**: The action: `trust`, `block`, `replace`, or `delegate`.
+  - **`<verb>`**: The action: `trust`, `block`, `replace`, `delegate`, or `clear`.
   - **`with`**: Optional metadata. `domain` is required for `delegate`
     statements. `revokeAt` is required for `replace` statements and optional
     for `delegate` statements.

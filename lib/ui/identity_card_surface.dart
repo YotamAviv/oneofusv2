@@ -6,11 +6,13 @@ import 'card_config.dart';
 class IdentityCardSurface extends StatelessWidget {
   final bool isLandscape;
   final String jsonKey;
+  final String moniker;
 
   const IdentityCardSurface({
     super.key,
     required this.isLandscape,
     required this.jsonKey,
+    this.moniker = 'Me',
   });
 
   @override
@@ -83,12 +85,13 @@ class IdentityCardSurface extends StatelessWidget {
                           ),
                         ),
                         
-                        // "Me" label on the right
+                        // TODO: Use smaller font, constrain to box if moniker  is long
+                        // Moniker label on the right
                         Positioned(
                           right: padding,
                           top: padding,
                           child: Text(
-                            'Me',
+                            moniker,
                             style: TextStyle(
                               fontSize: cardH * 0.20,
                               fontWeight: FontWeight.w900,

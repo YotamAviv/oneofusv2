@@ -3,6 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus/core/keys.dart';
+import 'package:oneofus/firebase_options.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:oneofus/core/config.dart';
 import 'package:oneofus/main.dart' as app;
 
 
@@ -10,6 +14,14 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('When logged in as Lisa, the people screen shows her trusted contacts', (WidgetTester tester) async {
+    Config.fireChoice = FireChoice.emulator;
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    try {
+      FirebaseFirestore.instance.useFirestoreEmulator('10.0.2.2', 8081);
+    } catch (e) {
+      // already initialized in some environments
+    }
+
     // 1. Define Lisa's private key.
     debugPrint("TEST: Defining Lisa's private key.");
     final lisaPrivateKey = {
@@ -24,8 +36,8 @@ void main() {
     await Keys().loadForTest(lisaPrivateKey);
 
     // 3. Start the app.
-    debugPrint("TEST: Calling tester.pumpWidget with isTesting: true.");
-    await tester.pumpWidget(const app.OneOfUsApp(isTesting: true));
+    debugPrint("TEST: Calling tester.pumpWidget.");
+    await tester.pumpWidget(const app.OneOfUsApp());
     await tester.pump(const Duration(seconds: 1)); // Let app initialize.
 
     // 4. Navigate to the People screen.
@@ -38,6 +50,7 @@ void main() {
     // 5. Wait for the data to appear.
     debugPrint("TEST: Polling for 'Maggie' to appear.");
     bool found = false;
+    // TODO: Why 20 seconds?
     for (int i = 0; i < 20; i++) {
       if (tester.any(find.text('Maggie'))) {
         debugPrint("TEST: Found 'Maggie'.");

@@ -5,8 +5,12 @@ import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/io.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
+import 'package:oneofus_common/firestore_source.dart';
+import 'package:oneofus_common/cached_statement_source.dart';
 import 'package:oneofus_common/crypto.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:oneofus_common/crypto25519.dart';
 import 'package:oneofus_common/oou_verifier.dart';
 import 'package:oneofus_common/trust_statement.dart';
@@ -36,9 +40,11 @@ void main() async {
   runApp(const OneOfUsApp());
 }
 
+// TODO: s/OneOfUsApp/App
 class OneOfUsApp extends StatelessWidget {
   final bool isTesting;
-  const OneOfUsApp({super.key, this.isTesting = false});
+  final FirebaseFirestore? firestore;
+  const OneOfUsApp({super.key, this.isTesting = false, this.firestore});
 
   @override
   Widget build(BuildContext context) {
@@ -52,14 +58,16 @@ class OneOfUsApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: MainScreen(isTesting: isTesting),
+      home: MainScreen(isTesting: isTesting, firestore: firestore),
     );
   }
 }
 
+// TODO: Move to its own file, probably in UI
 class MainScreen extends StatefulWidget {
   final bool isTesting;
-  const MainScreen({super.key, this.isTesting = false});
+  final FirebaseFirestore? firestore;
+  const MainScreen({super.key, this.isTesting = false, this.firestore});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -76,8 +84,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   bool _hasKey = false;
   bool _hasAlerts = true;
   bool _isDevMode = false;
-  int _devClickCount = 0;
-  List<TrustStatement> _fetchedStatements = [];
+  int _devClickCount = 0; // TODO: Why is this here?
+  late final CachedStatementSource<TrustStatement> _source;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -86,6 +94,23 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     TrustStatement.init();
+
+    // TODO: This seems to belong somewhere higher up.
+    // Initialize the statement source based on the environment
+    StatementSource<TrustStatement> baseSource;
+    if (widget.firestore != null) {
+      baseSource = FirestoreSource<TrustStatement>(widget.firestore!);
+    } else if (Config.fireChoice == FireChoice.fake) {
+      baseSource = FirestoreSource<TrustStatement>(FakeFirebaseFirestore());
+    } else if (Config.fireChoice == FireChoice.emulator) {
+      baseSource = FirestoreSource<TrustStatement>(FirebaseFirestore.instance);
+    } else {
+      baseSource = CloudFunctionsSource<TrustStatement>(
+        baseUrl: Config.exportUrl,
+        verifier: OouVerifier(),
+      );
+    }
+    _source = CachedStatementSource<TrustStatement>(baseSource);
 
     _pageController.addListener(() {
       if (_pageController.page?.round() != _currentPageIndex) {
@@ -123,24 +148,46 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     }
   }
 
+  // TODO: Do or don't scatter "refresh" all over the place.
+  // TODO: This seems to belong somewhere higher up.
   Future<void> _loadAllData() async {
     final myToken = await _keys.getIdentityToken();
     if (myToken == null) return;
     
+    setState(() => _isLoading = true);
+    _source.clear();
+    
     try {
-      final source = CloudFunctionsSource<TrustStatement>(
-        baseUrl: Config.exportUrl,
-        verifier: OouVerifier(),
-      );
-
-      final results = await source.fetch({myToken: null});
-      if (mounted && results.containsKey(myToken)) {
+      // 1. Fetch statements from Me
+      final results1 = await _source.fetch({myToken: null});
+      final myStatements = results1[myToken] ?? [];
+      
+      // 2. Extract everyone I trust (direct contacts)
+      final Set<String> directContacts = myStatements
+          .where((s) => s.verb == TrustVerb.trust)
+          .map((s) => s.subjectToken)
+          .toSet();
+      
+      // TODO: assert that I don't trust myself, instead
+      // Remove self if present (already fetched)
+      directContacts.remove(myToken);
+      
+      if (directContacts.isNotEmpty) {
+        // 3. Fetch statements from direct contacts
+        final Map<String, String?> keysToFetch = {
+          for (var token in directContacts) token: null
+        };
+        await _source.fetch(keysToFetch);
+      }
+      
+      if (mounted) {
         setState(() {
-          _fetchedStatements = results[myToken]!;
+          _isLoading = false;
         });
       }
     } catch (e) {
-      // Errors will be printed to the debug console by the source.
+      debugPrint("Error loading data: $e");
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -234,135 +281,166 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (!_hasKey) return _buildOnboarding(context);
 
-    final pages = [
-      _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape),
-      const KeyManagementScreen(),
-      PeopleScreen(
-        statements: _fetchedStatements,
-        onRefresh: _loadAllData,
-      ),
-      ServicesScreen(
-        statements: _fetchedStatements,
-        onRefresh: _loadAllData,
-      ),
-      _buildInfoPage(),
-      if (_isDevMode) _buildDevPage(),
-    ];
+    return FutureBuilder<String?>(
+      future: _keys.getIdentityToken(),
+      builder: (context, tokenSnapshot) {
+        final myKeyToken = tokenSnapshot.data;
+        final allStatements = _source.allCachedStatements;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F0EF),
-      body: OrientationBuilder(
-        builder: (context, orientation) {
-          bool isLandscape = orientation == Orientation.landscape;
+        final pages = [
+          _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape, myKeyToken, allStatements),
+          const KeyManagementScreen(),
+          PeopleScreen(
+            statements: allStatements,
+            myKeyToken: myKeyToken,
+            onRefresh: _loadAllData,
+          ),
+          ServicesScreen(
+            statements: allStatements,
+            onRefresh: _loadAllData,
+          ),
+          _buildInfoPage(),
+          if (_isDevMode) _buildDevPage(),
+        ];
 
-          return Stack(
-            children: [
-              PageView(
-                controller: _pageController,
-                children: pages,
-              ),
+        return Scaffold(
+          backgroundColor: const Color(0xFFF2F0EF),
+          body: OrientationBuilder(
+            builder: (context, orientation) {
+              bool isLandscape = orientation == Orientation.landscape;
 
-              Positioned(
-                top: isLandscape ? 20 : 60,
-                right: isLandscape ? 20 : 32,
-                child: AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) {
-                    return Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _hasAlerts
-                            ? Colors.redAccent.withOpacity(0.3 + (0.7 * _pulseAnimation.value))
-                            : Colors.grey.withOpacity(0.2),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              
-              if (!isLandscape && _currentPageIndex == 0) ...[
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/oneofus_1024.png',
-                          height: 36,
-                          errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 36, color: Color(0xFF00897B)),
+              return Stack(
+                children: [
+                  PageView(
+                    controller: _pageController,
+                    children: pages,
+                  ),
+
+                  Positioned(
+                    top: isLandscape ? 20 : 60,
+                    right: isLandscape ? 20 : 32,
+                    child: AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _hasAlerts
+                                ? Colors.redAccent.withOpacity(0.3 + (0.7 * _pulseAnimation.value))
+                                : Colors.grey.withOpacity(0.2),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  
+                  if (!isLandscape && _currentPageIndex == 0) ...[
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Image.asset(
+                              'assets/oneofus_1024.png',
+                              height: 36,
+                              errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 36, color: Color(0xFF00897B)),
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'ONE-OF-US.NET',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 3.0,
+                                color: Color(0xFF37474F),
+                                fontFamily: 'serif',
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'ONE-OF-US.NET',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 3.0,
-                            color: Color(0xFF37474F),
-                            fontFamily: 'serif',
+                      ),
+                    ),
+
+                    Positioned(
+                      bottom: 30,
+                      left: 30,
+                      right: 30,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            onPressed: () => _showShareMenu(context),
+                            icon: const Icon(Icons.ios_share_rounded, size: 32, color: Color(0xFF37474F)),
+                          ),
+                          IconButton(
+                            onPressed: () => _showManagementHub(context),
+                            icon: const Icon(Icons.menu_rounded, size: 36, color: Color(0xFF37474F)),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 50),
+                        child: SizedBox(
+                          height: 72,
+                          width: 72,
+                          child: FloatingActionButton(
+                            onPressed: _onScanPressed,
+                            backgroundColor: const Color(0xFF37474F),
+                            foregroundColor: Colors.white,
+                            shape: const CircleBorder(),
+                            elevation: 6,
+                            child: const Icon(Icons.qr_code_scanner_rounded, size: 32),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                Positioned(
-                  bottom: 30,
-                  left: 30,
-                  right: 30,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        onPressed: () => _showShareMenu(context),
-                        icon: const Icon(Icons.ios_share_rounded, size: 32, color: Color(0xFF37474F)),
-                      ),
-                      IconButton(
-                        onPressed: () => _showManagementHub(context),
-                        icon: const Icon(Icons.menu_rounded, size: 36, color: Color(0xFF37474F)),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 50),
-                    child: SizedBox(
-                      height: 72,
-                      width: 72,
-                      child: FloatingActionButton(
-                        onPressed: _onScanPressed,
-                        backgroundColor: const Color(0xFF37474F),
-                        foregroundColor: Colors.white,
-                        shape: const CircleBorder(),
-                        elevation: 6,
-                        child: const Icon(Icons.qr_code_scanner_rounded, size: 32),
                       ),
                     ),
-                  ),
-                ),
-              ],
-            ],
-          );
-        },
-      ),
+                  ],
+                ],
+              );
+            },
+          ),
+        );
+      }
     );
   }
 
-  Widget _buildMePage(bool isLandscape) {
+  Widget _buildMePage(bool isLandscape, String? myKeyToken, List<TrustStatement> allStatements) {
     return FutureBuilder<Json?>(
       future: _keys.getIdentityPublicKeyJson(),
       builder: (context, snapshot) {
         final jsonKey = snapshot.data != null ? jsonEncode(snapshot.data) : 'no-key';
+        
+        String myMoniker = 'Me';
+        if (myKeyToken != null) {
+          // Find people I trust
+          final trustedByMe = allStatements
+              .where((s) => s.iToken == myKeyToken && s.verb == TrustVerb.trust)
+              .map((s) => s.subjectToken)
+              .toSet();
+
+          // Find the most recent trust of ME from someone I trust
+          for (final s in allStatements) {
+            if (s.subjectToken == myKeyToken && trustedByMe.contains(s.iToken)) {
+              // TODO: assert(s.moniker!.isNotEmpty);
+              if (s.moniker != null && s.moniker!.isNotEmpty) {
+                myMoniker = s.moniker!;
+                break;
+              }
+            }
+          }
+        }
+
         return IdentityCardSurface(
           isLandscape: isLandscape,
           jsonKey: jsonKey,
+          moniker: myMoniker,
         );
       }
     );
@@ -401,6 +479,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 32),
+            _HubTile(icon: Icons.account_circle_outlined, title: 'IDENTITY CARD', onTap: () => _pageController.jumpToPage(0)),
             _HubTile(icon: Icons.vpn_key_outlined, title: 'KEY MANAGEMENT', onTap: () => _pageController.jumpToPage(1)),
             _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(2)),
             _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(3)),
