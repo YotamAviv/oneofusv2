@@ -13,16 +13,15 @@ import 'config.dart';
 import 'keys.dart';
 
 class SignInService {
-  static const Map<String, String> _headers = {
-    'Content-Type': 'application/json; charset=UTF-8',
-  };
+  static const Map<String, String> _headers = {'Content-Type': 'application/json; charset=UTF-8'};
 
   static Future<bool> validateSignIn(String scanned) async {
+    // uri, publicKey: Older phone apps, recently removed
     try {
       final Json received = jsonDecode(scanned);
-      return (received.containsKey('uri') || received.containsKey('url')) &&
-          (received.containsKey('publicKey') || received.containsKey('encryptionPk')) &&
-          received.containsKey('domain');
+      return (received.containsKey('domain')) &&
+          received.containsKey('url') &&
+          received.containsKey('encryptionPk');
     } catch (e) {
       return false;
     }
@@ -32,28 +31,20 @@ class SignInService {
     try {
       if (!await validateSignIn(scanned)) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid sign-in data')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Invalid sign-in data')));
         }
         return;
       }
 
       final Json received = jsonDecode(scanned);
-      final String urlKey = received.containsKey('url') ? 'url' : 'uri';
-      final String encryptionPkKey =
-          received.containsKey('encryptionPk') ? 'encryptionPk' : 'publicKey';
       final String domain = received['domain']!;
+      final String urlKey = 'url';
+      final String encryptionPkKey = 'encryptionPk';
 
       final keys = Keys();
-      if (keys.identity == null) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No identity key found. Please create one first.')),
-          );
-        }
-        return;
-      }
+      assert (keys.identity != null, 'No identity key.. Unexpected.');
 
       final factory = const CryptoFactoryEd25519();
 
@@ -70,18 +61,18 @@ class SignInService {
         final bool? proceed = await _showCreateDelegateDialog(context, domain);
         if (proceed == true) {
           delegateKeyPair = await keys.newDelegate(domain);
-          
+
           final identity = keys.identity!;
           final pubKeyJson = await (await delegateKeyPair.publicKey).json;
           final iPubKeyJson = await (await identity.publicKey).json;
-          
+
           final statementJson = TrustStatement.make(
-            iPubKeyJson, 
-            pubKeyJson, 
-            TrustVerb.delegate, 
-            domain: domain
+            iPubKeyJson,
+            pubKeyJson,
+            TrustVerb.delegate,
+            domain: domain,
           );
-          
+
           final writer = DirectFirestoreWriter(FirebaseFirestore.instance);
           final signer = await OouSigner.make(identity);
           await writer.push(statementJson, signer);
@@ -98,20 +89,23 @@ class SignInService {
         'date': clock.nowIso,
         'identity': identityPubKeyJson,
         'session': session,
-        'endpoint': Config.exportUrlForServer, 
+        'endpoint': Config.exportUrlForServer,
       };
 
       if (delegateKeyPair != null) {
         send['ephemeralPK'] = await myPkePublicKey.json;
         final delegateKeyPairJson = await delegateKeyPair.json;
         final String delegateCleartext = jsonEncode(delegateKeyPairJson);
-        final String delegateCiphertext = await myPkeKeyPair.encrypt(delegateCleartext, webPkePublicKey);
+        final String delegateCiphertext = await myPkeKeyPair.encrypt(
+          delegateCleartext,
+          webPkePublicKey,
+        );
         send['delegateCiphertext'] = delegateCiphertext;
       }
 
       // 4. Send POST
       Uri uri = Uri.parse(received[urlKey]);
-      
+
       // Handle Android Emulator localhost mapping if needed
       if (uri.host == 'localhost' || uri.host == '127.0.0.1') {
         // This is a common pattern for local dev
@@ -119,12 +113,12 @@ class SignInService {
       }
 
       final response = await http.post(uri, headers: _headers, body: jsonEncode(send));
-      
+
       if (context.mounted) {
         if (response.statusCode >= 200 && response.statusCode < 300) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Successfully signed in to $domain')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Successfully signed in to $domain')));
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Sign in failed: ${response.statusCode} - ${response.body}')),
@@ -133,9 +127,9 @@ class SignInService {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error during sign in: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error during sign in: $e')));
       }
     }
   }
@@ -149,7 +143,7 @@ class SignInService {
           title: const Text('Create Delegate Key?'),
           content: Text(
             'You are signing in to $domain. Would you like to create a delegate key for this service?\n\n'
-            'This allows the service to act on your behalf without having access to your primary identity key.'
+            'This allows the service to act on your behalf without having access to your primary identity key.',
           ),
           actions: <Widget>[
             TextButton(
