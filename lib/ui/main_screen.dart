@@ -18,6 +18,7 @@ import '../core/keys.dart';
 import '../core/sign_in_service.dart';
 import 'identity_card_surface.dart';
 import 'qr_scanner.dart';
+import '../core/share_service.dart';
 import '../features/key_management_screen.dart';
 import '../features/people/people_screen.dart';
 import '../features/people/services_screen.dart';
@@ -326,7 +327,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     children: [
                       IconButton(
                         onPressed: () => _showShareMenu(context),
-                        icon: const Icon(Icons.ios_share_rounded, size: 32, color: Color(0xFF37474F)),
+                        icon: const Icon(Icons.share, size: 32, color: Color(0xFF37474F)),
                       ),
                       IconButton(
                         onPressed: () => _showManagementHub(context),
@@ -400,16 +401,59 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 20),
-            const Text('SHARE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
-            ListTile(leading: const Icon(Icons.qr_code_2), title: const Text('Show My Key QR'), onTap: () => Navigator.pop(context)),
-            ListTile(leading: const Icon(Icons.email_outlined), title: const Text('Email My Key (Text)'), onTap: () => Navigator.pop(context)),
-            ListTile(leading: const Icon(Icons.link), title: const Text('Share Homepage'), onTap: () => Navigator.pop(context)),
-            const SizedBox(height: 20),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('SHARE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
+              const SizedBox(height: 12),
+              
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text('MY IDENTITY KEY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.5)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.qr_code_2_rounded),
+                title: const Text('Share as QR Image'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ShareService.shareIdentityQr();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.code_rounded),
+                title: const Text('Share as JSON Text'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ShareService.shareIdentityText();
+                },
+              ),
+              
+              const Divider(indent: 24, endIndent: 24),
+              
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text('ONE-OF-US.NET LINK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.5)),
+              ),
+              ListTile(
+                leading: const Icon(Icons.qr_code_rounded),
+                title: const Text('Show QR Code'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ShareService.showQrDialog(context, ShareService.homeUrl, 'ONE-OF-US.NET');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.link_rounded),
+                title: const Text('Share Text Link'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ShareService.shareHomeLink();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
