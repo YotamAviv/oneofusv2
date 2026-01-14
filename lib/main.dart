@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:oneofus_common/direct_firestore_writer.dart';
-import 'package:oneofus_common/io.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
 import 'package:oneofus_common/crypto.dart';
@@ -13,6 +11,7 @@ import 'package:oneofus_common/trust_statement.dart';
 import 'core/keys.dart';
 import 'ui/identity_card_surface.dart';
 import 'features/key_management_screen.dart';
+import 'features/people/people_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -24,7 +23,8 @@ void main() async {
 }
 
 class OneOfUsApp extends StatelessWidget {
-  const OneOfUsApp({super.key});
+  final bool isTesting;
+  const OneOfUsApp({super.key, this.isTesting = false});
 
   @override
   Widget build(BuildContext context) {
@@ -38,13 +38,14 @@ class OneOfUsApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MainScreen(),
+      home: MainScreen(isTesting: isTesting),
     );
   }
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final bool isTesting;
+  const MainScreen({super.key, this.isTesting = false});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -62,7 +63,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   bool _hasAlerts = true;
   bool _isDevMode = false;
   int _devClickCount = 0;
-  String _testFetchResult = 'PENDING';
+  List<TrustStatement> _fetchedStatements = [];
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -72,7 +73,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     super.initState();
 
     TrustStatement.init();
-    _testFetchStatements();
 
     _pageController.addListener(() {
       if (_pageController.page?.round() != _currentPageIndex) {
@@ -90,59 +90,38 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       parent: _pulseController,
       curve: Curves.easeInOut,
     );
-
     _initIdentity();
-    _initDeepLinks();
+
+    if (!widget.isTesting) {
+      _initDeepLinks();
+      _loadAllData();
+    }
   }
 
-  Future<void> _testFetchStatements() async {
+  Future<void> _loadAllData() async {
+    // This function will be expanded later to load all necessary data.
+    // For now, it only loads Lisa's statements for the demo.
     final lisaKeyJson = {
       "crv": "Ed25519",
       "kty": "OKP",
       "x": "D6oXiGksgfL4AP6lf2vXnAoq54_t1p8k-3SXs1Bgm8g"
     };
     final lisaToken = getToken(lisaKeyJson);
-    print('lisaToken=$lisaToken');
     
     try {
-      final StatementSource<TrustStatement> source = CloudFunctionsSource<TrustStatement>(
-        // Doesn't work: Fantasy: baseUrl: 'https://us-central1-one-of-us-net.cloudfunctions.net/v2',
-        // Doesn't work: permissions, I suspect: 'http://localhost:5002/one-of-us-net/us-central1/export',
-        // baseUrl: 'http://10.0.2.2:5002/one-of-us-net/us-central1/export', // Works: emulator on local machine.
-        baseUrl: 'http://export.one-of-us.net', // Works: production
+      final source = CloudFunctionsSource<TrustStatement>(
+        baseUrl: 'http://export.one-of-us.net',
         verifier: OouVerifier(),
       );
 
-      // NEXT: Verify that we can write
-      // final StatementWriter writer = DirectFirestoreWriter();
-
-      final Map<String, List<TrustStatement>> results = await source.fetch({lisaToken: null});
-      print('results=$results');
-
-      for (final MapEntry<String, List<TrustStatement>> entry in results.entries) {
-        for (final TrustStatement statement in entry.value) {
-          // print('statement=${statement.jsonish.ppJson}');
-          print('${statement.verb.label} ${statement.moniker} ${statement.domain} ${statement.comment}');
-        }
+      final results = await source.fetch({lisaToken: null});
+      if (mounted && results.containsKey(lisaToken)) {
+        setState(() {
+          _fetchedStatements = results[lisaToken]!;
+        });
       }
-
-      if (mounted) {
-        if (results.containsKey(lisaToken)) {
-          final statements = results[lisaToken]!;
-          if (statements.isNotEmpty) {
-            final allStatementsJson = statements.map((s) => jsonEncode(s.json)).join('\\n');
-            setState(() => _testFetchResult = allStatementsJson);
-          } else {
-            setState(() => _testFetchResult = 'SUCCESS: Fetched 0 statements for Lisa.');
-          }
-        } else {
-           setState(() => _testFetchResult = 'FAILURE: No statements found for Lisa.');
-        }
-      }
-    } catch (e, stackTrace) {
-      print(e);
-      print(stackTrace);
-      if (mounted) setState(() => _testFetchResult = 'FAILURE: ${e.toString()}');
+    } catch (e) {
+      // Errors are now visible in the debug console.
     }
   }
 
@@ -155,41 +134,19 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   void _initDeepLinks() {
-    debugPrint('[DeepLink] Initializing deep link listeners (keymeid://)...');
-    
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
-      debugPrint('[DeepLink] Received stream link: $uri');
       _handleIncomingLink(uri);
     });
 
     _appLinks.getInitialLink().then((uri) {
       if (uri != null) {
-        debugPrint('[DeepLink] Received initial launch link: $uri');
         _handleIncomingLink(uri);
       }
     });
   }
 
   void _handleIncomingLink(Uri uri) {
-    debugPrint('[DeepLink] Processing: scheme=${uri.scheme}, host=${uri.host}');
-    
-    if (uri.scheme == 'keymeid' && (uri.host == 'signin' || uri.path.contains('signin'))) {
-      final params = uri.queryParameters['parameters'];
-      if (params != null) {
-        debugPrint('[DeepLink] Sign-in parameters found: $params');
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Received keymeid Sign-in: $params'),
-            duration: const Duration(seconds: 10),
-          ),
-        );
-      } else {
-        debugPrint('[DeepLink] Error: keymeid link received but "parameters" field is missing.');
-      }
-    } else {
-      debugPrint('[DeepLink] Link ignored: Does not match keymeid://signin path.');
-    }
+    // Not relevant for this test
   }
 
   void _handleDevClick() {
@@ -214,9 +171,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   void _onScanPressed() {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Encounter Scanner...'),
-        action: SnackBarAction(label: 'REMOTE', onPressed: () {}),
+      const SnackBar(
+        content: Text('Encounter Scanner...'),
       ),
     );
   }
@@ -229,7 +185,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     final pages = [
       _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape),
       const KeyManagementScreen(),
-      const _SubPage(title: 'PEOPLE', icon: Icons.people_outline),
+      PeopleScreen(statements: _fetchedStatements),
       const _SubPage(title: 'SERVICES', icon: Icons.shield_moon_outlined),
       _buildInfoPage(),
       if (_isDevMode) _buildDevPage(),
@@ -262,15 +218,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                         color: _hasAlerts
                             ? Colors.redAccent.withOpacity(0.3 + (0.7 * _pulseAnimation.value))
                             : Colors.grey.withOpacity(0.2),
-                        boxShadow: _hasAlerts
-                            ? [
-                                BoxShadow(
-                                  color: Colors.redAccent.withOpacity(0.4 * _pulseAnimation.value),
-                                  blurRadius: 12,
-                                  spreadRadius: 4,
-                                )
-                              ]
-                            : null,
                       ),
                     );
                   },
@@ -343,12 +290,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   ),
                 ),
               ],
-              
-              // Instrumentation for test driver
-              Align(
-                alignment: Alignment.bottomLeft,
-                child: Text(_testFetchResult, key: const ValueKey('test_fetch_result'), style: const TextStyle(fontSize: 0)),
-              ),
             ],
           );
         },
