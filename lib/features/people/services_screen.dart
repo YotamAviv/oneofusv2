@@ -15,50 +15,55 @@ class ServicesScreen extends StatefulWidget {
 class ServicesScreenState extends State<ServicesScreen> {
   @override
   Widget build(BuildContext context) {
-    // Filter for delegate statements
-    final delegates = widget.statements.where((s) => s.verb == TrustVerb.delegate).toList();
+    // 1. Filter for delegate statements.
+    // 2. De-duplicate by domain (or subjectToken), keeping latest.
+    final Map<String, TrustStatement> latestByService = {};
+    for (var s in widget.statements) {
+      if (s.verb == TrustVerb.delegate) {
+        final key = s.domain ?? s.subjectToken;
+        final existing = latestByService[key];
+        if (existing == null || s.time.isAfter(existing.time)) {
+          latestByService[key] = s;
+        }
+      }
+    }
+    final delegates = latestByService.values.toList()
+      ..sort((a, b) => b.time.compareTo(a.time));
     
-    debugPrint("[UI] Building ServicesScreen with ${delegates.length} delegates.");
+    debugPrint("[UI] Building ServicesScreen with ${delegates.length} unique delegates.");
     
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F0EF),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'SERVICES',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
-                      color: Color(0xFF37474F),
-                    ),
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'SERVICES',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4,
+                    color: Color(0xFF37474F),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded, color: Color(0xFF00897B)),
-                    onPressed: widget.onRefresh,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Expanded(
-              child: delegates.isEmpty 
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    itemCount: delegates.length,
-                    itemBuilder: (context, index) {
-                      return _buildServiceCard(delegates[index]);
-                    },
-                  ),
-            ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: delegates.isEmpty 
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: delegates.length,
+                  itemBuilder: (context, index) {
+                    return _buildServiceCard(delegates[index]);
+                  },
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -137,10 +142,13 @@ class ServicesScreenState extends State<ServicesScreen> {
                               ),
                             ),
                           ),
-                          const Icon(
-                            Icons.verified_user_outlined,
-                            size: 20,
-                            color: Color(0xFF006064),
+                          const Tooltip(
+                            message: 'Authorized: This service can act on your behalf',
+                            child: Icon(
+                              Icons.verified_user_outlined,
+                              size: 20,
+                              color: Color(0xFF006064),
+                            ),
                           ),
                         ],
                       ),

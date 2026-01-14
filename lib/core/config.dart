@@ -8,7 +8,7 @@ enum FireChoice {
 
 class Config {
   // --- Environment Switch ---
-  static FireChoice fireChoice = FireChoice.emulator;
+  static FireChoice fireChoice = FireChoice.prod;
 
   // --- Service Registry (formerly V2Config) ---
   static final Map<String, String> _urls = {};

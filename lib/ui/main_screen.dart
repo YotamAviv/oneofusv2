@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,11 +10,12 @@ import 'package:oneofus_common/io.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
 import 'package:oneofus_common/firestore_source.dart';
 import 'package:oneofus_common/cached_statement_source.dart';
-import 'package:oneofus_common/crypto.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:oneofus_common/crypto25519.dart';
 import 'package:oneofus_common/oou_verifier.dart';
+import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'package:oneofus_common/direct_firestore_writer.dart';
 import '../core/config.dart';
 import '../core/keys.dart';
 import '../core/sign_in_service.dart';
@@ -32,6 +34,9 @@ class MainScreen extends StatefulWidget {
   @override
   State<MainScreen> createState() => _MainScreenState();
 }
+
+// It's been a struggle to get the top junk aligned...
+const double heightKludge = 20;
 
 class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
@@ -114,7 +119,12 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     final myToken = _keys.identityToken;
     if (myToken == null) return;
     
-    setState(() => _isLoading = true);
+    // Only show full-screen loader if we have no data yet
+    bool showFullLoader = _source.allCachedStatements.isEmpty;
+    if (showFullLoader) {
+      setState(() => _isLoading = true);
+    }
+    
     _source.clear();
     
     try {
@@ -209,10 +219,97 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     }
   }
 
-  void _handlePersonalKeyScan(String scanned) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Personal key scanned. Vouching flow (v2) coming soon.')),
-    );
+  void _handlePersonalKeyScan(String scanned) async {
+    try {
+      final jsonData = json.decode(scanned);
+      final String? moniker = jsonData['moniker'];
+      final String? domain = jsonData['domain'];
+      final Map<String, dynamic> publicKeyJson = (jsonData['publicKey'] as Map<String, dynamic>?) ?? jsonData;
+      
+      final String subjectToken = getToken(publicKeyJson);
+      
+      if (!mounted) return;
+      
+      final bool? trust = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(moniker != null ? 'Trust $moniker?' : 'Trust Person?'),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (moniker != null) ...[
+                Text('NAME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+                Text(moniker, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+              ],
+              if (domain != null) ...[
+                Text('DOMAIN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+                Text(domain, style: const TextStyle(fontSize: 14)),
+                const SizedBox(height: 12),
+              ],
+              Text('IDENTITY TOKEN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+              Text('${subjectToken.substring(0, 12)}...', style: TextStyle(fontSize: 12, fontFeatures: const [FontFeature.tabularFigures()], color: Colors.grey.shade800)),
+              const SizedBox(height: 16),
+              Text(
+                'By trusting this person, you exchange contact information and can verify their identity in the future.',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00897B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('TRUST', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            ),
+          ],
+        ),
+      );
+      
+      if (trust == true) {
+        final identity = _keys.identity!;
+        final myPubKeyJson = await (await identity.publicKey).json;
+        
+        final statementJson = TrustStatement.make(
+          myPubKeyJson,
+          publicKeyJson,
+          TrustVerb.trust,
+          moniker: moniker,
+          domain: domain,
+        );
+        
+        final writer = DirectFirestoreWriter(widget.firestore ?? FirebaseFirestore.instance);
+        final signer = await OouSigner.make(identity);
+        await writer.push(statementJson, signer);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Succesfully matched with ${moniker ?? 'this person'}'),
+              backgroundColor: const Color(0xFF00897B),
+            ),
+          );
+          _loadAllData(); // Refresh to see them in PEOPLE list
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error parsing scanned key: $e')),
+        );
+      }
+    }
   }
 
   void _handleDevClick() {
@@ -268,57 +365,104 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             children: [
               PageView(
                 controller: _pageController,
+                physics: const BouncingScrollPhysics(),
                 children: pages,
               ),
 
+              // Global Header Row
               Positioned(
-                top: isLandscape ? 20 : 60,
-                right: isLandscape ? 20 : 32,
-                child: AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) {
-                    return Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _hasAlerts
-                            ? Colors.redAccent.withOpacity(0.3 + (0.7 * _pulseAnimation.value))
-                            : Colors.grey.withOpacity(0.2),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              
-              if (!isLandscape && _currentPageIndex == 0) ...[
-                SafeArea(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(32, 24, 32, 0),
+                    padding: const EdgeInsets.fromLTRB(24, heightKludge, 24, 8),
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Image.asset(
-                          'assets/oneofus_1024.png',
-                          height: 36,
-                          errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 36, color: Color(0xFF00897B)),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'ONE-OF-US.NET',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 3.0,
-                            color: Color(0xFF37474F),
-                            fontFamily: 'serif',
-                          ),
+                        // Logo and Title (Only on Home Page)
+                        _currentPageIndex == 0 
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/oneofus_1024.png',
+                                  height: 32,
+                                  errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 32, color: Color(0xFF00897B)),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'ONE-OF-US.NET',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 3.0,
+                                    color: Color(0xFF37474F),
+                                    fontFamily: 'serif',
+                                  ),
+                                ),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+
+                        // Action Buttons & Pulse (Perfectly packed and even)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (_currentPageIndex != 0) ...[
+                              GestureDetector(
+                                onTap: () => _pageController.animateToPage(0, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut),
+                                child: const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Icon(Icons.home_rounded, color: Color(0xFF37474F), size: 24),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            GestureDetector(
+                              onTap: _loadAllData,
+                              child: const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Icon(Icons.refresh_rounded, color: Color(0xFF00897B), size: 24),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: Center(
+                                child: AnimatedBuilder(
+                                  animation: _pulseAnimation,
+                                  builder: (context, child) {
+                                    return Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: _hasAlerts
+                                            ? Colors.redAccent.withOpacity(0.3 + (0.7 * _pulseAnimation.value))
+                                            : Colors.grey.withOpacity(0.2),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                 ),
-
+              ),
+              
+              if (!isLandscape && _currentPageIndex == 0) ...[
                 Positioned(
                   bottom: 30,
                   left: 30,
@@ -486,77 +630,92 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildInfoPage() {
-    return ListView(
-      padding: const EdgeInsets.all(32),
-      children: [
-        const Center(
-          child: Column(
-            children: [
-              Icon(Icons.shield_rounded, size: 80, color: Color(0xFF00897B)),
-              SizedBox(height: 24),
-              Text('ONE-OF-US.NET', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 4)),
-            ],
+    return SafeArea(
+      child: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 8),
+            child: Row(
+              children: [
+                Text(
+                  'ONE-OF-US.NET',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4,
+                    color: Color(0xFF37474F),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 32),
-        GestureDetector(
-          onTap: _handleDevClick,
-          child: const Center(
-            child: Text('V2.0.0 • BUILD 80', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-          ),
-        ),
-        const SizedBox(height: 48),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              children: [
+                const _InfoCategory(title: 'RESOURCES'),
+                _InfoLinkTile(
+                  icon: Icons.home_outlined, 
+                  title: 'Home', 
+                  subtitle: 'https://one-of-us.net', 
+                  url: 'https://one-of-us.net'
+                ),
+                _InfoLinkTile(
+                  icon: Icons.menu_book_outlined, 
+                  title: 'Manual', 
+                  subtitle: 'Guides and documentation', 
+                  url: 'https://one-of-us.net/man.html'
+                ),
+                
+                const SizedBox(height: 24),
+                const _InfoCategory(title: 'LEGAL & PRIVACY'),
+                _InfoLinkTile(
+                  icon: Icons.privacy_tip_outlined, 
+                  title: 'Privacy Policy', 
+                  url: 'https://one-of-us.net/policy.html'
+                ),
+                _InfoLinkTile(
+                  icon: Icons.gavel_outlined, 
+                  title: 'Terms & Conditions', 
+                  url: 'https://one-of-us.net/terms.html'
+                ),
 
-        const _InfoCategory(title: 'RESOURCES'),
-        _InfoLinkTile(
-          icon: Icons.home_outlined, 
-          title: 'Home', 
-          subtitle: 'https://one-of-us.net', 
-          url: 'https://one-of-us.net'
-        ),
-        _InfoLinkTile(
-          icon: Icons.menu_book_outlined, 
-          title: 'Manual', 
-          subtitle: 'Guides and documentation', 
-          url: 'https://one-of-us.net/man.html'
-        ),
-        
-        const SizedBox(height: 24),
-        const _InfoCategory(title: 'LEGAL & PRIVACY'),
-        _InfoLinkTile(
-          icon: Icons.privacy_tip_outlined, 
-          title: 'Privacy Policy', 
-          url: 'https://one-of-us.net/policy.html'
-        ),
-        _InfoLinkTile(
-          icon: Icons.gavel_outlined, 
-          title: 'Terms & Conditions', 
-          url: 'https://one-of-us.net/terms.html'
-        ),
-
-        const SizedBox(height: 24),
-        const _InfoCategory(title: 'SUPPORT'),
-        _InfoLinkTile(
-          icon: Icons.email_outlined, 
-          title: 'Contact Support', 
-          subtitle: 'contact@one-of-us.net', 
-          url: 'mailto:contact@one-of-us.net'
-        ),
-        _InfoLinkTile(
-          icon: Icons.report_problem_outlined, 
-          title: 'Report Abuse', 
-          subtitle: 'abuse@one-of-us.net', 
-          url: 'mailto:abuse@one-of-us.net'
-        ),
-        
-        const SizedBox(height: 40),
-        const Center(
-          child: Text(
-            'With ♡ from Clacker;)',
-            style: TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 0.5),
+                const SizedBox(height: 24),
+                const _InfoCategory(title: 'SUPPORT'),
+                _InfoLinkTile(
+                  icon: Icons.email_outlined, 
+                  title: 'Contact Support', 
+                  subtitle: 'contact@one-of-us.net', 
+                  url: 'mailto:contact@one-of-us.net'
+                ),
+                _InfoLinkTile(
+                  icon: Icons.report_problem_outlined, 
+                  title: 'Report Abuse', 
+                  subtitle: 'abuse@one-of-us.net', 
+                  url: 'mailto:abuse@one-of-us.net'
+                ),
+                
+                const SizedBox(height: 60),
+                GestureDetector(
+                  onTap: _handleDevClick,
+                  child: const Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          'With ♡ from Clacker;)',
+                          style: TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 0.5),
+                        ),
+                        SizedBox(height: 8),
+                        Text('V2.0.0 • BUILD 80', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -583,23 +742,151 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   Widget _buildOnboarding(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(48),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.shield_rounded, size: 100, color: Color(0xFF00897B)),
-              const SizedBox(height: 32),
-              const Text('ONE-OF-US.NET', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 4, color: Color(0xFF006064))),
-              const SizedBox(height: 64),
-              ElevatedButton(onPressed: () async {
-                await _keys.newIdentity();
-                _initIdentityAndLoadData();
-              }, child: const Text('GENERATE NEW IDENTITY')),
-            ],
+      backgroundColor: const Color(0xFFF2F0EF),
+      body: Stack(
+        children: [
+          // Header (matching card page)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, heightKludge, 24, 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/oneofus_1024.png',
+                      height: 32,
+                      errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 32, color: Color(0xFF00897B)),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'ONE-OF-US.NET',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 3.0,
+                        color: Color(0xFF37474F),
+                        fontFamily: 'serif',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
+          
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 48),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 40),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await _keys.newIdentity();
+                      _initIdentityAndLoadData();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      backgroundColor: const Color(0xFF37474F),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 4,
+                    ),
+                    child: const Text('CREATE NEW IDENTITY KEY', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                  ),
+                  const SizedBox(height: 20),
+                  OutlinedButton(
+                    onPressed: () => _showImportDialog(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      side: const BorderSide(color: Color(0xFF37474F), width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('IMPORT IDENTITY KEY', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)),
+                  ),
+                  const SizedBox(height: 20),
+                  OutlinedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Claim/Replace identity coming soon.')),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      side: const BorderSide(color: Color(0xFF37474F), width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('CLAIM (REPLACE) IDENTITY KEY', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showImportDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('IMPORT IDENTITY'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('PASTE KEYS JSON', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              maxLines: 6,
+              decoration: InputDecoration(
+                hintText: '{"identity": ...}',
+                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            ),
+          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await _keys.importKeys(controller.text);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _initIdentityAndLoadData();
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00897B),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('IMPORT'),
+          ),
+        ],
       ),
     );
   }

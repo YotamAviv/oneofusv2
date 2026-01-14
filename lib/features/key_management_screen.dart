@@ -111,73 +111,87 @@ class _KeyManagementScreenState extends State<KeyManagementScreen> {
     final canImport = !isTextFieldEmpty && _textController.text != _initialKeysJson;
     final canExport = _textController.text != _initialKeysJson;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F0EF),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Import / Export',
-                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TextField(
-                    controller: _textController,
-                    readOnly: true,
-                    maxLines: null,
-                    expands: true,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.all(12),
-                      border: InputBorder.none,
-                    ),
+    return SafeArea(
+      child: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'IMPORT / EXPORT',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4,
+                    color: Color(0xFF37474F),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              FittedBox(
-                child: ButtonBar(
-                  alignment: MainAxisAlignment.center,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: (_isExporting || !canExport) ? null : _exportKeys,
-                      icon: const Icon(Icons.download),
-                      label: const Text('Export'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: isTextFieldEmpty ? null : _copyKeys,
-                      icon: const Icon(Icons.copy),
-                      label: const Text('Copy'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _pasteKeys,
-                      icon: const Icon(Icons.paste),
-                      label: const Text('Paste'),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: canImport ? _importKeys : null,
-                      icon: _isImporting 
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.upload),
-                      label: const Text('Import'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: _textController,
+                        readOnly: true,
+                        maxLines: null,
+                        expands: true,
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                        decoration: const InputDecoration(
+                          contentPadding: EdgeInsets.all(12),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FittedBox(
+                    child: ButtonBar(
+                      alignment: MainAxisAlignment.center,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: (_isExporting || !canExport) ? null : _exportKeys,
+                          icon: const Icon(Icons.download),
+                          label: const Text('Export'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: isTextFieldEmpty ? null : _copyKeys,
+                          icon: const Icon(Icons.copy),
+                          label: const Text('Copy'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _pasteKeys,
+                          icon: const Icon(Icons.paste),
+                          label: const Text('Paste'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: canImport ? _importKeys : null,
+                          icon: _isImporting 
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.upload),
+                          label: const Text('Import'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

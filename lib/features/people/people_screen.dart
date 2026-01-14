@@ -21,50 +21,86 @@ class PeopleScreen extends StatefulWidget {
 class PeopleScreenState extends State<PeopleScreen> {
   @override
   Widget build(BuildContext context) {
-    // Only show people I (Me) trust. Statements from them about me are used for status, not for listing.
-    final filteredStatements = widget.statements
-        .where((s) => s.verb == TrustVerb.trust && s.iToken == widget.myKeyToken)
-        .toList();
+    // 1. Filter for trust statements issued by ME.
+    // 2. De-duplicate by subjectToken, keeping the latest time.
+    final Map<String, TrustStatement> latestBySubject = {};
+    for (var s in widget.statements) {
+      if (s.verb == TrustVerb.trust && s.iToken == widget.myKeyToken) {
+        final existing = latestBySubject[s.subjectToken];
+        if (existing == null || s.time.isAfter(existing.time)) {
+          latestBySubject[s.subjectToken] = s;
+        }
+      }
+    }
+    final filteredStatements = latestBySubject.values.toList()
+      ..sort((a, b) => b.time.compareTo(a.time));
 
-    debugPrint("[UI] Building PeopleScreen with ${filteredStatements.length} statements (filtered from ${widget.statements.length}).");
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F0EF),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'PEOPLE',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
-                      color: Color(0xFF37474F),
-                    ),
+    debugPrint("[UI] Building PeopleScreen with ${filteredStatements.length} unique people (filtered from ${widget.statements.length}).");
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'PEOPLE',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4,
+                    color: Color(0xFF37474F),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh_rounded, color: Color(0xFF00897B)),
-                    onPressed: widget.onRefresh,
-                  ),
-                ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: filteredStatements.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: filteredStatements.length,
+                  itemBuilder: (context, index) {
+                    final statement = filteredStatements[index];
+                    return _buildPersonCard(statement);
+                  },
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.people_outline, size: 64, color: Colors.blueGrey.shade200),
+          const SizedBox(height: 16),
+          Text(
+            'No Trusted People',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.blueGrey.shade400,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Text(
+              'People you trust by scanning their QR code will appear here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.blueGrey.shade300,
               ),
             ),
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                itemCount: filteredStatements.length,
-                itemBuilder: (context, index) {
-                  final statement = filteredStatements[index];
-                  return _buildPersonCard(statement);
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -116,10 +152,13 @@ class PeopleScreenState extends State<PeopleScreen> {
                               ),
                             ),
                           ),
-                          Icon(
-                            vouchesBack ? Icons.check_circle : Icons.check_circle_outline_rounded,
-                            size: 20,
-                            color: vouchesBack ? const Color(0xFF00897B) : Colors.grey,
+                          Tooltip(
+                            message: vouchesBack ? 'Verified: They trust you back' : 'They have not trusted you yet',
+                            child: Icon(
+                              vouchesBack ? Icons.check_circle : Icons.check_circle_outline_rounded,
+                              size: 20,
+                              color: vouchesBack ? const Color(0xFF00897B) : Colors.grey,
+                            ),
                           ),
                         ],
                       ),
