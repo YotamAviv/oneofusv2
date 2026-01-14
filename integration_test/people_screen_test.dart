@@ -48,20 +48,9 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     // 5. Wait for the data to appear.
-    debugPrint("TEST: Polling for 'Maggie' to appear.");
-    bool found = false;
-    // TODO: Why 20 seconds?
-    for (int i = 0; i < 20; i++) {
-      if (tester.any(find.text('Maggie'))) {
-        debugPrint("TEST: Found 'Maggie'.");
-        found = true;
-        break;
-      }
+    debugPrint("TEST: Waiting for 'Maggie' to appear.");
+    for (int i = 0; i < 5 && !tester.any(find.text('Maggie')); i++) {
       await tester.pump(const Duration(seconds: 1));
-    }
-
-    if (!found) {
-      fail("TEST: Timed out waiting for 'Maggie'.");
     }
 
     // 6. Verify that all expected data is displayed.

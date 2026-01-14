@@ -534,23 +534,3 @@ class _HubTile extends StatelessWidget {
     );
   }
 }
-
-class _SubPage extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  const _SubPage({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 64, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          Text(title, style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w900, letterSpacing: 2)),
-        ],
-      ),
-    );
-  }
-}
