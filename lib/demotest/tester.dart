@@ -31,6 +31,11 @@ class Tester {
     await doTrust(hipster, poser, moniker: 'Poser', comment: 'Trusting Poser');
     await doTrust(poser, jock, moniker: 'Jock', comment: 'Trusting Jock');
 
+    await doDelegate(poser, await TestKey.create(), domain: 'nerdster.org');
+    await doDelegate(poser, await TestKey.create(), domain: 'nerdster.org', revokeAt: '<since always>');
+    await doDelegate(hipster, await TestKey.create(), domain: 'nerdster.org');
+    await doDelegate(jock, await TestKey.create(), domain: 'nerdster.org');
+
     await Keys().importKeys(jsonEncode({kOneofusDomain: poser.keyPairJson}));
   }
 
@@ -70,7 +75,26 @@ class Tester {
     await writer!.push(s, signer);
     return TrustStatement(Jsonish(s));
   }
-}
+
+  static Future<TrustStatement> doDelegate(
+    TestKey i,
+    TestKey subject, {
+    required String domain,
+    String? comment,
+    String? revokeAt,
+  }) async {
+    Json s = TrustStatement.make(
+      i.publicKeyJson,
+      subject.publicKeyJson,
+      TrustVerb.delegate,
+      domain: domain,
+      comment: comment,
+      revokeAt: revokeAt,
+    );
+    OouSigner signer = await OouSigner.make(i.keyPair);
+    await writer!.push(s, signer);
+    return TrustStatement(Jsonish(s));
+  }}
 
 class TestKey {
   final OouKeyPair keyPair;

@@ -170,6 +170,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       final Map<String, List<TrustStatement>> results1 = await _source.fetch({myToken: null});
       final List<TrustStatement> myStatements = results1[myToken] ?? [];
       
+      // Strip 'clear' statements immediately. A 'clear' means "say nothing about this subject".
+      myStatements.removeWhere((s) => s.verb == TrustVerb.clear);
+
       // 2. Extract everyone I trust (direct contacts)
       final Set<String> directContacts = myStatements
           .where((s) => s.verb == TrustVerb.trust)
@@ -186,6 +189,10 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           for (final String token in directContacts) token: null
         };
         results2 = await _source.fetch(keysToFetch);
+        // Strip 'clear' statements from contacts too
+        for (final list in results2.values) {
+          list.removeWhere((s) => s.verb == TrustVerb.clear);
+        }
       }
       
       if (mounted) {
@@ -379,16 +386,16 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       }
       existingStatement.sort((a, b) => b.time.compareTo(a.time));
       
-      final latest = existingStatement.firstOrNull;
+      final TrustStatement? latest = existingStatement.firstOrNull;
       
       await _showTrustBlockDialog(
         context: context,
         subjectToken: subjectToken,
         publicKeyJson: publicKeyJson,
         initialMoniker: latest?.moniker ?? initialMoniker,
-        domain: latest?.domain,
         initialComment: latest?.comment,
-        initialVerb: latest?.verb ?? TrustVerb.trust,
+        initialVerb: latest?.verb,
+        allowClear: latest != null, // Only allow clear if it's not a new key
         existingTime: latest?.time,
       );
     } catch (e) {
@@ -405,14 +412,15 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     required String subjectToken,
     required Map<String, dynamic> publicKeyJson,
     String? initialMoniker,
-    String? domain,
     String? initialComment,
-    TrustVerb initialVerb = TrustVerb.trust,
+    TrustVerb? initialVerb,
+    TrustVerb? lockedVerb,
+    bool allowClear = false,
     DateTime? existingTime,
   }) async {
     final monikerController = TextEditingController(text: initialMoniker);
     final commentController = TextEditingController(text: initialComment);
-    TrustVerb selectedVerb = initialVerb;
+    TrustVerb selectedVerb = lockedVerb ?? initialVerb ?? TrustVerb.trust;
     
     await showDialog(
       context: context,
@@ -420,11 +428,17 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         builder: (context, setDialogState) {
           final isTrust = selectedVerb == TrustVerb.trust;
           final isBlock = selectedVerb == TrustVerb.block;
+          final isClear = selectedVerb == TrustVerb.clear;
           
+          String title = isTrust 
+              ? (initialVerb == null ? 'Trust' : 'Update Trust') 
+              : (isBlock ? 'Block' : 'Clear');
+          if (lockedVerb == null) {
+            title = initialVerb == null ? 'Identity Vouching' : 'Update Disposition';
+          }
+
           return AlertDialog(
-            title: Text(isTrust 
-                ? (initialMoniker != null ? 'Trust $initialMoniker?' : 'Trust Person?')
-                : 'Block'),
+            title: Text(title),
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             content: SingleChildScrollView(
@@ -432,66 +446,81 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Toggle between Trust and Block
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          children: [
-                            ChoiceChip(
-                              label: const Center(child: Text('TRUST')),
-                              selected: isTrust,
-                              onSelected: (val) => setDialogState(() {
-                                if (val) selectedVerb = TrustVerb.trust;
-                              }),
-                              selectedColor: const Color(0xFF00897B).withOpacity(0.2),
-                              labelStyle: TextStyle(
-                                color: isTrust ? const Color(0xFF00897B) : Colors.grey,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text('Human, capable, acting in good faith',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 9, color: Colors.grey)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            ChoiceChip(
-                              label: const Center(child: Text('BLOCK')),
-                              selected: isBlock,
-                              onSelected: (val) => setDialogState(() {
-                                if (val) selectedVerb = TrustVerb.block;
-                              }),
-                              selectedColor: Colors.red.withOpacity(0.2),
-                              labelStyle: TextStyle(
-                                color: isBlock ? Colors.red : Colors.grey,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text('Bots, spammers, bad actors, careless, confused, ..',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 9, color: Colors.grey)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                  const Text('Trust: "human, capable of acting in good faith"', 
+                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+                  const Text('Block: "Bots, spammers, bad actors, careless, confused.."', 
+                    style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
                   const SizedBox(height: 16),
                   
-                  if (isTrust) ...[
-                    Text('NAME (REQUIRED)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+                  if (lockedVerb == null) ...[
+                    // Toggle between Trust, Block, and potentially Clear
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('TRUST')),
+                            selected: isTrust,
+                            onSelected: (val) => setDialogState(() {
+                              if (val) selectedVerb = TrustVerb.trust;
+                            }),
+                            selectedColor: const Color(0xFF00897B).withOpacity(0.2),
+                            labelStyle: TextStyle(
+                              color: isTrust ? const Color(0xFF00897B) : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('BLOCK')),
+                            selected: isBlock,
+                            onSelected: (val) => setDialogState(() {
+                              if (val) selectedVerb = TrustVerb.block;
+                            }),
+                            selectedColor: Colors.red.withOpacity(0.2),
+                            labelStyle: TextStyle(
+                              color: isBlock ? Colors.red : Colors.grey,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                        if (allowClear) ...[
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: ChoiceChip(
+                              label: const Center(child: Text('CLEAR')),
+                              selected: isClear,
+                              onSelected: (val) => setDialogState(() {
+                                if (val) selectedVerb = TrustVerb.clear;
+                              }),
+                              selectedColor: Colors.orange.withOpacity(0.2),
+                              labelStyle: TextStyle(
+                                color: isClear ? Colors.orange : Colors.grey,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  
+                  // MONIKER FIELD (Show if TRUST, or if we have a former value to cross out)
+                  if (isTrust || initialMoniker != null) ...[
+                    Text('NAME ${isTrust ? "(REQUIRED)" : ""}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
                     const SizedBox(height: 4),
                     TextField(
                       controller: monikerController,
+                      enabled: isTrust,
+                      style: isTrust ? null : const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey),
                       decoration: InputDecoration(
-                        hintText: 'e.g. Alice Smith',
+                        hintText: '',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       ),
@@ -500,29 +529,38 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     const SizedBox(height: 12),
                   ],
                   
-                  Text('COMMENT (OPTIONAL)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
-                  const SizedBox(height: 4),
-                  TextField(
-                    controller: commentController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      hintText: '',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  // COMMENT FIELD (Show if TRUST or BLOCK, or if we have a former value to cross out)
+                  if (isTrust || isBlock || initialComment != null) ...[
+                    Text('COMMENT ${(isTrust || isBlock) ? "(OPTIONAL)" : ""}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: commentController,
+                      enabled: isTrust || isBlock,
+                      style: (isTrust || isBlock) ? null : const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey),
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        hintText: '',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
                     ),
-                    onChanged: (_) => setDialogState(() {}),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  if (domain != null) ...[
-                    Text('DOMAIN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
-                    Text(domain, style: const TextStyle(fontSize: 14)),
                     const SizedBox(height: 12),
+                  ],
+
+                  if (isClear) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        'This will issue a CLEAR statement, effectively removing this person from your collections.',
+                        style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ],
                   
                   if (existingTime != null) ...[
                     const SizedBox(height: 12),
-                    Text('CURRENT STATEMENT TIME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+                    Text('LATEST STATEMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
                     Text(formatUiDatetime(existingTime), style: const TextStyle(fontSize: 12)),
                   ],
                 ],
@@ -539,9 +577,10 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   final curMoniker = monikerController.text.trim();
                   final curComment = commentController.text.trim();
                   
-                  final hasChanged = curVerb != initialVerb ||
+                  final hasChanged = initialVerb == null ||
+                                    curVerb != initialVerb ||
                                     (curVerb == TrustVerb.trust && curMoniker != (initialMoniker ?? '')) ||
-                                    curComment != (initialComment ?? '');
+                                    (curVerb != TrustVerb.clear && curComment != (initialComment ?? ''));
                   
                   final isMonikerValid = curVerb != TrustVerb.trust || curMoniker.isNotEmpty;
                   final canSubmit = hasChanged && isMonikerValid;
@@ -554,17 +593,16 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                       publicKeyJson: publicKeyJson,
                       verb: curVerb,
                       moniker: curVerb == TrustVerb.trust ? curMoniker : null,
-                      comment: curComment,
-                      domain: domain,
+                      comment: curVerb != TrustVerb.clear ? curComment : null,
                     );
                   };
                 }(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isBlock ? Colors.red : const Color(0xFF00897B),
+                  backgroundColor: isBlock ? Colors.red : (isClear ? Colors.orange : const Color(0xFF00897B)),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: Text(isBlock ? 'BLOCK' : 'TRUST', style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                child: Text(isBlock ? 'BLOCK' : (isClear ? 'CLEAR' : 'TRUST'), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
               ),
             ],
           );
@@ -633,45 +671,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     }
   }
 
-  Future<void> _handleClearTrust(TrustStatement statement) async {
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear Trust?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('This will remove ${statement.moniker ?? 'the trust'} from your list by issuing a CLEAR statement.'),
-            const SizedBox(height: 12),
-            const Text('Clear is not blocking or vouching. It\'s like you never said anything at all.',
-              style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-            child: const Text('CLEAR', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await _pushTrustStatement(
-        publicKeyJson: statement.subject,
-        verb: TrustVerb.clear,
-        moniker: statement.moniker,
-        comment: 'Cleared from app UI',
-      );
-    }
-  }
-
   void _handleDevClick() {
     _devClickCount++;
     if (_devClickCount >= 7 && !_isDevMode) {
@@ -710,6 +709,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             initialMoniker: statement.moniker,
             initialComment: statement.comment,
             initialVerb: statement.verb,
+            lockedVerb: TrustVerb.trust,
             existingTime: statement.time,
           );
         },
@@ -720,11 +720,23 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             publicKeyJson: statement.subject,
             initialMoniker: statement.moniker,
             initialComment: statement.comment,
-            initialVerb: TrustVerb.block,
+            initialVerb: statement.verb,
+            lockedVerb: TrustVerb.block,
             existingTime: statement.time,
           );
         },
-        onClear: _handleClearTrust,
+        onClear: (statement) {
+          _showTrustBlockDialog(
+            context: context,
+            subjectToken: statement.subjectToken,
+            publicKeyJson: statement.subject,
+            initialMoniker: statement.moniker,
+            initialComment: statement.comment,
+            initialVerb: statement.verb,
+            lockedVerb: TrustVerb.clear,
+            existingTime: statement.time,
+          );
+        },
       ),
       ServicesScreen(
         statementsByIssuer: statementMap,
