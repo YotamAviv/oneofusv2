@@ -1,7 +1,26 @@
 These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
+Required for launch
+Missing
+- delegates screen: revoke/clear
+- load up equivalents (show/edit in modal screen)
+- load up blocks (show/edit in modal screen)
+- import/export identity/one-of-us.net swap
+- entry screen
+  - claim (replace) key
+  - import key
+Have
+- trust/block/clear
 
+Not required for launch:
+- replace key help
+  - replace a key with revokeAt: "<since always>" only, TBD on the restating stuff
+- revoke delegate with revokeAt: "<since always>" only. TBD on picking statement
+- settings
+  - crypto
+  - do not show my name
+  - one-of-us.net / identity upgrade
 
 Bugs:
 - refresh takes me to home
@@ -12,9 +31,36 @@ Bugs:
 
 - import / export
   - display "identity" instead of "one-of-us.net". Make sure that it's stored correctly (one-of-us.net) to be compatible and that import and export work.
+    - see:
+      static Json internal2display(Json internal) => _swap(kOneofusDomain, kIdentity, internal);
+      static Json display2internal(Json display) => _swap(kIdentity, kOneofusDomain, display);
+
 
 
 TODO
+
+Load up equivalents
+
+Modal screens
+- my outstanding blocks (could be a mistake. allow [clear, trust])
+- my replaced (claimed) keys (could be a mistake. allow clear)
+- 
+
+Test mode
+- Start the app with FakeFirebase
+  - stoked it with some test statements and an identity.
+    - functions like egosCircle, but here.
+    - use helpers for trust, block, clear, delegate and enforce rules (comment, moniker, domain, etc...)
+      Use those same helpers in the code
+    - could be used for unit tests for a MVC style model with notifications, tooltips per thing (trusted key, any key (corrupt), ...)
+
+Show more:
+  - if they trusted you, give the details. (could be handled by Crypto mode)
+
+Notifications:
+  - key you trust [block, replace] you (or equivalent)
+  - key is corrupted (crash and notify if it's my key)
+  - 
 
 - navigation
   - import / export to screen 3
@@ -58,5 +104,3 @@ Dropped functionality (from legacy phone app)
 - Replace key
 - Create delegate
 - Replace with specific revokeAt
-
-Plan
