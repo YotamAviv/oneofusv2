@@ -106,7 +106,6 @@ class _KeyManagementScreenState extends State<KeyManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isTextFieldEmpty = _textController.text.isEmpty;
     final canImport = !isTextFieldEmpty && _textController.text != _initialKeysJson;
     final canExport = _textController.text != _initialKeysJson;
@@ -141,52 +140,89 @@ class _KeyManagementScreenState extends State<KeyManagementScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        border: Border.all(color: Colors.grey[300]!),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      child: TextField(
-                        controller: _textController,
-                        readOnly: true,
-                        maxLines: null,
-                        expands: true,
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                        decoration: const InputDecoration(
-                          contentPadding: EdgeInsets.all(12),
-                          border: InputBorder.none,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: TextField(
+                          controller: _textController,
+                          readOnly: false, // Allow editing for manual paste if needed, though paste button exists
+                          maxLines: null,
+                          expands: true,
+                          style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF37474F)),
+                          decoration: InputDecoration(
+                            hintText: 'Keys JSON will appear here...',
+                            hintStyle: TextStyle(color: Colors.grey.shade400, fontFamily: 'sans-serif'),
+                            contentPadding: const EdgeInsets.all(16),
+                            border: InputBorder.none,
+                            fillColor: Colors.white,
+                            filled: true,
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  FittedBox(
-                    child: ButtonBar(
-                      alignment: MainAxisAlignment.center,
-                      children: [
-                        OutlinedButton.icon(
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ManagementButton(
+                          label: 'EXPORT',
+                          icon: Icons.download_rounded,
                           onPressed: (_isExporting || !canExport) ? null : _exportKeys,
-                          icon: const Icon(Icons.download),
-                          label: const Text('Export'),
                         ),
-                        OutlinedButton.icon(
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _ManagementButton(
+                          label: 'COPY',
+                          icon: Icons.copy_rounded,
                           onPressed: isTextFieldEmpty ? null : _copyKeys,
-                          icon: const Icon(Icons.copy),
-                          label: const Text('Copy'),
                         ),
-                        OutlinedButton.icon(
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ManagementButton(
+                          label: 'PASTE',
+                          icon: Icons.paste_rounded,
                           onPressed: _pasteKeys,
-                          icon: const Icon(Icons.paste),
-                          label: const Text('Paste'),
                         ),
-                        ElevatedButton.icon(
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _ManagementButton(
+                          label: 'IMPORT',
+                          icon: Icons.upload_rounded,
+                          color: const Color(0xFF00897B),
+                          textColor: Colors.white,
+                          isLoading: _isImporting,
                           onPressed: canImport ? _importKeys : null,
-                          icon: _isImporting 
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                              : const Icon(Icons.upload),
-                          label: const Text('Import'),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'These keys are secrets. Only export for backup or to port them to another trusted service device.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.blueGrey.shade300,
+                      height: 1.4,
                     ),
                   ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -200,5 +236,63 @@ class _KeyManagementScreenState extends State<KeyManagementScreen> {
   void dispose() {
     _textController.dispose();
     super.dispose();
+  }
+}
+
+class _ManagementButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final Color? color;
+  final Color? textColor;
+  final bool isLoading;
+
+  const _ManagementButton({
+    required this.label,
+    required this.icon,
+    this.onPressed,
+    this.color,
+    this.textColor,
+    this.isLoading = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isDisabled = onPressed == null;
+    final Color effectiveColor = color ?? Colors.white;
+    final Color effectiveTextColor = textColor ?? const Color(0xFF37474F);
+
+    return SizedBox(
+      height: 52,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: effectiveColor,
+          foregroundColor: effectiveTextColor,
+          disabledBackgroundColor: Colors.grey.shade100,
+          disabledForegroundColor: Colors.grey.shade400,
+          elevation: isDisabled ? 0 : 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: EdgeInsets.zero,
+        ),
+        child: isLoading
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
   }
 }

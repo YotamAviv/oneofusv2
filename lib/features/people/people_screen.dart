@@ -6,12 +6,18 @@ class PeopleScreen extends StatefulWidget {
   final List<TrustStatement> statements;
   final String myKeyToken;
   final VoidCallback? onRefresh;
+  final Function(TrustStatement)? onEdit;
+  final Function(TrustStatement)? onClear;
+  final Function(TrustStatement)? onBlock;
 
   const PeopleScreen({
     super.key,
     required this.statements,
     required this.myKeyToken,
     this.onRefresh,
+    this.onEdit,
+    this.onClear,
+    this.onBlock,
   });
 
   @override
@@ -21,21 +27,25 @@ class PeopleScreen extends StatefulWidget {
 class PeopleScreenState extends State<PeopleScreen> {
   @override
   Widget build(BuildContext context) {
-    // 1. Filter for trust statements issued by ME.
-    // 2. De-duplicate by subjectToken, keeping the latest time.
+    // 1. Find the LATEST statement issued by ME for each subject.
     final Map<String, TrustStatement> latestBySubject = {};
     for (var s in widget.statements) {
-      if (s.verb == TrustVerb.trust && s.iToken == widget.myKeyToken) {
+      if (s.iToken == widget.myKeyToken) {
         final existing = latestBySubject[s.subjectToken];
         if (existing == null || s.time.isAfter(existing.time)) {
           latestBySubject[s.subjectToken] = s;
         }
       }
     }
-    final filteredStatements = latestBySubject.values.toList()
+
+    // 2. Filter for those where the latest verb is 'trust'.
+    // People we blocked or cleared should not appear in the "Trusted" list.
+    final trustedByMeStatements = latestBySubject.values
+        .where((s) => s.verb == TrustVerb.trust)
+        .toList()
       ..sort((a, b) => b.time.compareTo(a.time));
 
-    debugPrint("[UI] Building PeopleScreen with ${filteredStatements.length} unique people (filtered from ${widget.statements.length}).");
+    debugPrint("[UI] Building PeopleScreen with ${trustedByMeStatements.length} unique people (filtered from ${widget.statements.length}).");
     return SafeArea(
       child: Column(
         children: [
@@ -57,13 +67,13 @@ class PeopleScreenState extends State<PeopleScreen> {
             ),
           ),
           Expanded(
-            child: filteredStatements.isEmpty
+            child: trustedByMeStatements.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: filteredStatements.length,
+                  itemCount: trustedByMeStatements.length,
                   itemBuilder: (context, index) {
-                    final statement = filteredStatements[index];
+                    final statement = trustedByMeStatements[index];
                     return _buildPersonCard(statement);
                   },
                 ),
@@ -179,20 +189,20 @@ class PeopleScreenState extends State<PeopleScreen> {
                         children: [
                           _ActionButton(
                             icon: Icons.edit_outlined,
-                            onTap: () {},
+                            onTap: () => widget.onEdit?.call(statement),
                           ),
                           const SizedBox(width: 8),
                           _ActionButton(
                             icon: Icons.backspace_outlined,
                             label: 'CLEAR',
-                            onTap: () {},
+                            onTap: () => widget.onClear?.call(statement),
                           ),
                           const SizedBox(width: 8),
                           _ActionButton(
                             icon: Icons.block_flipped,
                             label: 'BLOCK',
                             color: Colors.red.shade400,
-                            onTap: () {},
+                            onTap: () => widget.onBlock?.call(statement),
                           ),
                         ],
                       ),

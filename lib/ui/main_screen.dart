@@ -16,6 +16,7 @@ import 'package:oneofus_common/oou_verifier.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/direct_firestore_writer.dart';
+import 'package:oneofus_common/util.dart';
 import '../core/config.dart';
 import '../core/keys.dart';
 import '../core/sign_in_service.dart';
@@ -115,6 +116,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     }
   }
 
+  bool _isRefreshing = false;
+
   Future<void> _loadAllData() async {
     final myToken = _keys.identityToken;
     if (myToken == null) return;
@@ -123,6 +126,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     bool showFullLoader = _source.allCachedStatements.isEmpty;
     if (showFullLoader) {
       setState(() => _isLoading = true);
+    } else {
+      setState(() => _isRefreshing = true);
     }
     
     _source.clear();
@@ -152,11 +157,17 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isRefreshing = false;
         });
       }
     } catch (e) {
       debugPrint("Error loading data: $e");
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isRefreshing = false;
+        });
+      }
     }
   }
 
@@ -222,93 +233,386 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   void _handlePersonalKeyScan(String scanned) async {
     try {
       final jsonData = json.decode(scanned);
-      final String? moniker = jsonData['moniker'];
-      final String? domain = jsonData['domain'];
+      final String? initialMoniker = jsonData['moniker'];
       final Map<String, dynamic> publicKeyJson = (jsonData['publicKey'] as Map<String, dynamic>?) ?? jsonData;
-      
       final String subjectToken = getToken(publicKeyJson);
       
       if (!mounted) return;
-      
-      final bool? trust = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(moniker != null ? 'Trust $moniker?' : 'Trust Person?'),
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (moniker != null) ...[
-                Text('NAME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
-                Text(moniker, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-              ],
-              if (domain != null) ...[
-                Text('DOMAIN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
-                Text(domain, style: const TextStyle(fontSize: 14)),
-                const SizedBox(height: 12),
-              ],
-              Text('IDENTITY TOKEN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
-              Text('${subjectToken.substring(0, 12)}...', style: TextStyle(fontSize: 12, fontFeatures: const [FontFeature.tabularFigures()], color: Colors.grey.shade800)),
-              const SizedBox(height: 16),
-              Text(
-                'By trusting this person, you exchange contact information and can verify their identity in the future.',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              ),
-            ],
+
+      // 1. Check if it's one of my OWN keys (Identity or Delegate)
+      if (_keys.isIdentityToken(subjectToken)) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("That's you"),
+            content: const Text("Don't trust yourself."),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00897B),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('TRUST', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-            ),
-          ],
-        ),
-      );
-      
-      if (trust == true) {
-        final identity = _keys.identity!;
-        final myPubKeyJson = await (await identity.publicKey).json;
-        
-        final statementJson = TrustStatement.make(
-          myPubKeyJson,
-          publicKeyJson,
-          TrustVerb.trust,
-          moniker: moniker,
-          domain: domain,
         );
-        
-        final writer = DirectFirestoreWriter(widget.firestore ?? FirebaseFirestore.instance);
-        final signer = await OouSigner.make(identity);
-        await writer.push(statementJson, signer);
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Succesfully matched with ${moniker ?? 'this person'}'),
-              backgroundColor: const Color(0xFF00897B),
-            ),
-          );
-          _loadAllData(); // Refresh to see them in PEOPLE list
+        return;
+      }
+
+      if (_keys.isDelegateToken(subjectToken)) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("That's you"),
+            content: const Text("That's one of your delegate keys. Don't trust your own delegate key."),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
+          ),
+        );
+        return;
+      }
+
+      // 2. Check for equivalent identity keys (former keys replaced by current) 
+      // or stated delegate keys in the social graph.
+      final allStatements = _source.allCachedStatements;
+      final Set<String> myIdentityKeys = {_keys.identityToken!};
+      bool changed = true;
+      while (changed) {
+        changed = false;
+        for (var s in allStatements) {
+          if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.replace) {
+            if (myIdentityKeys.add(s.subjectToken)) changed = true;
+          }
         }
       }
+
+      if (myIdentityKeys.contains(subjectToken)) {
+        // It's a former identity key not currently in the keychain
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("This is you"),
+            content: const Text("This is one of your equivalent (former) identity keys.\n\nYou should manage your identity history in settings."),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
+          ),
+        );
+        return;
+      }
+
+      // Check for stated delegate keys of mine in the graph
+      final Set<String> myStatedDelegates = {};
+      for (var s in allStatements) {
+        if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.delegate) {
+          myStatedDelegates.add(s.subjectToken);
+        }
+      }
+
+      if (myStatedDelegates.contains(subjectToken)) {
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text("That's you"),
+            content: const Text("This is one of your delegate keys.\n\nManage your delegates in the services section."),
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
+          ),
+        );
+        return;
+      }
+
+      // 3. Check if it's someone ELSE's delegate key
+      final isDelegateOfOther = allStatements.any((s) => s.subjectToken == subjectToken && s.verb == TrustVerb.delegate);
+      if (isDelegateOfOther) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cannot vouch for or block delegate keys directly. Vouch for the primary identity instead.')),
+        );
+        return;
+      }
+
+      // 4. Normal path: check for existing statement and show dialog
+      final existingStatement = allStatements
+          .where((s) => myIdentityKeys.contains(s.iToken) && s.subjectToken == subjectToken)
+          .toList()
+        ..sort((a, b) => b.time.compareTo(a.time));
+      
+      final latest = existingStatement.firstOrNull;
+      
+      await _showTrustBlockDialog(
+        context: context,
+        subjectToken: subjectToken,
+        publicKeyJson: publicKeyJson,
+        initialMoniker: latest?.moniker ?? initialMoniker,
+        domain: latest?.domain,
+        initialComment: latest?.comment,
+        initialVerb: latest?.verb ?? TrustVerb.trust,
+        existingTime: latest?.time,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error parsing scanned key: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _showTrustBlockDialog({
+    required BuildContext context,
+    required String subjectToken,
+    required Map<String, dynamic> publicKeyJson,
+    String? initialMoniker,
+    String? domain,
+    String? initialComment,
+    TrustVerb initialVerb = TrustVerb.trust,
+    DateTime? existingTime,
+  }) async {
+    final monikerController = TextEditingController(text: initialMoniker);
+    final commentController = TextEditingController(text: initialComment);
+    TrustVerb selectedVerb = initialVerb;
+    
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isTrust = selectedVerb == TrustVerb.trust;
+          final isBlock = selectedVerb == TrustVerb.block;
+          
+          return AlertDialog(
+            title: Text(isTrust 
+                ? (initialMoniker != null ? 'Trust $initialMoniker?' : 'Trust Person?')
+                : 'Block'),
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Toggle between Trust and Block
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          children: [
+                            ChoiceChip(
+                              label: const Center(child: Text('TRUST')),
+                              selected: isTrust,
+                              onSelected: (val) => setDialogState(() {
+                                if (val) selectedVerb = TrustVerb.trust;
+                              }),
+                              selectedColor: const Color(0xFF00897B).withOpacity(0.2),
+                              labelStyle: TextStyle(
+                                color: isTrust ? const Color(0xFF00897B) : Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text('Human, capable, acting in good faith',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 9, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            ChoiceChip(
+                              label: const Center(child: Text('BLOCK')),
+                              selected: isBlock,
+                              onSelected: (val) => setDialogState(() {
+                                if (val) selectedVerb = TrustVerb.block;
+                              }),
+                              selectedColor: Colors.red.withOpacity(0.2),
+                              labelStyle: TextStyle(
+                                color: isBlock ? Colors.red : Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text('Bots, spammers, bad actors, careless, confused, ..',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 9, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  if (isTrust) ...[
+                    Text('NAME (REQUIRED)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: monikerController,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Alice Smith',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  
+                  Text('COMMENT (OPTIONAL)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: commentController,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      hintText: '',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  
+                  if (domain != null) ...[
+                    Text('DOMAIN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+                    Text(domain, style: const TextStyle(fontSize: 14)),
+                    const SizedBox(height: 12),
+                  ],
+                  
+                  if (existingTime != null) ...[
+                    const SizedBox(height: 12),
+                    Text('CURRENT STATEMENT TIME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+                    Text(formatUiDatetime(existingTime), style: const TextStyle(fontSize: 12)),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final curVerb = selectedVerb;
+                  final curMoniker = monikerController.text.trim();
+                  final curComment = commentController.text.trim();
+                  
+                  final hasChanged = curVerb != initialVerb ||
+                                    (curVerb == TrustVerb.trust && curMoniker != (initialMoniker ?? '')) ||
+                                    curComment != (initialComment ?? '');
+                  
+                  final isMonikerValid = curVerb != TrustVerb.trust || curMoniker.isNotEmpty;
+                  final canSubmit = hasChanged && isMonikerValid;
+
+                  if (!canSubmit) return null;
+
+                  return () async {
+                    Navigator.pop(context);
+                    await _pushTrustStatement(
+                      publicKeyJson: publicKeyJson,
+                      verb: curVerb,
+                      moniker: curVerb == TrustVerb.trust ? curMoniker : null,
+                      comment: curComment,
+                      domain: domain,
+                    );
+                  };
+                }(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isBlock ? Colors.red : const Color(0xFF00897B),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text(isBlock ? 'BLOCK' : 'TRUST', style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
+  Future<void> _pushTrustStatement({
+    required Map<String, dynamic> publicKeyJson,
+    required TrustVerb verb,
+    String? moniker,
+    String? comment,
+    String? domain,
+  }) async {
+    try {
+      final identity = _keys.identity!;
+      final myPubKeyJson = await (await identity.publicKey).json;
+      
+      final statementJson = TrustStatement.make(
+        myPubKeyJson,
+        publicKeyJson,
+        verb,
+        moniker: moniker,
+        comment: comment,
+        domain: domain,
+      );
+      
+      final writer = DirectFirestoreWriter(widget.firestore ?? FirebaseFirestore.instance);
+      final signer = await OouSigner.make(identity);
+      await writer.push(statementJson, signer);
+      
+      if (mounted) {
+        String action = 'Updated';
+        Color bgColor = const Color(0xFF00897B);
+        
+        if (verb == TrustVerb.trust) {
+          action = 'Trusted';
+        } else if (verb == TrustVerb.block) {
+          action = 'Blocked';
+          bgColor = Colors.red;
+        } else if (verb == TrustVerb.clear) {
+          action = 'Cleared';
+          bgColor = Colors.orange;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(verb == TrustVerb.trust 
+                ? 'Succesfully matched with ${moniker ?? 'this person'}'
+                : '$action${moniker != null ? ' for $moniker' : ''}'),
+            backgroundColor: bgColor,
+          ),
+        );
+        _loadAllData();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error pushing statement: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleClearTrust(TrustStatement statement) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Trust?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('This will remove ${statement.moniker ?? 'the trust'} from your list by issuing a CLEAR statement.'),
+            const SizedBox(height: 12),
+            const Text('Clear is not blocking or vouching. It\'s like you never said anything at all.',
+              style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+            child: const Text('CLEAR', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _pushTrustStatement(
+        publicKeyJson: statement.subject,
+        verb: TrustVerb.clear,
+        moniker: statement.moniker,
+        comment: 'Cleared from app UI',
+      );
     }
   }
 
@@ -334,7 +638,10 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_isLoading && (!_hasKey || _keys.identityToken == null)) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    
     if (!_hasKey || _keys.identityToken == null) return _buildOnboarding(context);
 
     final allStatements = _source.allCachedStatements;
@@ -346,6 +653,29 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         statements: allStatements,
         myKeyToken: _keys.identityToken!,
         onRefresh: _loadAllData,
+        onEdit: (statement) {
+          _showTrustBlockDialog(
+            context: context,
+            subjectToken: statement.subjectToken,
+            publicKeyJson: statement.subject,
+            initialMoniker: statement.moniker,
+            initialComment: statement.comment,
+            initialVerb: statement.verb,
+            existingTime: statement.time,
+          );
+        },
+        onBlock: (statement) {
+          _showTrustBlockDialog(
+            context: context,
+            subjectToken: statement.subjectToken,
+            publicKeyJson: statement.subject,
+            initialMoniker: statement.moniker,
+            initialComment: statement.comment,
+            initialVerb: TrustVerb.block,
+            existingTime: statement.time,
+          );
+        },
+        onClear: _handleClearTrust,
       ),
       ServicesScreen(
         statements: allStatements,
@@ -445,8 +775,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                                       height: 10,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: _hasAlerts
-                                            ? Colors.redAccent.withOpacity(0.3 + (0.7 * _pulseAnimation.value))
+                                        color: (_hasAlerts || _isRefreshing)
+                                            ? (_isRefreshing ? const Color(0xFF00897B) : Colors.redAccent).withOpacity(0.3 + (0.7 * _pulseAnimation.value))
                                             : Colors.grey.withOpacity(0.2),
                                       ),
                                     );
@@ -846,7 +1176,35 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('PASTE KEYS JSON', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('PASTE KEYS JSON', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                TextButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    final scanned = await QrScanner.scan(
+                      context, 
+                      title: 'Scan Identity QR',
+                      validator: (s) async => s.contains('identity'),
+                    );
+                    if (scanned != null) {
+                      try {
+                        await _keys.importKeys(scanned);
+                        _initIdentityAndLoadData();
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+                        }
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
+                  label: const Text('SCAN', style: TextStyle(fontSize: 10)),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
@@ -858,7 +1216,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                 filled: true,
                 fillColor: Colors.grey.shade50,
               ),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFF37474F)),
             ),
           ],
         ),
@@ -876,7 +1234,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   _initIdentityAndLoadData();
                 }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+                }
               }
             },
             style: ElevatedButton.styleFrom(
