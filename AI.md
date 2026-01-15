@@ -69,3 +69,4 @@ You (the AI) wrote this document to guide your future self so you could do a bet
     - Do not take any initiatives that weren't explicitly requested.
     - Follow instructions literally and strictly.
     - Avoid adding emphasis, extra styling, or "improvements" that weren't asked for.
+
