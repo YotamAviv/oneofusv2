@@ -4,7 +4,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:oneofus/core/config.dart';
 import 'package:oneofus/core/keys.dart';
 import 'package:oneofus/main.dart' as app;
-
+import 'test_utils.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -30,21 +30,18 @@ void main() {
 
     // 3. Start the app.
     debugPrint("TEST: Calling tester.pumpWidget.");
-    await tester.pumpWidget(const app.App());
+    await tester.pumpWidget(const app.App(isTesting: true));
     
     await tester.pump(const Duration(seconds: 1));
 
     debugPrint("TEST: Waiting for 'Lisa' to appear on card.");
-    for (int i = 0; i < 5 && tester.any(find.text('Lisa')); i++) {
+    for (int i = 0; i < 5 && !tester.any(find.text('Lisa')); i++) {
       await tester.pump(const Duration(seconds: 1));
     }
 
     // 4. Navigate to the People screen.
     debugPrint("TEST: Navigating to People screen.");
-    await tester.tap(find.byIcon(Icons.menu_rounded));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('PEOPLE'));
-    await tester.pump(const Duration(seconds: 1));
+    await navigateToScreen(tester, 'PEOPLE');
 
     // 5. Wait for the data to appear.
     debugPrint("TEST: Waiting for 'Maggie' to appear.");

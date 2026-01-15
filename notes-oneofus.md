@@ -9,8 +9,8 @@ Fix up the delgates screen
 Required for launch
 Missing
 - delegates screen: revoke/clear
-- load up equivalents (show/edit in modal screen)
-- load up blocks (show/edit in modal screen)
+- load up equivalents (show in modal screen, allow edit/clear)
+- load up blocks (show in modal screen. allow edit/clear)
 - import/export identity/one-of-us.net swap
 - entry screen
   - claim (replace) key

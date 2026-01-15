@@ -679,7 +679,6 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
 
     final pages = [
       CardScreen(statementsByIssuer: statementMap, myKeyToken: myToken),
-      const ImportExportScreen(),
       PeopleScreen(
         statementsByIssuer: statementMap,
         myKeyToken: myToken,
@@ -726,6 +725,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         myKeyToken: myToken,
         onRefresh: _loadAllData,
       ),
+      const ImportExportScreen(),
       AboutScreen(onDevClick: _handleDevClick),
       if (_isDevMode) DevScreen(onRefresh: _loadAllData),
     ];
@@ -958,9 +958,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 32),
             _HubTile(icon: Icons.account_circle_outlined, title: 'ID', onTap: () => _pageController.jumpToPage(0)),
-            _HubTile(icon: Icons.vpn_key_outlined, title: 'IMPORT / EXPORT', onTap: () => _pageController.jumpToPage(1)),
-            _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(2)),
-            _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(3)),
+            _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(1)),
+            _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
+            _HubTile(icon: Icons.vpn_key_outlined, title: 'IMPORT / EXPORT', onTap: () => _pageController.jumpToPage(3)),
             _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => _pageController.jumpToPage(4)),
             if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => _pageController.jumpToPage(5)),
           ],

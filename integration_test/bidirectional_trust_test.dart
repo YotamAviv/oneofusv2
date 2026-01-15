@@ -9,6 +9,7 @@ import 'package:oneofus_common/direct_firestore_writer.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'test_utils.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -74,12 +75,8 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
 
     // 5. Navigate to People screen and check for "Bo"
-    debugPrint("TEST: Tapping Menu.");
-    await tester.tap(find.byIcon(Icons.menu_rounded));
-    await tester.pump(const Duration(seconds: 1));
-    debugPrint("TEST: Tapping PEOPLE.");
-    await tester.tap(find.text('PEOPLE'));
-    await tester.pump(const Duration(seconds: 1));
+    debugPrint("TEST: Navigating to People screen.");
+    await navigateToScreen(tester, 'PEOPLE');
 
     debugPrint("TEST: Tapping Refresh (initial load might need it).");
     await tester.tap(find.byIcon(Icons.refresh_rounded));
@@ -115,17 +112,9 @@ void main() {
     expect(find.byIcon(Icons.check_circle), findsOneWidget);
     debugPrint("TEST: Check is now filled in.");
 
-    // TODO: This is klumsy, consider a "Home" key.
-    // 9. Go back to Home (Swipe back twice from Page 2 to Page 0)
-    debugPrint("TEST: Swiping back to Page 1 (Key Management).");
-    await tester.fling(find.byType(PageView), const Offset(400, 0), 1000);
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump(const Duration(milliseconds: 500)); // finish animation
-
-    debugPrint("TEST: Swiping back to Page 0 (Home).");
-    await tester.fling(find.byType(PageView), const Offset(400, 0), 1000);
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump(const Duration(milliseconds: 500));
+    // 9. Go back to Home
+    debugPrint("TEST: Navigating back to ID screen.");
+    await navigateToScreen(tester, 'ID');
 
     // Validate: My name is now "Luke"
     debugPrint("TEST: Verifying name is 'Luke' on Identity Card.");
