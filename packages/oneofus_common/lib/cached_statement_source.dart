@@ -26,21 +26,6 @@ class CachedStatementSource<T extends Statement> implements StatementSource<T> {
     _errorCache.clear();
   }
 
-  /// Returns all statements currently in the cache, flattened into a single list.
-  /// This is useful for UI that aggregate statements from multiple issuers.
-  List<T> get allCachedStatements {
-    final List<T> all = [];
-    for (final list in _fullCache.values) {
-      all.addAll(list);
-    }
-    for (final partial in _partialCache.values) {
-      all.addAll(partial.$2);
-    }
-    // Note: Deduplication based on token might be needed if the same statement
-    // is reached via multiple paths, but for direct trusts this is unlikely.
-    return all;
-  }
-
   @override
   Future<Map<String, List<T>>> fetch(Map<String, String?> keys) async {
     final Map<String, List<T>> results = {};

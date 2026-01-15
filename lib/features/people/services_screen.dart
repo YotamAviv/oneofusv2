@@ -3,10 +3,16 @@ import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
 
 class ServicesScreen extends StatefulWidget {
-  final List<TrustStatement> statements;
+  final Map<String, List<TrustStatement>> statementsByIssuer;
+  final String myKeyToken;
   final VoidCallback? onRefresh;
 
-  const ServicesScreen({super.key, required this.statements, this.onRefresh});
+  const ServicesScreen({
+    super.key,
+    required this.statementsByIssuer,
+    required this.myKeyToken,
+    this.onRefresh,
+  });
 
   @override
   State<ServicesScreen> createState() => ServicesScreenState();
@@ -15,20 +21,11 @@ class ServicesScreen extends StatefulWidget {
 class ServicesScreenState extends State<ServicesScreen> {
   @override
   Widget build(BuildContext context) {
-    // 1. Filter for delegate statements.
-    // 2. De-duplicate by domain (or subjectToken), keeping latest.
-    final Map<String, TrustStatement> latestByService = {};
-    for (var s in widget.statements) {
-      if (s.verb == TrustVerb.delegate) {
-        final key = s.domain ?? s.subjectToken;
-        final existing = latestByService[key];
-        if (existing == null || s.time.isAfter(existing.time)) {
-          latestByService[key] = s;
-        }
-      }
-    }
-    final delegates = latestByService.values.toList()
-      ..sort((a, b) => b.time.compareTo(a.time));
+    final myStatements = widget.statementsByIssuer[widget.myKeyToken] ?? [];
+
+    final delegates = myStatements
+        .where((s) => s.verb == TrustVerb.delegate)
+        .toList();
     
     debugPrint("[UI] Building ServicesScreen with ${delegates.length} unique delegates.");
     

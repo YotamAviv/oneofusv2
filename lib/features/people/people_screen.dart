@@ -3,7 +3,7 @@ import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
 
 class PeopleScreen extends StatefulWidget {
-  final List<TrustStatement> statements;
+  final Map<String, List<TrustStatement>> statementsByIssuer;
   final String myKeyToken;
   final VoidCallback? onRefresh;
   final Function(TrustStatement) onEdit;
@@ -12,7 +12,7 @@ class PeopleScreen extends StatefulWidget {
 
   const PeopleScreen({
     super.key,
-    required this.statements,
+    required this.statementsByIssuer,
     required this.myKeyToken,
     this.onRefresh,
     required this.onEdit,
@@ -21,32 +21,19 @@ class PeopleScreen extends StatefulWidget {
   });
 
   @override
-  State<PeopleScreen> createState() => PeopleScreenState();
+  State<PeopleScreen> createState() => _PeopleScreenState();
 }
 
-class PeopleScreenState extends State<PeopleScreen> {
+class _PeopleScreenState extends State<PeopleScreen> {
   @override
   Widget build(BuildContext context) {
-    // TODO: Investigate this. statements are sorted, my statements don't need to be filtered.
-    // 1. Find the LATEST statement issued by ME for each subject.
-    final Map<String, TrustStatement> latestBySubject = {};
-    for (var s in widget.statements) {
-      if (s.iToken == widget.myKeyToken) {
-        final existing = latestBySubject[s.subjectToken];
-        if (existing == null || s.time.isAfter(existing.time)) {
-          latestBySubject[s.subjectToken] = s;
-        }
-      } else {
-        debugPrint("[PEOPLE_SCREEN] Skipping statement from ${s.iToken} (expected ${widget.myKeyToken})");
-      }
-    }
+    final List<TrustStatement> myStatements = widget.statementsByIssuer[widget.myKeyToken] ?? [];
 
     // 2. Filter for those where the latest verb is 'trust'.
     // People we blocked or cleared should not appear in the "Trusted" list.
-    final trustedByMeStatements = latestBySubject.values
+    final myTrustStatements = myStatements
         .where((s) => s.verb == TrustVerb.trust)
-        .toList()
-      ..sort((a, b) => b.time.compareTo(a.time));
+        .toList();
 
     return SafeArea(
       child: Column(
@@ -69,13 +56,13 @@ class PeopleScreenState extends State<PeopleScreen> {
             ),
           ),
           Expanded(
-            child: trustedByMeStatements.isEmpty
+            child: myTrustStatements.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: trustedByMeStatements.length,
+                  itemCount: myTrustStatements.length,
                   itemBuilder: (context, index) {
-                    final statement = trustedByMeStatements[index];
+                    final statement = myTrustStatements[index];
                     return _buildPersonCard(statement);
                   },
                 ),
@@ -118,10 +105,9 @@ class PeopleScreenState extends State<PeopleScreen> {
   }
 
   Widget _buildPersonCard(TrustStatement statement) {
-    final vouchesBack = widget.statements.any((s) =>
-        s.iToken == statement.subjectToken &&
+    final vouchesBack = widget.statementsByIssuer[statement.subjectToken]?.any((s) =>
         s.subjectToken == widget.myKeyToken &&
-        s.verb == TrustVerb.trust);
+        s.verb == TrustVerb.trust) ?? false;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

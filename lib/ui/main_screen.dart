@@ -1,33 +1,35 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
-import 'package:flutter/material.dart';
+
 import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:oneofus_common/jsonish.dart';
-import 'package:oneofus_common/io.dart';
-import 'package:oneofus_common/cloud_functions_source.dart';
-import 'package:oneofus_common/firestore_source.dart';
-import 'package:oneofus_common/cached_statement_source.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:oneofus_common/cached_statement_source.dart';
+import 'package:oneofus_common/cloud_functions_source.dart';
 import 'package:oneofus_common/crypto25519.dart';
-import 'package:oneofus_common/oou_verifier.dart';
-import 'package:oneofus_common/oou_signer.dart';
-import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/direct_firestore_writer.dart';
-import '../demotest/egos.dart';
+import 'package:oneofus_common/firestore_source.dart';
+import 'package:oneofus_common/io.dart';
+import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/oou_signer.dart';
+import 'package:oneofus_common/oou_verifier.dart';
+import 'package:oneofus_common/statement.dart';
+import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/util.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../core/config.dart';
 import '../core/keys.dart';
-import '../core/sign_in_service.dart';
-import 'identity_card_surface.dart';
-import 'qr_scanner.dart';
-import 'error_dialog.dart';
 import '../core/share_service.dart';
+import '../core/sign_in_service.dart';
+import '../demotest/egos.dart';
 import '../features/key_management_screen.dart';
 import '../features/people/people_screen.dart';
 import '../features/people/services_screen.dart';
+import 'error_dialog.dart';
+import 'identity_card_surface.dart';
+import 'qr_scanner.dart';
 
 class MainScreen extends StatefulWidget {
   final bool isTesting;
@@ -55,6 +57,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedStatementSource<TrustStatement> _source;
+  Map<String, List<TrustStatement>> _statementsByIssuer = {};
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -148,7 +151,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     assert(mounted);
     
     // Only show full-screen loader if we have no data yet
-    final bool showFullLoader = _source.allCachedStatements.isEmpty;
+    final bool showFullLoader = _statementsByIssuer.isEmpty;
     if (showFullLoader) {
       setState(() => _isLoading = true);
     } else {
@@ -171,16 +174,25 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       // Remove self if present (already fetched)
       directContacts.remove(myToken);
       
+      Map<String, List<TrustStatement>> results2 = {};
       if (directContacts.isNotEmpty) {
         // 3. Fetch statements from direct contacts
         final Map<String, String?> keysToFetch = {
           for (final String token in directContacts) token: null
         };
-        final Map<String, List<TrustStatement>> results2 = await _source.fetch(keysToFetch);
+        results2 = await _source.fetch(keysToFetch);
       }
       
       if (mounted) {
         setState(() {
+          _statementsByIssuer = {
+            ...results1,
+            ...results2,
+          };
+          assert(() {
+            Statement.validateOrderTypess(_statementsByIssuer.values);
+            return true;
+          }());
           _isLoading = false;
           _isRefreshing = false;
         });
@@ -288,15 +300,18 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
       // 2. Check for equivalent identity keys (former keys replaced by current) 
       // or stated delegate keys in the social graph.
-      final allStatements = _source.allCachedStatements;
+      final statementMap = _statementsByIssuer;
       final String myToken = _keys.identityToken!;
       final Set<String> myIdentityKeys = {myToken};
       bool changed = true;
       while (changed) {
         changed = false;
-        for (var s in allStatements) {
-          if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.replace) {
-            if (myIdentityKeys.add(s.subjectToken)) changed = true;
+        // Search through ALL issuers in the map for identity replacements
+        for (final list in statementMap.values) {
+          for (final s in list) {
+            if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.replace) {
+              if (myIdentityKeys.add(s.subjectToken)) changed = true;
+            }
           }
         }
       }
@@ -316,9 +331,11 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
       // Check for stated delegate keys of mine in the graph
       final Set<String> myStatedDelegates = {};
-      for (var s in allStatements) {
-        if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.delegate) {
-          myStatedDelegates.add(s.subjectToken);
+      for (final list in statementMap.values) {
+        for (final s in list) {
+          if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.delegate) {
+            myStatedDelegates.add(s.subjectToken);
+          }
         }
       }
 
@@ -335,7 +352,14 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       }
 
       // 3. Check if it's someone ELSE's delegate key
-      final isDelegateOfOther = allStatements.any((s) => s.subjectToken == subjectToken && s.verb == TrustVerb.delegate);
+      bool isDelegateOfOther = false;
+      for (final list in statementMap.values) {
+        if (list.any((s) => s.subjectToken == subjectToken && s.verb == TrustVerb.delegate)) {
+          isDelegateOfOther = true;
+          break;
+        }
+      }
+
       if (isDelegateOfOther) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Cannot vouch for or block delegate keys directly. Vouch for the primary identity instead.')),
@@ -344,10 +368,11 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       }
 
       // 4. Normal path: check for existing statement and show dialog
-      final existingStatement = allStatements
-          .where((s) => myIdentityKeys.contains(s.iToken) && s.subjectToken == subjectToken)
-          .toList()
-        ..sort((a, b) => b.time.compareTo(a.time));
+      final List<TrustStatement> existingStatement = [];
+      for (final list in statementMap.values) {
+        existingStatement.addAll(list.where((s) => myIdentityKeys.contains(s.iToken) && s.subjectToken == subjectToken));
+      }
+      existingStatement.sort((a, b) => b.time.compareTo(a.time));
       
       final latest = existingStatement.firstOrNull;
       
@@ -663,13 +688,13 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     final myToken = _keys.identityToken;
     if (!_hasKey || myToken == null) return _buildOnboarding(context);
 
-    final allStatements = _source.allCachedStatements;
+    final Map<String, List<TrustStatement>> statementMap = _statementsByIssuer;
 
     final pages = [
-      _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape, myToken, allStatements),
+      _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape, myToken, statementMap),
       const KeyManagementScreen(),
       PeopleScreen(
-        statements: allStatements,
+        statementsByIssuer: statementMap,
         myKeyToken: _keys.identityToken!,
         onRefresh: _loadAllData,
         onEdit: (statement) {
@@ -697,7 +722,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         onClear: _handleClearTrust,
       ),
       ServicesScreen(
-        statements: allStatements,
+        statementsByIssuer: statementMap,
+        myKeyToken: myToken,
         onRefresh: _loadAllData,
       ),
       _buildInfoPage(),
@@ -857,7 +883,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildMePage(bool isLandscape, String myKeyToken, List<TrustStatement> allStatements) {
+  Widget _buildMePage(bool isLandscape, String myKeyToken, Map<String, List<TrustStatement>> statementMap) {
     return FutureBuilder<Json?>(
       future: _keys.getIdentityPublicKeyJson(),
       builder: (context, snapshot) {
@@ -866,17 +892,25 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         String myMoniker = 'Me';
         
         // Find people I trust
-        final trustedByMe = allStatements
-            .where((s) => s.iToken == myKeyToken && s.verb == TrustVerb.trust)
+        final trustedByMe = (statementMap[myKeyToken] ?? [])
+            .where((s) => s.verb == TrustVerb.trust)
             .map((s) => s.subjectToken)
             .toSet();
 
-        // Find the most recent trust of ME from someone I trust
-        for (final s in allStatements) {
-          if (s.subjectToken == myKeyToken && trustedByMe.contains(s.iToken)) {
-            if (s.moniker != null && s.moniker!.isNotEmpty) {
-              myMoniker = s.moniker!;
-              break;
+        // Search for trusts of ME from someone I trust
+        for (final entry in statementMap.entries) {
+          if (!trustedByMe.contains(entry.key)) continue;
+          
+          for (final s in entry.value) {
+            if (s.subjectToken == myKeyToken && s.verb == TrustVerb.trust) {
+              if (s.moniker != null && s.moniker!.isNotEmpty) {
+                myMoniker = s.moniker!;
+                return IdentityCardSurface(
+                  isLandscape: isLandscape,
+                  jsonKey: jsonKey,
+                  moniker: myMoniker,
+                );
+              }
             }
           }
         }
