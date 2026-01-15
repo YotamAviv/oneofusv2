@@ -53,6 +53,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   bool _hasAlerts = true;
   bool _isDevMode = false;
   int _devClickCount = 0;
+  late final FirebaseFirestore _firestore;
   late final CachedStatementSource<TrustStatement> _source;
 
   late AnimationController _pulseController;
@@ -64,18 +65,17 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     TrustStatement.init();
 
     // Initialize the statement source based on the environment
+    _firestore = widget.firestore ?? 
+                (Config.fireChoice == FireChoice.fake ? FakeFirebaseFirestore() : FirebaseFirestore.instance);
+    
     StatementSource<TrustStatement> baseSource;
-    if (widget.firestore != null) {
-      baseSource = FirestoreSource<TrustStatement>(widget.firestore!);
-    } else if (Config.fireChoice == FireChoice.fake) {
-      baseSource = FirestoreSource<TrustStatement>(FakeFirebaseFirestore());
-    } else if (Config.fireChoice == FireChoice.emulator) {
-      baseSource = FirestoreSource<TrustStatement>(FirebaseFirestore.instance);
-    } else {
+    if (Config.fireChoice != FireChoice.fake) {
       baseSource = CloudFunctionsSource<TrustStatement>(
         baseUrl: Config.exportUrl,
         verifier: OouVerifier(),
       );
+    } else {
+      baseSource = FirestoreSource<TrustStatement>(_firestore);
     }
     _source = CachedStatementSource<TrustStatement>(baseSource);
 
@@ -114,28 +114,36 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
   
   Future<void> _initIdentityAndLoadData() async {
-    final found = await _keys.load();
-    
-    if (mounted) {
-      setState(() {
-        _hasKey = found;
-        _isLoading = false;
-      });
-    }
+    try {
+      final found = await _keys.load();
+      
+      if (mounted) {
+        setState(() {
+          _hasKey = found;
+          _isLoading = false;
+        });
+      }
 
-    if (found) {
-      await _loadAllData();
+      if (found) {
+        await _loadAllData();
+      }
+    } catch (e, stackTrace) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ErrorDialog.show(context, "Identity Error", e, stackTrace);
+      }
     }
   }
 
   bool _isRefreshing = false;
 
   Future<void> _loadAllData() async {
-    final myToken = _keys.identityToken;
-    if (myToken == null) return;
+    final String myToken = _keys.identityToken!;
+    
+    assert(mounted);
     
     // Only show full-screen loader if we have no data yet
-    bool showFullLoader = _source.allCachedStatements.isEmpty;
+    final bool showFullLoader = _source.allCachedStatements.isEmpty;
     if (showFullLoader) {
       setState(() => _isLoading = true);
     } else {
@@ -146,8 +154,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     
     try {
       // 1. Fetch statements from Me
-      final results1 = await _source.fetch({myToken: null});
-      final myStatements = results1[myToken] ?? [];
+      final Map<String, List<TrustStatement>> results1 = await _source.fetch({myToken: null});
+      final List<TrustStatement> myStatements = results1[myToken] ?? [];
       
       // 2. Extract everyone I trust (direct contacts)
       final Set<String> directContacts = myStatements
@@ -161,9 +169,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       if (directContacts.isNotEmpty) {
         // 3. Fetch statements from direct contacts
         final Map<String, String?> keysToFetch = {
-          for (var token in directContacts) token: null
+          for (final String token in directContacts) token: null
         };
-        await _source.fetch(keysToFetch);
+        final Map<String, List<TrustStatement>> results2 = await _source.fetch(keysToFetch);
       }
       
       if (mounted) {
@@ -173,7 +181,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         });
       }
     } catch (e) {
-      debugPrint("Error loading data: $e");
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -196,23 +203,21 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   void _handleIncomingLink(Uri uri) {
-    debugPrint("[DeepLink] Received: $uri");
     if (uri.scheme == 'keymeid') {
       // Legacy "Magic Sign-in" support
       final dataBase64 = uri.queryParameters['parameters'];
       if (dataBase64 != null) {
         try {
           final data = utf8.decode(base64Url.decode(dataBase64));
-          SignInService.signIn(data, context);
+          SignInService.signIn(data, context, firestore: _firestore);
         } catch (e) {
-          debugPrint("[DeepLink] Error decoding legacy magic link: $e");
         }
       }
     } else if (uri.path.contains('sign-in')) {
       // New Seamless Sign-in support
       final data = uri.queryParameters['data'];
       if (data != null) {
-        SignInService.signIn(data, context);
+        SignInService.signIn(data, context, firestore: _firestore);
       }
     }
   }
@@ -235,7 +240,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
     if (scanned != null && mounted) {
       if (await SignInService.validateSignIn(scanned)) {
-        await SignInService.signIn(scanned, context);
+        await SignInService.signIn(scanned, context, firestore: _firestore);
       } else {
         _handlePersonalKeyScan(scanned);
       }
@@ -279,7 +284,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       // 2. Check for equivalent identity keys (former keys replaced by current) 
       // or stated delegate keys in the social graph.
       final allStatements = _source.allCachedStatements;
-      final Set<String> myIdentityKeys = {_keys.identityToken!};
+      final String myToken = _keys.identityToken!;
+      final Set<String> myIdentityKeys = {myToken};
       bool changed = true;
       while (changed) {
         changed = false;
@@ -539,8 +545,12 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     String? comment,
     String? domain,
   }) async {
+    final identity = _keys.identity;
+    if (identity == null) {
+      throw StateError("Cannot push statement without an identity key.");
+    }
+
     try {
-      final identity = _keys.identity!;
       final myPubKeyJson = await (await identity.publicKey).json;
       
       final statementJson = TrustStatement.make(
@@ -552,8 +562,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         domain: domain,
       );
       
-      final writer = DirectFirestoreWriter(widget.firestore ?? FirebaseFirestore.instance);
+      final writer = DirectFirestoreWriter(_firestore);
       final signer = await OouSigner.make(identity);
+      
       await writer.push(statementJson, signer);
       
       if (mounted) {
@@ -640,16 +651,17 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading && (!_hasKey || _keys.identityToken == null)) {
+    if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     
-    if (!_hasKey || _keys.identityToken == null) return _buildOnboarding(context);
+    final myToken = _keys.identityToken;
+    if (!_hasKey || myToken == null) return _buildOnboarding(context);
 
     final allStatements = _source.allCachedStatements;
 
     final pages = [
-      _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape, _keys.identityToken!, allStatements),
+      _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape, myToken, allStatements),
       const KeyManagementScreen(),
       PeopleScreen(
         statements: allStatements,
@@ -1073,7 +1085,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         const SizedBox(height: 12),
         ElevatedButton(
           onPressed: () {
-            final writer = DirectFirestoreWriter(widget.firestore ?? FirebaseFirestore.instance);
+            final writer = DirectFirestoreWriter(_firestore);
             Tester.init(writer);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Tester initialized with active writer.')),
@@ -1229,7 +1241,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                       try {
                         await _keys.importKeys(scanned);
                       } catch (e, stackTrace) {
-                        debugPrint('Import error: $e\n$stackTrace');
                         if (context.mounted) {
                           ErrorDialog.show(context, 'Import Error', e, stackTrace);
                         }

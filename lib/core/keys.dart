@@ -27,10 +27,16 @@ class Keys extends ChangeNotifier {
   bool get isLoaded => _isLoaded;
 
   /// The user's primary identity key pair. Returns null if not loaded.
-  OouKeyPair? get identity => _keys[kOneofusDomain];
+  OouKeyPair? get identity {
+    assert(_isLoaded, 'Keys must be loaded before accessing identity.');
+    return _keys[kOneofusDomain];
+  }
 
   /// Returns the SHA-1 token of the current identity public key.
-  String? get identityToken => _identityToken;
+  String? get identityToken {
+    assert(_isLoaded, 'Keys must be loaded before accessing identityToken.');
+    return _identityToken;
+  }
 
   /// Retrieves the delegate key pair for a specific service domain.
   OouKeyPair? delegate(String domain) {
@@ -100,9 +106,8 @@ class Keys extends ChangeNotifier {
       _isLoaded = true;
       return identity != null;
     } catch (e) {
-      // Data is corrupted. Treat as no keys found.
       _isLoaded = true;
-      return false;
+      throw Exception('Failed to load keys from secure storage. The data may be corrupted: $e');
     }
   }
 

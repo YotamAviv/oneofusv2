@@ -27,7 +27,7 @@ class SignInService {
     }
   }
 
-  static Future<void> signIn(String scanned, BuildContext context) async {
+  static Future<void> signIn(String scanned, BuildContext context, {FirebaseFirestore? firestore}) async {
     try {
       if (!await validateSignIn(scanned)) {
         if (context.mounted) {
@@ -73,7 +73,7 @@ class SignInService {
             domain: domain,
           );
 
-          final writer = DirectFirestoreWriter(FirebaseFirestore.instance);
+          final writer = DirectFirestoreWriter(firestore ?? FirebaseFirestore.instance);
           final signer = await OouSigner.make(identity);
           await writer.push(statementJson, signer);
         } else if (proceed == null) {

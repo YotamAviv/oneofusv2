@@ -29,7 +29,17 @@ class Tester {
     await Keys().importKeys(jsonEncode({kOneofusDomain: poser.keyPairJson}));
   }
 
-  static Map tests = {'egos': egos};
+  static Future<void> longname() async {
+    final TestKey poser = await TestKey.create();
+    final TestKey hipster = await TestKey.create();
+
+    await doTrust(poser, hipster, moniker: 'Hipster');
+    await doTrust(hipster, poser, moniker: 'Poserwith Longname');
+
+    await Keys().importKeys(jsonEncode({kOneofusDomain: poser.keyPairJson}));
+  }
+
+  static Map tests = {'egos': egos, 'longname': longname};
 
   static Future<TrustStatement> doTrust(
     TestKey i,
