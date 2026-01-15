@@ -27,10 +27,10 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     // 2a. Handle onboarding (interface: create new identity key for me)
-    debugPrint("TEST: Looking for GENERATE NEW IDENTITY button.");
-    expect(find.text('GENERATE NEW IDENTITY'), findsOneWidget);
-    debugPrint("TEST: Clicking GENERATE NEW IDENTITY.");
-    await tester.tap(find.text('GENERATE NEW IDENTITY'));
+    debugPrint("TEST: Looking for CREATE NEW IDENTITY KEY button.");
+    expect(find.text('CREATE NEW IDENTITY KEY'), findsOneWidget);
+    debugPrint("TEST: Clicking CREATE NEW IDENTITY KEY.");
+    await tester.tap(find.text('CREATE NEW IDENTITY KEY'));
     await tester.pump(const Duration(seconds: 2)); // Allow time for key gen and data load
 
     // Validate: My name is "Me"
