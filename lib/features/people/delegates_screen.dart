@@ -6,12 +6,16 @@ class DelegatesScreen extends StatefulWidget {
   final Map<String, List<TrustStatement>> statementsByIssuer;
   final String myKeyToken;
   final VoidCallback? onRefresh;
+  final Function(TrustStatement) onEdit;
+  final Function(TrustStatement) onClear;
 
   const DelegatesScreen({
     super.key,
     required this.statementsByIssuer,
     required this.myKeyToken,
     this.onRefresh,
+    required this.onEdit,
+    required this.onClear,
   });
 
   @override
@@ -139,52 +143,36 @@ class DelegatesScreenState extends State<DelegatesScreen> {
                               ),
                             ),
                           ),
-                          const Tooltip(
-                            message: 'Authorized: This service can act on your behalf',
+                          Tooltip(
+                            message: statement.revokeAt == null 
+                                ? 'Authorized: This service can act on your behalf'
+                                : 'Revoked: This service is no longer authorized',
                             child: Icon(
-                              Icons.verified_user_outlined,
+                              statement.revokeAt == null 
+                                  ? Icons.vpn_key_outlined
+                                  : Icons.key_off_outlined,
                               size: 20,
-                              color: Color(0xFF006064),
+                              color: statement.revokeAt == null 
+                                  ? const Color(0xFF0288D1) // Blue key
+                                  : Colors.blueGrey, // Grayish key
                             ),
                           ),
                         ],
                       ),
-                      if (statement.domain != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          statement.domain!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blueGrey.shade400,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                      if (statement.comment != null && statement.comment!.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          statement.comment!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.blueGrey.shade600,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           _ActionButton(
                             icon: Icons.settings_outlined,
-                            onTap: () {},
+                            onTap: () => widget.onEdit(statement),
                           ),
                           const SizedBox(width: 8),
                           _ActionButton(
-                            icon: Icons.no_accounts_outlined,
-                            label: 'REVOKE',
-                            color: Colors.red.shade400,
-                            onTap: () {},
+                            icon: Icons.clear_outlined,
+                            label: 'CLEAR',
+                            color: Colors.orange.shade400,
+                            onTap: () => widget.onClear(statement),
                           ),
                         ],
                       ),

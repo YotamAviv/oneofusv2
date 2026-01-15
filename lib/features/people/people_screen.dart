@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
 
+/// Read: http://trust_block_disposition_semantics.md
 class PeopleScreen extends StatefulWidget {
   final Map<String, List<TrustStatement>> statementsByIssuer;
   final String myKeyToken;
