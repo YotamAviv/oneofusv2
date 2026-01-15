@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'core/config.dart';
-import 'ui/main_screen.dart';
+import 'ui/app_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +32,7 @@ class App extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: MainScreen(
+      home: AppShell(
         isTesting: isTesting,
         firestore: firestore,
       ),

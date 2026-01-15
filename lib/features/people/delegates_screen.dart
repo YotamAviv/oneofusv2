@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
 
-class ServicesScreen extends StatefulWidget {
+class DelegatesScreen extends StatefulWidget {
   final Map<String, List<TrustStatement>> statementsByIssuer;
   final String myKeyToken;
   final VoidCallback? onRefresh;
 
-  const ServicesScreen({
+  const DelegatesScreen({
     super.key,
     required this.statementsByIssuer,
     required this.myKeyToken,
@@ -15,19 +15,19 @@ class ServicesScreen extends StatefulWidget {
   });
 
   @override
-  State<ServicesScreen> createState() => ServicesScreenState();
+  State<DelegatesScreen> createState() => DelegatesScreenState();
 }
 
-class ServicesScreenState extends State<ServicesScreen> {
+class DelegatesScreenState extends State<DelegatesScreen> {
   @override
   Widget build(BuildContext context) {
     final myStatements = widget.statementsByIssuer[widget.myKeyToken] ?? [];
-
+    
     final delegates = myStatements
         .where((s) => s.verb == TrustVerb.delegate)
         .toList();
     
-    debugPrint("[UI] Building ServicesScreen with ${delegates.length} unique delegates.");
+    debugPrint("[UI] Building DelegatesScreen with ${delegates.length} unique delegates.");
     
     return SafeArea(
       child: Column(
@@ -119,7 +119,7 @@ class ServicesScreenState extends State<ServicesScreen> {
             children: [
               Container(
                 width: 6,
-                color: const Color(0xFF006064), // Slightly different shade for services
+                color: const Color(0xFF006064),
               ),
               Expanded(
                 child: Padding(
@@ -131,7 +131,7 @@ class ServicesScreenState extends State<ServicesScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              statement.domain!,
+                              statement.domain ?? 'Unknown Service',
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,

@@ -17,33 +17,35 @@ import 'package:oneofus_common/oou_verifier.dart';
 import 'package:oneofus_common/statement.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/util.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/config.dart';
 import '../core/keys.dart';
 import '../core/share_service.dart';
 import '../core/sign_in_service.dart';
 import '../demotest/tester.dart';
-import '../features/key_management_screen.dart';
+import '../features/about/about_screen.dart';
+import '../features/dev/dev_screen.dart';
+import '../features/identity/card_screen.dart';
+import '../features/identity/import_export_screen.dart';
+import '../features/onboarding/welcome_screen.dart';
+import '../features/people/delegates_screen.dart';
 import '../features/people/people_screen.dart';
-import '../features/people/services_screen.dart';
 import 'error_dialog.dart';
-import 'identity_card_surface.dart';
 import 'qr_scanner.dart';
 
-class MainScreen extends StatefulWidget {
+class AppShell extends StatefulWidget {
   final bool isTesting;
   final FirebaseFirestore? firestore;
-  const MainScreen({super.key, this.isTesting = false, this.firestore});
+  const AppShell({super.key, this.isTesting = false, this.firestore});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<AppShell> createState() => _AppShellState();
 }
 
 // It's been a struggle to get the top junk aligned...
 const double heightKludge = 20;
 
-class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateMixin {
+class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
   final Keys _keys = Keys();
   final _appLinks = AppLinks();
@@ -100,7 +102,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       duration: const Duration(seconds: 2),
     );
     
-    // TODO: I don't think this is necessary. Considerremoving.
     if (!widget.isTesting) {
       _pulseController.repeat(reverse: true);
     }
@@ -155,7 +156,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     
     assert(mounted);
     
-    // Only show full-screen loader if we have no data yet
     final bool showFullLoader = _statementsByIssuer.isEmpty;
     if (showFullLoader) {
       setState(() => _isLoading = true);
@@ -170,7 +170,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       final Map<String, List<TrustStatement>> results1 = await _source.fetch({myToken: null});
       final List<TrustStatement> myStatements = results1[myToken] ?? [];
       
-      // Strip 'clear' statements immediately. A 'clear' means "say nothing about this subject".
       myStatements.removeWhere((s) => s.verb == TrustVerb.clear);
 
       // 2. Extract everyone I trust (direct contacts)
@@ -179,7 +178,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           .map((s) => s.subjectToken)
           .toSet();
       
-      // Remove self if present (already fetched)
       directContacts.remove(myToken);
       
       Map<String, List<TrustStatement>> results2 = {};
@@ -189,7 +187,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           for (final String token in directContacts) token: null
         };
         results2 = await _source.fetch(keysToFetch);
-        // Strip 'clear' statements from contacts too
         for (final list in results2.values) {
           list.removeWhere((s) => s.verb == TrustVerb.clear);
         }
@@ -233,17 +230,14 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   void _handleIncomingLink(Uri uri) {
     if (uri.scheme == 'keymeid') {
-      // Legacy "Magic Sign-in" support
       final dataBase64 = uri.queryParameters['parameters'];
       if (dataBase64 != null) {
         try {
           final data = utf8.decode(base64Url.decode(dataBase64));
           SignInService.signIn(data, context, firestore: _firestore);
-        } catch (e) {
-        }
+        } catch (e) {}
       }
     } else if (uri.path.contains('sign-in')) {
-      // New Seamless Sign-in support
       final data = uri.queryParameters['data'];
       if (data != null) {
         SignInService.signIn(data, context, firestore: _firestore);
@@ -260,7 +254,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         try {
           final json = jsonDecode(data);
           await const CryptoFactoryEd25519().parsePublicKey(json);
-          return true; // It's a valid public key
+          return true;
         } catch (_) {
           return false;
         }
@@ -285,7 +279,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       
       if (!mounted) return;
 
-      // 1. Check if it's one of my OWN keys (Identity or Delegate)
       if (_keys.isIdentityToken(subjectToken)) {
         await showDialog(
           context: context,
@@ -310,15 +303,12 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         return;
       }
 
-      // 2. Check for equivalent identity keys (former keys replaced by current) 
-      // or stated delegate keys in the social graph.
       final statementMap = _statementsByIssuer;
       final String myToken = _keys.identityToken!;
       final Set<String> myIdentityKeys = {myToken};
       bool changed = true;
       while (changed) {
         changed = false;
-        // Search through ALL issuers in the map for identity replacements
         for (final list in statementMap.values) {
           for (final s in list) {
             if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.replace) {
@@ -329,7 +319,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       }
 
       if (myIdentityKeys.contains(subjectToken)) {
-        // It's a former identity key not currently in the keychain
         await showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -341,7 +330,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         return;
       }
 
-      // Check for stated delegate keys of mine in the graph
       final Set<String> myStatedDelegates = {};
       for (final list in statementMap.values) {
         for (final s in list) {
@@ -363,7 +351,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         return;
       }
 
-      // 3. Check if it's someone ELSE's delegate key
       bool isDelegateOfOther = false;
       for (final list in statementMap.values) {
         if (list.any((s) => s.subjectToken == subjectToken && s.verb == TrustVerb.delegate)) {
@@ -379,7 +366,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         return;
       }
 
-      // 4. Normal path: check for existing statement and show dialog
       final List<TrustStatement> existingStatement = [];
       for (final list in statementMap.values) {
         existingStatement.addAll(list.where((s) => myIdentityKeys.contains(s.iToken) && s.subjectToken == subjectToken));
@@ -395,7 +381,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         initialMoniker: latest?.moniker ?? initialMoniker,
         initialComment: latest?.comment,
         initialVerb: latest?.verb,
-        allowClear: latest != null, // Only allow clear if it's not a new key
+        allowClear: latest != null,
         existingTime: latest?.time,
       );
     } catch (e) {
@@ -453,7 +439,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   const SizedBox(height: 16),
                   
                   if (lockedVerb == null) ...[
-                    // Toggle between Trust, Block, and potentially Clear
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -511,7 +496,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     const SizedBox(height: 16),
                   ],
                   
-                  // MONIKER FIELD (Show if TRUST, or if we have a former value to cross out)
                   if (isTrust || initialMoniker != null) ...[
                     Text('NAME ${isTrust ? "(REQUIRED)" : ""}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
                     const SizedBox(height: 4),
@@ -529,7 +513,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     const SizedBox(height: 12),
                   ],
                   
-                  // COMMENT FIELD (Show if TRUST or BLOCK, or if we have a former value to cross out)
                   if (isTrust || isBlock || initialComment != null) ...[
                     Text('COMMENT ${(isTrust || isBlock) ? "(OPTIONAL)" : ""}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
                     const SizedBox(height: 4),
@@ -690,16 +673,16 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     }
     
     final myToken = _keys.identityToken;
-    if (!_hasKey || myToken == null) return _buildOnboarding(context);
+    if (!_hasKey || myToken == null) return WelcomeScreen(firestore: _firestore);
 
     final Map<String, List<TrustStatement>> statementMap = _statementsByIssuer;
 
     final pages = [
-      _buildMePage(MediaQuery.of(context).orientation == Orientation.landscape, myToken, statementMap),
-      const KeyManagementScreen(),
+      CardScreen(statementsByIssuer: statementMap, myKeyToken: myToken),
+      const ImportExportScreen(),
       PeopleScreen(
         statementsByIssuer: statementMap,
-        myKeyToken: _keys.identityToken!,
+        myKeyToken: myToken,
         onRefresh: _loadAllData,
         onEdit: (statement) {
           _showTrustBlockDialog(
@@ -738,13 +721,13 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           );
         },
       ),
-      ServicesScreen(
+      DelegatesScreen(
         statementsByIssuer: statementMap,
         myKeyToken: myToken,
         onRefresh: _loadAllData,
       ),
-      _buildInfoPage(),
-      if (_isDevMode) _buildDevPage(),
+      AboutScreen(onDevClick: _handleDevClick),
+      if (_isDevMode) DevScreen(onRefresh: _loadAllData),
     ];
 
     return Scaffold(
@@ -774,7 +757,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Logo and Title (Only on Home Page)
                         _currentPageIndex == 0 
                           ? Row(
                               mainAxisSize: MainAxisSize.min,
@@ -800,7 +782,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                             )
                           : const SizedBox.shrink(),
 
-                        // Action Buttons & Pulse (Perfectly packed and even)
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -900,47 +881,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildMePage(bool isLandscape, String myKeyToken, Map<String, List<TrustStatement>> statementMap) {
-    return FutureBuilder<Json?>(
-      future: _keys.getIdentityPublicKeyJson(),
-      builder: (context, snapshot) {
-        final jsonKey = snapshot.data != null ? jsonEncode(snapshot.data) : 'no-key';
-        
-        String myMoniker = 'Me';
-        
-        // Find people I trust
-        final trustedByMe = (statementMap[myKeyToken] ?? [])
-            .where((s) => s.verb == TrustVerb.trust)
-            .map((s) => s.subjectToken)
-            .toSet();
-
-        // Search for trusts of ME from someone I trust
-        for (final entry in statementMap.entries) {
-          if (!trustedByMe.contains(entry.key)) continue;
-          
-          for (final s in entry.value) {
-            if (s.subjectToken == myKeyToken && s.verb == TrustVerb.trust) {
-              if (s.moniker != null && s.moniker!.isNotEmpty) {
-                myMoniker = s.moniker!;
-                return IdentityCardSurface(
-                  isLandscape: isLandscape,
-                  jsonKey: jsonKey,
-                  moniker: myMoniker,
-                );
-              }
-            }
-          }
-        }
-
-        return IdentityCardSurface(
-          isLandscape: isLandscape,
-          jsonKey: jsonKey,
-          moniker: myMoniker,
-        );
-      }
-    );
-  }
-
   void _showShareMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -1028,348 +968,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       ),
     );
   }
-
-  Widget _buildInfoPage() {
-    return SafeArea(
-      child: Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 8),
-            child: Row(
-              children: [
-                Text(
-                  'ONE-OF-US.NET',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
-                    color: Color(0xFF37474F),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              children: [
-                const _InfoCategory(title: 'RESOURCES'),
-                _InfoLinkTile(
-                  icon: Icons.home_outlined, 
-                  title: 'Home', 
-                  subtitle: 'https://one-of-us.net', 
-                  url: 'https://one-of-us.net'
-                ),
-                _InfoLinkTile(
-                  icon: Icons.menu_book_outlined, 
-                  title: 'Manual', 
-                  subtitle: 'Guides and documentation', 
-                  url: 'https://one-of-us.net/man.html'
-                ),
-                
-                const SizedBox(height: 24),
-                const _InfoCategory(title: 'LEGAL & PRIVACY'),
-                _InfoLinkTile(
-                  icon: Icons.privacy_tip_outlined, 
-                  title: 'Privacy Policy', 
-                  url: 'https://one-of-us.net/policy.html'
-                ),
-                _InfoLinkTile(
-                  icon: Icons.gavel_outlined, 
-                  title: 'Terms & Conditions', 
-                  url: 'https://one-of-us.net/terms.html'
-                ),
-
-                const SizedBox(height: 24),
-                const _InfoCategory(title: 'SUPPORT'),
-                _InfoLinkTile(
-                  icon: Icons.email_outlined, 
-                  title: 'Contact Support', 
-                  subtitle: 'contact@one-of-us.net', 
-                  url: 'mailto:contact@one-of-us.net'
-                ),
-                _InfoLinkTile(
-                  icon: Icons.report_problem_outlined, 
-                  title: 'Report Abuse', 
-                  subtitle: 'abuse@one-of-us.net', 
-                  url: 'mailto:abuse@one-of-us.net'
-                ),
-                
-                const SizedBox(height: 60),
-                GestureDetector(
-                  onTap: _handleDevClick,
-                  child: const Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          'With ♡ from Clacker;)',
-                          style: TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 0.5),
-                        ),
-                        SizedBox(height: 8),
-                        Text('V2.0.0 • BUILD 80', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDevPage() {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        const Text('DIAGNOSTICS (DEV)', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
-        const Divider(),
-        const Text('PRIVATE KEYS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
-        const SizedBox(height: 12),
-        FutureBuilder<Map<String, Json>>(
-          future: _keys.getAllKeyJsons(),
-          builder: (context, snapshot) {
-            return SelectableText(
-              const JsonEncoder.withIndent('  ').convert(snapshot.data ?? {}), 
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 10)
-            );
-          },
-        ),
-        const Divider(),
-        const Text('DEMO DATA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
-        const SizedBox(height: 12),
-        ...Tester.tests.entries.map((entry) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: ElevatedButton(
-            onPressed: () async {
-              try {
-                await entry.value();
-                if (mounted) {
-                  setState(() {});
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Test "${entry.key}" completed and identity imported.')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error running ${entry.key}: $e')),
-                  );
-                }
-              }
-            },
-            child: Text('RUN ${entry.key.toUpperCase()}'),
-          ),
-        )).toList(),
-        if (Tester.name2key.isNotEmpty) ...[
-          const Divider(),
-          const Text('SWITCH KEYS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
-          const SizedBox(height: 12),
-          ...Tester.name2key.keys.map((name) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: ElevatedButton(
-              onPressed: () async {
-                try {
-                  await Tester.useKey(name);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Switched to key: $name')),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error switching to $name: $e')),
-                    );
-                  }
-                }
-              },
-              child: Text('USE KEY: ${name.toUpperCase()}'),
-            ),
-          )).toList(),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildOnboarding(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF2F0EF),
-      body: Stack(
-        children: [
-          // Header (matching card page)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, heightKludge, 24, 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/oneofus_1024.png',
-                      height: 32,
-                      errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 32, color: Color(0xFF00897B)),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'ONE-OF-US.NET',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 3.0,
-                        color: Color(0xFF37474F),
-                        fontFamily: 'serif',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 40),
-                  ElevatedButton(
-                    onPressed: () async {
-                      await _keys.newIdentity();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      backgroundColor: const Color(0xFF37474F),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 4,
-                    ),
-                    child: const Text('CREATE NEW IDENTITY KEY', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                  ),
-                  const SizedBox(height: 20),
-                  OutlinedButton(
-                    onPressed: () => _showImportDialog(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      side: const BorderSide(color: Color(0xFF37474F), width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('IMPORT IDENTITY KEY', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)),
-                  ),
-                  const SizedBox(height: 20),
-                  OutlinedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Claim/Replace identity coming soon.')),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      side: const BorderSide(color: Color(0xFF37474F), width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('CLAIM (REPLACE) IDENTITY KEY', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showImportDialog(BuildContext context) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('IMPORT IDENTITY'),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('PASTE KEYS JSON', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
-                TextButton.icon(
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    final scanned = await QrScanner.scan(
-                      context, 
-                      title: 'Scan Identity QR',
-                      validator: (s) async => s.contains('identity'),
-                    );
-                    if (scanned != null) {
-                      try {
-                        await _keys.importKeys(scanned);
-                      } catch (e, stackTrace) {
-                        if (context.mounted) {
-                          ErrorDialog.show(context, 'Import Error', e, stackTrace);
-                        }
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
-                  label: const Text('SCAN', style: TextStyle(fontSize: 10)),
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              maxLines: 6,
-              decoration: InputDecoration(
-                hintText: '{"identity": ...}',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-              ),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFF37474F)),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await _keys.importKeys(controller.text);
-                if (mounted) {
-                  Navigator.pop(context);
-                }
-              } catch (e, stackTrace) {
-                if (context.mounted) {
-                  ErrorDialog.show(context, 'Import Error', e, stackTrace);
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00897B),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('IMPORT'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _HubTile extends StatelessWidget {
@@ -1387,52 +985,6 @@ class _HubTile extends StatelessWidget {
         Navigator.pop(context);
         onTap();
       },
-    );
-  }
-}
-
-class _InfoCategory extends StatelessWidget {
-  final String title;
-  const _InfoCategory({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: Colors.blueGrey.shade300,
-          letterSpacing: 2.0,
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoLinkTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final String url;
-
-  const _InfoLinkTile({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    required this.url,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFF00897B)),
-      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF37474F))),
-      subtitle: subtitle != null ? Text(subtitle!, style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade600)) : null,
-      trailing: const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.grey),
-      onTap: () => launchUrl(Uri.parse(url)),
     );
   }
 }

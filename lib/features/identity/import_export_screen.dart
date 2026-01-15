@@ -1,17 +1,16 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:oneofus_common/jsonish.dart';
-import '../core/keys.dart';
+import '../../core/keys.dart';
 
-class KeyManagementScreen extends StatefulWidget {
-  const KeyManagementScreen({super.key});
+class ImportExportScreen extends StatefulWidget {
+  const ImportExportScreen({super.key});
 
   @override
-  State<KeyManagementScreen> createState() => _KeyManagementScreenState();
+  State<ImportExportScreen> createState() => _ImportExportScreenState();
 }
 
-class _KeyManagementScreenState extends State<KeyManagementScreen> {
+class _ImportExportScreenState extends State<ImportExportScreen> {
   final _textController = TextEditingController();
   String _initialKeysJson = '';
   bool _isImporting = false;
@@ -153,7 +152,7 @@ class _KeyManagementScreenState extends State<KeyManagementScreen> {
                         borderRadius: BorderRadius.circular(16),
                         child: TextField(
                           controller: _textController,
-                          readOnly: false, // Allow editing for manual paste if needed, though paste button exists
+                          readOnly: false,
                           maxLines: null,
                           expands: true,
                           style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF37474F)),
