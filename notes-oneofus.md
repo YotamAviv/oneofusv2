@@ -1,22 +1,17 @@
 These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
-Fix up the delgates screen
-- if the delegate statement includes revokeAt, then show that as a string value.
-- I seem to see the domain twice. Unlike people who are identified by their moniker, delegate keys are identified strictly by their domain, and so show just that.
-- add a Clear button. This should be similar to what it does for trusted people keys.
-
 Required for launch
 Missing
-- delegates screen: revoke/clear
 - load up equivalents (show in modal screen, allow edit/clear)
 - load up blocks (show in modal screen. allow edit/clear)
-- import/export identity/one-of-us.net swap
-- entry screen
+- import/export "identity"/"one-of-us.net" swap
+- replace my key?
+- welcome screen
   - claim (replace) key
   - import key
-Have
-- trust/block/clear
+
+Minor: Time of last statement is nicer for delegate than for trust.
 
 Not required for launch:
 - replace key help

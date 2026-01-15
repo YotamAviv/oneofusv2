@@ -1076,7 +1076,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                                 child: const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: Icon(Icons.home_rounded, color: Color(0xFF37474F), size: 24),
+                                  child: Icon(Icons.badge_outlined, color: Color(0xFF37474F), size: 24),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -1241,7 +1241,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 32),
-            _HubTile(icon: Icons.account_circle_outlined, title: 'ID', onTap: () => _pageController.jumpToPage(0)),
+            _HubTile(icon: Icons.badge_outlined, title: 'ID', onTap: () => _pageController.jumpToPage(0)),
             _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(1)),
             _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
             _HubTile(icon: Icons.vpn_key_outlined, title: 'IMPORT / EXPORT', onTap: () => _pageController.jumpToPage(3)),
