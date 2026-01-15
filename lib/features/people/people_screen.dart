@@ -142,7 +142,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              statement.moniker ?? 'Unknown',
+                              statement.moniker!,
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,

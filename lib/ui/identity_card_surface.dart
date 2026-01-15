@@ -43,8 +43,14 @@ class IdentityCardSurface extends StatelessWidget {
         final maxQrSize = cardH - (2 * padding);
         final qrSize = min(maxQrSize, cardH * qrRatio);
         
-        final bool isShortName = moniker.length <= 7;
-        final double fontSize = isShortName ? (cardH * 0.20) : (cardH * 0.12);
+        double fontSize = cardH;
+        if (moniker.length <= 6) {
+          fontSize = cardH * 0.20;
+        } else if (moniker.length <= 10) {
+          fontSize = cardH * 0.14;
+        } else {
+          fontSize = cardH * 0.10;
+        }
 
         return Center(
           child: SizedBox(

@@ -23,7 +23,7 @@ import '../core/config.dart';
 import '../core/keys.dart';
 import '../core/share_service.dart';
 import '../core/sign_in_service.dart';
-import '../demotest/egos.dart';
+import '../demotest/tester.dart';
 import '../features/key_management_screen.dart';
 import '../features/people/people_screen.dart';
 import '../features/people/services_screen.dart';
@@ -53,7 +53,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   bool _isLoading = true;
   bool _hasKey = false;
   bool _hasAlerts = true;
-  bool _isDevMode = false;
+  // TODO: Set to false before deploying to App Stores
+  bool _isDevMode = true;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedStatementSource<TrustStatement> _source;
@@ -81,6 +82,10 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       baseSource = FirestoreSource<TrustStatement>(_firestore);
     }
     _source = CachedStatementSource<TrustStatement>(baseSource);
+
+    if (_isDevMode) {
+      Tester.init(DirectFirestoreWriter(_firestore));
+    }
 
     _pageController.addListener(() {
       if (_pageController.page?.round() != _currentPageIndex) {
@@ -613,7 +618,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Success'),
+            content: Text('$action: Success'),
             backgroundColor: bgColor
           ),
         );
@@ -1122,39 +1127,56 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         const Divider(),
         const Text('DEMO DATA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
         const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: () {
-            final writer = DirectFirestoreWriter(_firestore);
-            Tester.init(writer);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Tester initialized with active writer.')),
-            );
-          },
-          child: const Text('INIT TESTER'),
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton(
-          onPressed: () async {
-            try {
-              final egosFunc = Tester.tests['egos'];
-              if (egosFunc != null) {
-                await egosFunc();
+        ...Tester.tests.entries.map((entry) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: ElevatedButton(
+            onPressed: () async {
+              try {
+                await entry.value();
+                if (mounted) {
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Test "${entry.key}" completed and identity imported.')),
+                  );
+                }
+              } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Egos test completed and identity imported.')),
+                    SnackBar(content: Text('Error running ${entry.key}: $e')),
                   );
                 }
               }
-            } catch (e) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error running egos: $e')),
-                );
-              }
-            }
-          },
-          child: const Text('RUN EGOS'),
-        ),
+            },
+            child: Text('RUN ${entry.key.toUpperCase()}'),
+          ),
+        )).toList(),
+        if (Tester.name2key.isNotEmpty) ...[
+          const Divider(),
+          const Text('SWITCH KEYS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
+          const SizedBox(height: 12),
+          ...Tester.name2key.keys.map((name) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: ElevatedButton(
+              onPressed: () async {
+                try {
+                  await Tester.useKey(name);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Switched to key: $name')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error switching to $name: $e')),
+                    );
+                  }
+                }
+              },
+              child: Text('USE KEY: ${name.toUpperCase()}'),
+            ),
+          )).toList(),
+        ],
       ],
     );
   }

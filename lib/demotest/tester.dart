@@ -12,15 +12,20 @@ final crypto = CryptoFactoryEd25519();
 
 class Tester {
   static StatementWriter? writer;
+  static Map<String, TestKey> name2key = {};
 
   static void init(writer) {
     Tester.writer = writer;
   }
 
   static Future<void> egos() async {
+    name2key.clear();
     final TestKey poser = await TestKey.create();
     final TestKey hipster = await TestKey.create();
     final TestKey jock = await TestKey.create();
+    name2key['poser'] = poser;
+    name2key['hipster'] = hipster;
+    name2key['jock'] = jock;
 
     await doTrust(poser, hipster, moniker: 'Hipster', comment: 'Trusting Hipster');
     await doTrust(hipster, poser, moniker: 'Poser', comment: 'Trusting Poser');
@@ -30,13 +35,20 @@ class Tester {
   }
 
   static Future<void> longname() async {
+    name2key.clear();
     final TestKey poser = await TestKey.create();
     final TestKey hipster = await TestKey.create();
+    name2key['poser'] = poser;
+    name2key['hipster'] = hipster;
 
     await doTrust(poser, hipster, moniker: 'Hipster');
     await doTrust(hipster, poser, moniker: 'Poserwith Longname');
 
     await Keys().importKeys(jsonEncode({kOneofusDomain: poser.keyPairJson}));
+  }
+
+  static Future<void> useKey(String key) async {
+    await Keys().importKeys(jsonEncode({kOneofusDomain: name2key[key]!.keyPairJson}));
   }
 
   static Map tests = {'egos': egos, 'longname': longname};

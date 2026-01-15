@@ -131,7 +131,7 @@ class ServicesScreenState extends State<ServicesScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              statement.moniker ?? statement.domain ?? 'Unknown Service',
+                              statement.domain!,
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
