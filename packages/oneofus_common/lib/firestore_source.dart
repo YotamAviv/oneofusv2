@@ -20,6 +20,7 @@ class FirestoreSource<T extends Statement> implements StatementSource<T> {
     for (var entry in keys.entries) {
       final issuerToken = entry.key;
       final revokeAtToken = entry.value;
+      print('FIRESTORE_SOURCE: Fetching for $issuerToken');
 
       try {
         final query = _firestore
@@ -29,6 +30,7 @@ class FirestoreSource<T extends Statement> implements StatementSource<T> {
             .orderBy('time', descending: true);
 
         final snapshot = await query.get();
+        print('FIRESTORE_SOURCE: Found ${snapshot.docs.length} docs for $issuerToken');
         final List<T> statements = [];
 
         bool foundRevokeAt = false;
@@ -50,6 +52,7 @@ class FirestoreSource<T extends Statement> implements StatementSource<T> {
 
         results[issuerToken] = statements;
       } catch (e) {
+        print('FIRESTORE_SOURCE ERROR for $issuerToken: $e');
         errors.add(SourceError(
           'Error fetching statements for $issuerToken: $e',
           token: issuerToken,

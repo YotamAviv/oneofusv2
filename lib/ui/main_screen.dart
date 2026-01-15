@@ -90,7 +90,12 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+    );
+    
+    // TODO: I don't think this is necessary. Considerremoving.
+    if (!widget.isTesting) {
+      _pulseController.repeat(reverse: true);
+    }
     _pulseAnimation = CurvedAnimation(
       parent: _pulseController,
       curve: Curves.easeInOut,

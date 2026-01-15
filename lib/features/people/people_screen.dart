@@ -27,6 +27,7 @@ class PeopleScreen extends StatefulWidget {
 class PeopleScreenState extends State<PeopleScreen> {
   @override
   Widget build(BuildContext context) {
+    // TODO: Investigate this. statements are sorted, my statements don't need to be filtered.
     // 1. Find the LATEST statement issued by ME for each subject.
     final Map<String, TrustStatement> latestBySubject = {};
     for (var s in widget.statements) {
@@ -35,6 +36,8 @@ class PeopleScreenState extends State<PeopleScreen> {
         if (existing == null || s.time.isAfter(existing.time)) {
           latestBySubject[s.subjectToken] = s;
         }
+      } else {
+        debugPrint("[PEOPLE_SCREEN] Skipping statement from ${s.iToken} (expected ${widget.myKeyToken})");
       }
     }
 

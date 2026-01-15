@@ -1,29 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:oneofus_common/crypto.dart';
-import 'package:oneofus_common/crypto25519.dart';
-import 'package:oneofus_common/oou_signer.dart';
-import 'package:oneofus_common/direct_firestore_writer.dart';
-import 'package:oneofus_common/trust_statement.dart';
-import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus/core/config.dart';
 import 'package:oneofus/core/keys.dart';
 import 'package:oneofus/main.dart' as app;
+import 'package:oneofus_common/crypto25519.dart';
+import 'package:oneofus_common/direct_firestore_writer.dart';
+import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/oou_signer.dart';
+import 'package:oneofus_common/trust_statement.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('Identity, bidirectional trust, validate check states and name', (WidgetTester tester) async {
+  testWidgets('Identity, bidirectional trust, validate check states and name', (
+    WidgetTester tester,
+  ) async {
+    debugPrint('Config.fireChoice=${Config.fireChoice.name}');
+
+    // 0. Safety check: refuse to run if Prod
+    Config.ensureNotProd();
+
+    // Initialize Firebase correctly (handles Fake/Emulator/Prod logic)
+    await Config.initFirebase();
+
     // 0. Wipe existing keys to ensure we start at the onboarding screen
     await Keys().clearAll();
 
-    final fakeFirestore = FakeFirebaseFirestore();
+    final db = Config.db;
     final crypto = CryptoFactoryEd25519();
-    
-    // 2. Start app with FakeFirestore
+
+    // 2. Start app with active Firestore
     debugPrint("TEST: Pumping App.");
-    await tester.pumpWidget(app.App(firestore: fakeFirestore, isTesting: true));
+    await tester.pumpWidget(app.App(firestore: db, isTesting: true));
     await tester.pump(const Duration(seconds: 1));
 
     // 2a. Handle onboarding (interface: create new identity key for me)
@@ -39,28 +48,30 @@ void main() {
     debugPrint("TEST: Confirmed: Name is 'Me'.");
 
     // Get my token/identity info
-    final myToken = Keys().identityToken;
     final myPublicKeyJson = await Keys().getIdentityPublicKeyJson();
     final myKeyPair = Keys().identity!;
 
     // 3. Create key for "Bo" (code: create new key for "Bo")
     final boKeyPair = await crypto.createKeyPair();
-    final boToken = getToken(await (await boKeyPair.publicKey).json);
     final boPublicKeyJson = await (await boKeyPair.publicKey).json;
 
     // 4. "Me" trusts "Bo" (code: state: I.trust(Bo))
-    final meWriter = DirectFirestoreWriter(fakeFirestore);
+    final meWriter = DirectFirestoreWriter(db);
     final meSigner = await OouSigner.make(myKeyPair);
-    await meWriter.push({
-      'statement': 'net.one-of-us',
-      'trust': boPublicKeyJson,
-      'I': myPublicKeyJson,
-      'time': DateTime.now().toUtc().toIso8601String(),
-      'with': {
-        'moniker': 'Bo',
-      },
-    }, meSigner);
+
+    final meToBoStatement = TrustStatement.make(
+      myPublicKeyJson!,
+      boPublicKeyJson,
+      TrustVerb.trust,
+      moniker: 'Bo',
+    );
+
+    await meWriter.push(meToBoStatement, meSigner);
     debugPrint("TEST: Me trusted Bo.");
+
+    debugPrint("TEST: Tapping Refresh.");
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.pump(const Duration(seconds: 2));
 
     // 5. Navigate to People screen and check for "Bo"
     debugPrint("TEST: Tapping Menu.");
@@ -81,17 +92,17 @@ void main() {
     debugPrint("TEST: Bo found, check is outline.");
 
     // 6. "Bo" trusts "me" as "Luke" (code: state: Bo.trust(me) moniker:"Luke")
-    final boWriter = DirectFirestoreWriter(fakeFirestore);
+    final boWriter = DirectFirestoreWriter(db);
     final boSigner = await OouSigner.make(boKeyPair);
-    await boWriter.push({
-      'statement': 'net.one-of-us',
-      'trust': myPublicKeyJson,
-      'I': boPublicKeyJson,
-      'time': DateTime.now().toUtc().toIso8601String(),
-      'with': {
-        'moniker': 'Luke',
-      },
-    }, boSigner);
+
+    final boToMeStatement = TrustStatement.make(
+      boPublicKeyJson,
+      myPublicKeyJson,
+      TrustVerb.trust,
+      moniker: 'Luke',
+    );
+
+    await boWriter.push(boToMeStatement, boSigner);
     debugPrint("TEST: Bo trusted Me as 'Luke' in Firestore.");
 
     // 7. Refresh (interface: refresh)

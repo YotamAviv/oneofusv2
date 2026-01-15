@@ -1,6 +1,25 @@
 These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
+Tasks
+1) Get integration_test/bidirectional_trust_test.dart to run using the configured Firestore so that it can exercise and test the emulator, as well.
+Have that test refuse to run if the current config is for production
+
+2) I added another demo style test in egos.dart.
+Chage the DEV screen so that I can run any test in egos.dart Map tests by name;
+
+3) The new demo test in egos is 'longname'. When I run it, the name is way too long to fit in the card.
+I'd like to use a large font if the name is "Me" or "Lisa".
+But if the name is long:
+- use a smaller font
+- constrain the name to an area that doesn't interfere with the QR code
+- let the name wrap (if it has a space)
+- truncate the name to elipses if it still doesn't fit
+
+
+
+
+
 Required for launch
 Missing
 - delegates screen: revoke/clear

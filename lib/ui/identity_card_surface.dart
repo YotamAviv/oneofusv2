@@ -42,6 +42,9 @@ class IdentityCardSurface extends StatelessWidget {
         final padding = cardW * contentPadding;
         final maxQrSize = cardH - (2 * padding);
         final qrSize = min(maxQrSize, cardH * qrRatio);
+        
+        final bool isShortName = moniker.length <= 7;
+        final double fontSize = isShortName ? (cardH * 0.20) : (cardH * 0.12);
 
         return Center(
           child: SizedBox(
@@ -85,18 +88,22 @@ class IdentityCardSurface extends StatelessWidget {
                           ),
                         ),
                         
-                        // TODO: Use smaller font, constrain to box if moniker  is long
                         // Moniker label on the right
                         Positioned(
+                          left: padding + qrSize + (cardW * 0.05),
                           right: padding,
                           top: padding,
                           child: Text(
                             moniker,
+                            textAlign: TextAlign.right,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: cardH * 0.20,
+                              fontSize: fontSize,
                               fontWeight: FontWeight.w900,
                               color: Colors.black87,
                               fontFamily: 'serif',
+                              height: 1.1,
                             ),
                           ),
                         ),

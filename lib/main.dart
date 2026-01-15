@@ -1,21 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'core/config.dart';
-import 'firebase_options.dart';
 import 'ui/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  if (Config.fireChoice == FireChoice.emulator) {
-    // Connect to local Firebase Emulators
-    // 10.0.2.2 is the magic IP for the Android Emulator to reach the host machine
-    FirebaseFirestore.instance.useFirestoreEmulator('10.0.2.2', 8081);
-  }
+  await Config.initFirebase();
 
   runApp(const App());
 }

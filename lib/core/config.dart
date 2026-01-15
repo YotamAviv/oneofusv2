@@ -1,14 +1,47 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import '../firebase_options.dart';
 
-enum FireChoice {
-  fake,
-  emulator,
-  prod;
-}
+enum FireChoice { fake, emulator, prod }
 
 class Config {
-  // --- Environment Switch ---
-  static FireChoice fireChoice = FireChoice.fake;
+  // --- Hard coded - use for Environment Switch ---
+  static final FireChoice _fireChoice = FireChoice.emulator;
+
+  static FireChoice get fireChoice => _fireChoice;
+
+  static String get _emulatorHost {
+    if (kIsWeb) return 'localhost';
+    // 10.0.2.2 is for Android Emulator, localhost for Desktop/iOS Simulator
+    return (defaultTargetPlatform == TargetPlatform.android) ? '10.0.2.2' : 'localhost';
+  }
+
+  static Future<void> initFirebase() async {
+    if (fireChoice != FireChoice.fake) {
+      FirebaseOptions options = DefaultFirebaseOptions.currentPlatform;
+      await Firebase.initializeApp(options: options);
+      if (fireChoice == FireChoice.emulator) {
+        FirebaseFirestore.instance.useFirestoreEmulator(_emulatorHost, 8081);
+      }
+    }
+  }
+
+  static FirebaseFirestore? _db;
+  static FirebaseFirestore get db {
+    _db ??= (fireChoice == FireChoice.fake ? FakeFirebaseFirestore() : FirebaseFirestore.instance);
+    return _db!;
+  }
+
+  /// Safety check for tests or destructive operations
+  static void ensureNotProd() {
+    debugPrint('fireChoice=$fireChoice');
+    if (fireChoice == FireChoice.prod) {
+      throw StateError("Operation not allowed in production environment!");
+    }
+  }
 
   // --- Service Registry (formerly V2Config) ---
   static final Map<String, String> _urls = {};
@@ -39,8 +72,7 @@ class Config {
   static String get exportUrl {
     switch (fireChoice) {
       case FireChoice.emulator:
-        // Use 10.0.2.2 for Android Emulator to access host's localhost
-        return 'http://10.0.2.2:5002/one-of-us-net/us-central1/export';
+        return 'http://$_emulatorHost:5002/one-of-us-net/us-central1/export';
       case FireChoice.prod:
       default:
         return 'https://export.one-of-us.net';
@@ -60,9 +92,9 @@ class Config {
   }
 
   static String get signInUrl {
-     switch (fireChoice) {
+    switch (fireChoice) {
       case FireChoice.emulator:
-        return 'http://10.0.2.2:5001/nerdster/us-central1/signin';
+        return 'http://$_emulatorHost:5001/nerdster/us-central1/signin';
       case FireChoice.prod:
       default:
         return 'https://signin.nerdster.org/signin';
