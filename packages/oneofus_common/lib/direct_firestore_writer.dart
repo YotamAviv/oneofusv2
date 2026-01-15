@@ -15,7 +15,6 @@ class DirectFirestoreWriter implements StatementWriter {
   Future<Statement> push(Json json, StatementSigner signer) async {
     final String issuerToken = getToken(json['I']);
     final fireStatements = _fire.collection(issuerToken).doc('statements').collection('statements');
-    print('DIRECT_WRITER: Pushing statement for issuer $issuerToken to path: ${issuerToken}/statements/statements');
 
     // Note: This is not truly transactional because the Flutter SDK does not
     // support queries inside transactions for this use case. A Cloud Function
@@ -55,7 +54,6 @@ class DirectFirestoreWriter implements StatementWriter {
       transaction.set(docRef, jsonish.json);
     });
 
-    print('DIRECT_WRITER: SUCCESSFULLY pushed statement ${jsonish.token} for $issuerToken');
     return statement;
   }
 }

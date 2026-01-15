@@ -28,15 +28,16 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
     http.Client? client,
     required this.verifier,
     this.skipVerify = false,
-  })  : statementType = Statement.type<T>(),
-        client = client ?? http.Client();
+  }) : statementType = Statement.type<T>(),
+       client = client ?? http.Client() {
+    print('baseUrl=$baseUrl');
+  }
 
   @override
   List<SourceError> get errors => List.unmodifiable(_errors.values);
 
   @override
   Future<Map<String, List<T>>> fetch(Map<String, String?> keys) async {
-    print('baseUrl=$baseUrl');
     _errors.clear();
     if (keys.isEmpty) return {};
 
@@ -102,7 +103,9 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
             list.add(statement as T);
           }
         } catch (e) {
-          _errors[token] = e is SourceError ? e : SourceError('Error processing statements: $e', token: token, originalError: e);
+          _errors[token] = e is SourceError
+              ? e
+              : SourceError('Error processing statements: $e', token: token, originalError: e);
           results.remove(token);
         }
       }

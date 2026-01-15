@@ -6,18 +6,18 @@ class PeopleScreen extends StatefulWidget {
   final List<TrustStatement> statements;
   final String myKeyToken;
   final VoidCallback? onRefresh;
-  final Function(TrustStatement)? onEdit;
-  final Function(TrustStatement)? onClear;
-  final Function(TrustStatement)? onBlock;
+  final Function(TrustStatement) onEdit;
+  final Function(TrustStatement) onClear;
+  final Function(TrustStatement) onBlock;
 
   const PeopleScreen({
     super.key,
     required this.statements,
     required this.myKeyToken,
     this.onRefresh,
-    this.onEdit,
-    this.onClear,
-    this.onBlock,
+    required this.onEdit,
+    required this.onClear,
+    required this.onBlock,
   });
 
   @override
@@ -48,7 +48,6 @@ class PeopleScreenState extends State<PeopleScreen> {
         .toList()
       ..sort((a, b) => b.time.compareTo(a.time));
 
-    debugPrint("[UI] Building PeopleScreen with ${trustedByMeStatements.length} unique people (filtered from ${widget.statements.length}).");
     return SafeArea(
       child: Column(
         children: [
@@ -192,20 +191,20 @@ class PeopleScreenState extends State<PeopleScreen> {
                         children: [
                           _ActionButton(
                             icon: Icons.edit_outlined,
-                            onTap: () => widget.onEdit?.call(statement),
+                            onTap: () => widget.onEdit(statement),
                           ),
                           const SizedBox(width: 8),
                           _ActionButton(
                             icon: Icons.backspace_outlined,
                             label: 'CLEAR',
-                            onTap: () => widget.onClear?.call(statement),
+                            onTap: () => widget.onClear(statement),
                           ),
                           const SizedBox(width: 8),
                           _ActionButton(
                             icon: Icons.block_flipped,
                             label: 'BLOCK',
                             color: Colors.red.shade400,
-                            onTap: () => widget.onBlock?.call(statement),
+                            onTap: () => widget.onBlock(statement),
                           ),
                         ],
                       ),
