@@ -572,10 +572,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(verb == TrustVerb.trust 
-                ? 'Succesfully matched with ${moniker ?? 'this person'}'
-                : '$action${moniker != null ? ' for $moniker' : ''}'),
-            backgroundColor: bgColor,
+            content: Text('Success'),
+            backgroundColor: bgColor
           ),
         );
         _loadAllData();
