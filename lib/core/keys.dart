@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:oneofus_common/crypto.dart';
 import 'package:oneofus_common/crypto25519.dart';
@@ -6,7 +7,7 @@ import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
 
 /// A singleton class responsible for managing the user's cryptographic keys.
-class Keys {
+class Keys extends ChangeNotifier {
   // --- Singleton Setup ---
   static final Keys _instance = Keys._internal();
   factory Keys() => _instance;
@@ -66,6 +67,7 @@ class Keys {
     if (!_keys.containsKey(kOneofusDomain)) {
       _identityToken = null;
     }
+    notifyListeners();
   }
 
   /// Returns true if the token matches the current primary identity.
@@ -155,7 +157,10 @@ class Keys {
     _keys = {};
     _isLoaded = false;
     await load();
+
+    notifyListeners();
   }
+
 
   /// Returns the full public key JSON of the current identity.
   Future<Json?> getIdentityPublicKeyJson() async {
@@ -189,5 +194,6 @@ class Keys {
     _keys.clear();
     _identityToken = null;
     _isLoaded = false;
+    notifyListeners();
   }
 }

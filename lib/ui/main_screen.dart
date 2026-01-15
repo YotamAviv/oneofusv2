@@ -16,12 +16,14 @@ import 'package:oneofus_common/oou_verifier.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/direct_firestore_writer.dart';
+import '../demotest/egos.dart';
 import 'package:oneofus_common/util.dart';
 import '../core/config.dart';
 import '../core/keys.dart';
 import '../core/sign_in_service.dart';
 import 'identity_card_surface.dart';
 import 'qr_scanner.dart';
+import 'error_dialog.dart';
 import '../core/share_service.dart';
 import '../features/key_management_screen.dart';
 import '../features/people/people_screen.dart';
@@ -94,11 +96,21 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       curve: Curves.easeInOut,
     );
     
+    _keys.addListener(_initIdentityAndLoadData);
     _initIdentityAndLoadData();
     
     if (!widget.isTesting) {
       _initDeepLinks();
     }
+  }
+
+  @override
+  void dispose() {
+    _keys.removeListener(_initIdentityAndLoadData);
+    _linkSubscription?.cancel();
+    _pulseController.dispose();
+    _pageController.dispose();
+    super.dispose();
   }
   
   Future<void> _initIdentityAndLoadData() async {
@@ -629,14 +641,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   @override
-  void dispose() {
-    _linkSubscription?.cancel();
-    _pulseController.dispose();
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     if (_isLoading && (!_hasKey || _keys.identityToken == null)) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -1066,6 +1070,42 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             );
           },
         ),
+        const Divider(),
+        const Text('DEMO DATA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
+        const SizedBox(height: 12),
+        ElevatedButton(
+          onPressed: () {
+            final writer = DirectFirestoreWriter(widget.firestore ?? FirebaseFirestore.instance);
+            Tester.init(writer);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Tester initialized with active writer.')),
+            );
+          },
+          child: const Text('INIT TESTER'),
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton(
+          onPressed: () async {
+            try {
+              final egosFunc = Tester.tests['egos'];
+              if (egosFunc != null) {
+                await egosFunc();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Egos test completed and identity imported.')),
+                  );
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error running egos: $e')),
+                );
+              }
+            }
+          },
+          child: const Text('RUN EGOS'),
+        ),
       ],
     );
   }
@@ -1120,7 +1160,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                   ElevatedButton(
                     onPressed: () async {
                       await _keys.newIdentity();
-                      _initIdentityAndLoadData();
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -1191,10 +1230,10 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                     if (scanned != null) {
                       try {
                         await _keys.importKeys(scanned);
-                        _initIdentityAndLoadData();
-                      } catch (e) {
+                      } catch (e, stackTrace) {
+                        debugPrint('Import error: $e\n$stackTrace');
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+                          ErrorDialog.show(context, 'Import Error', e, stackTrace);
                         }
                       }
                     }
@@ -1231,11 +1270,10 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                 await _keys.importKeys(controller.text);
                 if (mounted) {
                   Navigator.pop(context);
-                  _initIdentityAndLoadData();
                 }
-              } catch (e) {
+              } catch (e, stackTrace) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+                  ErrorDialog.show(context, 'Import Error', e, stackTrace);
                 }
               }
             },
