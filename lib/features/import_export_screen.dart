@@ -3,6 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/keys.dart';
 
+/* 
+import/export "identity"/"one-of-us.net" swap
+
+Take a look at the legacy code at oneofus-reference/lib/misc/import_export.dart
+The history:
+After I had already launched and had some users, I decided that it's better to display
+a person's identity as "identity" (not as "one-of-us.net").
+My recollection is that 
+- "one-of-us.net" is used to actually store your keys on your phone.
+- that's translated to "identity" when it's displayed for you to backup your keys.
+- "identity" is translated back in case you import your saved text to restore keys you've backed up.
+It may be that some people have already exported their keys under the old "one-of-us.net" whereas
+others may have backups that use the new "identity" label. 
+- All should work for import to ensure that all users can still import their previously exported keys,
+- Export should use the new "identity" label.
+
+V2 (this project) should do the same.
+*/
 class ImportExportScreen extends StatefulWidget {
   const ImportExportScreen({super.key});
 

@@ -1,6 +1,9 @@
 These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
+
+
+
 Required for launch
 Missing
 - import/export "identity"/"one-of-us.net" swap
