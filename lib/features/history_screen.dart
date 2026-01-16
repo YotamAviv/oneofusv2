@@ -53,6 +53,7 @@ class HistoryScreen extends StatelessWidget {
         statusTooltip: 'Replaced: This identity key was previously yours',
         title: s.moniker ?? 'Equivalent Key',
         subtitle: shortId,
+        comment: s.comment,
         timestamp: s.time,
         actions: [
           CardAction(

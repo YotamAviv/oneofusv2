@@ -5,11 +5,11 @@ import 'package:oneofus_common/jsonish.dart';
 /// The ClearStatementDialog handles the 'nullification' of a previous stance.
 /// In a singular disposition model, pushing a "clear" statement effectively
 /// wipes the record of any previous claims made by the issuer about the subject.
-class ClearStatementDialog extends StatelessWidget {
+class ClearStatementDialog extends StatefulWidget {
   final TrustStatement statement;
   
   /// Callback to push the 'clear' statement
-  final VoidCallback onSubmit;
+  final Future<void> Function() onSubmit;
 
   const ClearStatementDialog({
     super.key,
@@ -18,9 +18,16 @@ class ClearStatementDialog extends StatelessWidget {
   });
 
   @override
+  State<ClearStatementDialog> createState() => _ClearStatementDialogState();
+}
+
+class _ClearStatementDialogState extends State<ClearStatementDialog> {
+  bool _isSaving = false;
+
+  @override
   Widget build(BuildContext context) {
-    final bool isDelegate = statement.domain != null;
-    final String subjectName = statement.moniker ?? (isDelegate ? statement.domain! : 'this identity');
+    final bool isDelegate = widget.statement.domain != null;
+    final String subjectName = widget.statement.moniker ?? (isDelegate ? widget.statement.domain! : 'this identity');
     
     return AlertDialog(
       title: Text(isDelegate ? 'Clear Delegation' : 'Clear Disposition'),
@@ -31,7 +38,7 @@ class ClearStatementDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Are you sure you want to clear your ${statement.verb.label} statement for $subjectName?',
+            'Are you sure you want to clear your ${widget.statement.verb.label} statement for $subjectName?',
             style: const TextStyle(fontSize: 14),
           ),
           const SizedBox(height: 16),
@@ -47,16 +54,28 @@ class ClearStatementDialog extends StatelessWidget {
           child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
         ),
         ElevatedButton(
-          onPressed: () {
-            onSubmit();
-            Navigator.pop(context);
+          onPressed: _isSaving ? null : () async {
+            setState(() => _isSaving = true);
+            try {
+              await widget.onSubmit();
+              if (mounted) Navigator.pop(context);
+            } catch (e) {
+              if (mounted) {
+                setState(() => _isSaving = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error: $e')),
+                );
+              }
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.orange,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: const Text('CLEAR', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          child: _isSaving 
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : const Text('CLEAR', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         ),
       ],
     );

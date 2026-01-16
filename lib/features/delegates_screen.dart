@@ -7,7 +7,7 @@ import '../ui/widgets/statement_list_view.dart';
 class DelegatesScreen extends StatefulWidget {
   final Map<String, List<TrustStatement>> statementsByIssuer;
   final String myKeyToken;
-  final VoidCallback? onRefresh;
+  final Future<void> Function()? onRefresh;
   final Function(TrustStatement) onEdit;
   final Function(TrustStatement) onClear;
 
@@ -63,6 +63,7 @@ class DelegatesScreenState extends State<DelegatesScreen> {
           : 'Authorized: This service can act on your behalf',
       title: statement.domain ?? 'Unknown Service',
       subtitle: shortId,
+      comment: statement.comment,
       timestamp: statement.time,
       actions: [
         CardAction(

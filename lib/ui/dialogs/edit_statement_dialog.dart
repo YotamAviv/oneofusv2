@@ -18,7 +18,7 @@ class EditStatementDialog extends StatefulWidget {
   final TrustVerb? initialVerb; // Optional override for the starting state
   
   /// Callback to push the final statement to the storage layer
-  final Function({
+  final Future<void> Function({
     required TrustVerb verb,
     String? moniker,
     String? comment,
@@ -42,6 +42,8 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
   late TextEditingController _commentController;
   late TrustVerb _selectedVerb;
   final String kSinceAlways = '<since always>';
+  bool _isSaving = false;
+  bool _lastCanSubmit = false;
 
   @override
   void initState() {
@@ -50,13 +52,25 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
     _commentController = TextEditingController(text: widget.statement.comment);
     _selectedVerb = widget.initialVerb ?? widget.statement.verb;
     
-    // Safety check: if the verb is fluid (trust), we can switch to block.
-    // If it's already block, we stay block.
-    // If it's delegate/replace, we stay as is.
+    _lastCanSubmit = _canSubmit();
+    
+    _monikerController.addListener(_onFieldChanged);
+    _commentController.addListener(_onFieldChanged);
+  }
+
+  void _onFieldChanged() {
+    final curCanSubmit = _canSubmit();
+    if (curCanSubmit != _lastCanSubmit) {
+      setState(() {
+        _lastCanSubmit = curCanSubmit;
+      });
+    }
   }
 
   @override
   void dispose() {
+    _monikerController.removeListener(_onFieldChanged);
+    _commentController.removeListener(_onFieldChanged);
     _monikerController.dispose();
     _commentController.dispose();
     super.dispose();
@@ -104,9 +118,14 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
                     child: ChoiceChip(
                       label: const Center(child: Text('TRUST')),
                       selected: _isTrust,
-                      onSelected: (val) => setState(() {
-                        if (val) _selectedVerb = TrustVerb.trust;
-                      }),
+                      onSelected: (widget.initialVerb == null || widget.initialVerb == TrustVerb.trust) 
+                        ? (val) => setState(() {
+                            if (val) {
+                              _selectedVerb = TrustVerb.trust;
+                              _lastCanSubmit = _canSubmit();
+                            }
+                          })
+                        : null,
                       selectedColor: const Color(0xFF00897B).withOpacity(0.2),
                       labelStyle: TextStyle(
                         color: _isTrust ? const Color(0xFF00897B) : Colors.grey,
@@ -120,9 +139,14 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
                     child: ChoiceChip(
                       label: const Center(child: Text('BLOCK')),
                       selected: _isBlock,
-                      onSelected: (val) => setState(() {
-                        if (val) _selectedVerb = TrustVerb.block;
-                      }),
+                      onSelected: (widget.initialVerb == null || widget.initialVerb == TrustVerb.block)
+                        ? (val) => setState(() {
+                            if (val) {
+                              _selectedVerb = TrustVerb.block;
+                              _lastCanSubmit = _canSubmit();
+                            }
+                          })
+                        : null,
                       selectedColor: Colors.red.withOpacity(0.2),
                       labelStyle: TextStyle(
                         color: _isBlock ? Colors.red : Colors.grey,
@@ -148,25 +172,23 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
             ],
             
-            if (!_isDelegate && (_isTrust || _isBlock || _isReplace || widget.statement.comment != null)) ...[
-              Text('COMMENT ${(_isTrust || _isBlock || _isReplace) ? "(OPTIONAL)" : ""}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
+            if (_isTrust || _isBlock || _isReplace || _isDelegate || widget.statement.comment != null) ...[
+              Text('COMMENT (${(_isTrust || _isBlock || _isReplace || _isDelegate) ? "OPTIONAL" : "READ ONLY"})', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
               const SizedBox(height: 4),
               TextField(
                 controller: _commentController,
-                enabled: _isTrust || _isBlock || _isReplace,
-                style: (_isTrust || _isBlock || _isReplace) ? null : const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey),
+                enabled: _isTrust || _isBlock || _isReplace || _isDelegate,
+                style: (_isTrust || _isBlock || _isReplace || _isDelegate) ? null : const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey),
                 maxLines: 2,
                 decoration: InputDecoration(
                   hintText: '',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: 12),
             ],
@@ -184,19 +206,22 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
           child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
         ),
         ElevatedButton(
-          onPressed: _canSubmit() ? _handleSave : null,
+          onPressed: _lastCanSubmit ? _handleSave : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: _isBlock ? Colors.red : (_isReplace ? Colors.green : const Color(0xFF00897B)),
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          child: Text(_isBlock ? 'BLOCK' : 'UPDATE', style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          child: _isSaving 
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : Text(_isBlock ? 'BLOCK' : 'UPDATE', style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
         ),
       ],
     );
   }
 
   bool _canSubmit() {
+    if (_isSaving) return false;
     final curMoniker = _monikerController.text.trim();
     final curComment = _commentController.text.trim();
     
@@ -205,7 +230,7 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
     final changedMoniker = curMoniker != (widget.statement.moniker ?? '');
     final changedComment = curComment != (widget.statement.comment ?? '');
     
-    bool hasChanged = changedVerb || (_isTrust && changedMoniker) || (!_isDelegate && changedComment);
+    bool hasChanged = changedVerb || (_isTrust && changedMoniker) || changedComment;
     
     // Check validation
     bool isMonikerValid = _selectedVerb != TrustVerb.trust || curMoniker.isNotEmpty;
@@ -213,14 +238,26 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
     return hasChanged && isMonikerValid;
   }
 
-  void _handleSave() {
-    widget.onSubmit(
-      verb: _selectedVerb,
-      moniker: _selectedVerb == TrustVerb.trust ? _monikerController.text.trim() : null,
-      comment: (!_isDelegate) ? _commentController.text.trim() : null,
-      domain: widget.statement.domain,
-      revokeAt: _selectedVerb == TrustVerb.replace ? kSinceAlways : null,
-    );
-    Navigator.pop(context);
+  void _handleSave() async {
+    setState(() => _isSaving = true);
+    try {
+      await widget.onSubmit(
+        verb: _selectedVerb,
+        moniker: _selectedVerb == TrustVerb.trust ? _monikerController.text.trim() : null,
+        comment: _commentController.text.trim().isNotEmpty ? _commentController.text.trim() : null,
+        domain: widget.statement.domain,
+        revokeAt: _selectedVerb == TrustVerb.replace ? kSinceAlways : null,
+      );
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 }

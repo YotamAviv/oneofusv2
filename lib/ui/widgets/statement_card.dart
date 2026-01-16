@@ -21,6 +21,7 @@ class StatementCardConfig {
   final String statusTooltip;
   final String title;
   final String? subtitle;
+  final String? comment;
   final DateTime timestamp;
   final Widget? trailingIcon;
   final List<CardAction> actions;
@@ -31,6 +32,7 @@ class StatementCardConfig {
     required this.statusTooltip,
     required this.title,
     this.subtitle,
+    this.comment,
     required this.timestamp,
     this.trailingIcon,
     required this.actions,
@@ -119,6 +121,38 @@ class StatementCard extends StatelessWidget {
                             color: Colors.blueGrey.shade400,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'monospace',
+                          ),
+                        ),
+                      ],
+                      if (config.comment != null && config.comment!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Icon(Icons.comment_outlined, size: 12, color: Colors.grey.shade400),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  config.comment!,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

@@ -158,11 +158,14 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   bool _isRefreshing = false;
 
   Future<void> _loadAllData() async {
-    final String myToken = _keys.identityToken!;
+    final String? myToken = _keys.identityToken;
+    if (myToken == null) return;
     
     assert(mounted);
     
-    final bool showFullLoader = _statementsByIssuer.isEmpty;
+    // Only show the full-screen loader if we have absolutely no data yet.
+    // If we're already displaying things, just set _isRefreshing.
+    final bool showFullLoader = _statementsByIssuer.isEmpty && !_isRefreshing;
     if (showFullLoader) {
       setState(() => _isLoading = true);
     } else {
@@ -205,7 +208,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             ...results2,
           };
           assert(() {
-            Statement.validateOrderTypes(_statementsByIssuer.values);
+            for (final list in _statementsByIssuer.values) {
+              Statement.validateOrderTypes(list);
+            }
             return true;
           }());
           _isLoading = false;
@@ -430,8 +435,8 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       builder: (context) => EditStatementDialog(
         statement: statement,
         initialVerb: initialVerb,
-        onSubmit: ({required verb, comment, domain, moniker, revokeAt}) {
-          _pushTrustStatement(
+        onSubmit: ({required verb, comment, domain, moniker, revokeAt}) async {
+          await _pushTrustStatement(
             publicKeyJson: publicKeyJson,
             verb: verb,
             moniker: moniker,
@@ -453,8 +458,8 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       context: context,
       builder: (context) => ClearStatementDialog(
         statement: statement,
-        onSubmit: () {
-          _pushTrustStatement(
+        onSubmit: () async {
+          await _pushTrustStatement(
             publicKeyJson: publicKeyJson,
             verb: TrustVerb.clear,
             domain: statement.domain,
@@ -786,7 +791,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             backgroundColor: bgColor
           ),
         );
-        _loadAllData();
+        await _loadAllData();
       }
     } catch (e) {
       if (mounted) {
@@ -826,37 +831,40 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         statementsByIssuer: statementMap,
         myKeyToken: myToken,
         onRefresh: _loadAllData,
-        onEdit: (statement) {
-          _showTrustBlockDialog(
+        onEdit: (statement) async {
+          await _showTrustBlockDialog(
             context: context,
             statement: statement,
             publicKeyJson: statement.subject,
             lockedVerb: TrustVerb.trust,
           );
+          if (mounted) setState(() {});
         },
-        onBlock: (statement) {
-          _showTrustBlockDialog(
+        onBlock: (statement) async {
+          await _showTrustBlockDialog(
             context: context,
             statement: statement,
             publicKeyJson: statement.subject,
             lockedVerb: TrustVerb.block,
           );
+          if (mounted) setState(() {});
         },
-        onClear: (statement) {
-          _showTrustBlockDialog(
+        onClear: (statement) async {
+          await _showTrustBlockDialog(
             context: context,
             statement: statement,
             publicKeyJson: statement.subject,
             lockedVerb: TrustVerb.clear,
           );
+          if (mounted) setState(() {});
         },
       ),
       DelegatesScreen(
         statementsByIssuer: statementMap,
         myKeyToken: myToken,
         onRefresh: _loadAllData,
-        onEdit: (statement) {
-          _showDelegateDialog(
+        onEdit: (statement) async {
+          await _showDelegateDialog(
             context: context,
             subjectToken: statement.subjectToken,
             publicKeyJson: statement.subject,
@@ -864,14 +872,16 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             initialRevokeAt: statement.revokeAt,
             existingTime: statement.time,
           );
+          if (mounted) setState(() {});
         },
-        onClear: (statement) {
-          _showTrustBlockDialog(
+        onClear: (statement) async {
+          await _showTrustBlockDialog(
             context: context,
             statement: statement,
             publicKeyJson: statement.subject,
             lockedVerb: TrustVerb.clear,
           );
+          if (mounted) setState(() {});
         },
       ),
       const ImportExportScreen(),

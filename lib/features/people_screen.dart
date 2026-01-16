@@ -8,7 +8,7 @@ import '../ui/widgets/statement_list_view.dart';
 class PeopleScreen extends StatefulWidget {
   final Map<String, List<TrustStatement>> statementsByIssuer;
   final String myKeyToken;
-  final VoidCallback? onRefresh;
+  final Future<void> Function()? onRefresh;
   final Function(TrustStatement) onEdit;
   final Function(TrustStatement) onClear;
   final Function(TrustStatement) onBlock;
@@ -68,6 +68,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
       statusTooltip: 'Trusted: A human capable of acting in good faith',
       title: statement.moniker ?? 'Unknown',
       subtitle: shortId,
+      comment: statement.comment,
       timestamp: statement.time,
       trailingIcon: Tooltip(
         message: vouchesBack ? 'Verified: They trust you back' : 'They have not trusted you yet',

@@ -53,6 +53,7 @@ class BlocksScreen extends StatelessWidget {
         statusTooltip: 'Blocked: You have explicitly denied trust',
         title: s.moniker ?? 'Unknown Identity',
         subtitle: shortId,
+        comment: s.comment,
         timestamp: s.time,
         actions: [
           CardAction(
