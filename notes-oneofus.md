@@ -3,15 +3,14 @@ AI Agent: Do not visit this file without invitation
 
 Required for launch
 Missing
-- load up equivalents (show in modal screen, allow edit/clear)
-- load up blocks (show in modal screen. allow edit/clear)
 - import/export "identity"/"one-of-us.net" swap
 - replace my key?
 - welcome screen
   - claim (replace) key
   - import key
 
-Minor: Time of last statement is nicer for delegate than for trust.
+
+
 
 Not required for launch:
 - replace key help
@@ -24,6 +23,11 @@ Not required for launch:
 
 Bugs:
 - refresh takes me to home
+
+
+Minor:
+- Time of last statement is nicer for delegate than for trust.
+- replace Home with Card
 
 - delegate screen
   - shows nerdster.org twice.
