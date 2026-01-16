@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:oneofus_common/cached_statement_source.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
-import 'package:oneofus_common/crypto25519.dart';
 import 'package:oneofus_common/direct_firestore_writer.dart';
 import 'package:oneofus_common/firestore_source.dart';
 import 'package:oneofus_common/io.dart';
@@ -265,11 +264,8 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         try {
           final json = jsonDecode(data);
           if (json is! Map<String, dynamic>) return false;
-          
           if (await SignInService.validateSignIn(data)) return true;
-          
-          await const CryptoFactoryEd25519().parsePublicKey(json);
-          return true;
+          return isPubKey(json);
         } catch (_) {
           return false;
         }
@@ -278,14 +274,12 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
 
     if (scanned != null && mounted) {
       try {
-        final Map<String, dynamic> data = json.decode(scanned);
+        final Map<String, dynamic> json = jsonDecode(scanned);
         
         if (await SignInService.validateSignIn(scanned)) {
           await SignInService.signIn(scanned, context, firestore: _firestore);
-        } else {
-          // Verify it's a valid public key before proceeding
-          await const CryptoFactoryEd25519().parsePublicKey(data);
-          _handlePersonalKeyScan(data);
+        } else if (isPubKey(json)) {
+          _handlePersonalKeyScan(json);
         }
       } catch (e) {
         if (mounted) {
@@ -1222,47 +1216,6 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         ),
       ),
     ).then((_) => _loadAllData()); // Refresh after flow completes
-  }
-
-  Future<void> _performKeyReplacement() async {
-    final oldIdentity = _keys.identity;
-    if (oldIdentity == null) return;
-
-    try {
-      final oldPubKeyJson = await (await oldIdentity.publicKey).json;
-      
-      // 1. Generate new identity key
-      await _keys.newIdentity();
-      
-      // 2. State that the new key replaces the old one
-      await _pushTrustStatement(
-        publicKeyJson: oldPubKeyJson,
-        verb: TrustVerb.replace,
-        revokeAt: kSinceAlways,
-      );
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Success'),
-            content: const Text(
-              'A new identity key has been generated and your previous key has been revoked. \n\n'
-              'Your identity history now includes your old key.',
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error replacing key: $e')),
-        );
-      }
-    }
   }
 
   void _showManagementHub(BuildContext context) {

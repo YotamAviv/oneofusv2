@@ -1,0 +1,655 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:oneofus_common/util.dart';
+import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/trust_statement.dart';
+import 'package:oneofus_common/crypto25519.dart';
+import 'package:oneofus_common/oou_signer.dart';
+import 'package:oneofus_common/direct_firestore_writer.dart';
+import 'package:oneofus_common/cloud_functions_source.dart';
+import 'package:oneofus_common/oou_verifier.dart';
+import '../../core/config.dart';
+import '../../core/keys.dart';
+import '../../ui/error_dialog.dart';
+import '../../ui/qr_scanner.dart';
+
+class ReplaceFlow extends StatefulWidget {
+  final FirebaseFirestore firestore;
+  final String? initialOldIdentityToken;
+
+  const ReplaceFlow({
+    super.key,
+    required this.firestore,
+    this.initialOldIdentityToken,
+  });
+
+  @override
+  State<ReplaceFlow> createState() => _ReplaceFlowState();
+}
+
+class _ReplaceFlowState extends State<ReplaceFlow> {
+  final PageController _pageController = PageController();
+  
+  String token6(String token) => token.length > 6 ? token.substring(0, 6) : token;
+
+  String? _oldIdentityToken;
+  Json? _oldIdentityPubKeyJson;
+
+  @override
+  void initState() {
+    super.initState();
+    _oldIdentityToken = widget.initialOldIdentityToken;
+    if (_oldIdentityToken != null && _oldIdentityToken == Keys().identityToken) {
+      Keys().getIdentityPublicKeyJson().then((json) {
+        if (mounted) setState(() => _oldIdentityPubKeyJson = json);
+      });
+    }
+  }
+
+  void _nextPage() {
+    _pageController.nextPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  // ignore: unused_element
+  void _previousPage() {
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> steps = [
+      _buildIntroScreen(),
+      _buildIdentifyScreen(),
+      _buildReviewScreen(),
+      _buildProcessingScreen(),
+      _buildSuccessScreen(),
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF2F0EF),
+      appBar: AppBar(
+        title: const Text('REPLACE IDENTITY', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 4)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: const Color(0xFF37474F),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: PageView(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: steps,
+      ),
+    );
+  }
+
+  Widget _buildIntroScreen() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'The process of claiming (replacing) your old key and starting to use a new one will go like this:',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+          ),
+          const SizedBox(height: 24),
+          _buildStepItem(1, 'Generate Identity Key', 'Create a new key to serve as your new primary identity.'),
+          _buildStepItem(2, 'Re-sign Content', 'Use your new key to re-publish all active trusts, blocks, and delegate assignments issued by the old key.\n\n- In case your old key was compromised: you\'ll be able to re-publish only what\'s valid.'),
+          _buildStepItem(3, 'Replace & Revoke', 'Use your new key to publish a Replace and Revoke statement referencing your old key.'),
+          _buildStepItem(4, 'Web-of-Trust Verification', 'At this point, your new key is unknown, and so you\'ll have to ask those who\'ve vouched for you in the past to vouch for you again, this time referencing your new key.'),
+          _buildStepItem(5, 'Equivalence', 'The network should now recognize this new key as you. Your old key will be recognized as an equivalent and will be visible in your Equivalent Keys section of the Advanced Screen.'),
+          const SizedBox(height: 40),
+          ElevatedButton(
+            onPressed: _nextPage,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              backgroundColor: const Color(0xFF37474F),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('I UNDERSTAND, PROCEED', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepItem(int num, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: const Color(0xFF00897B),
+            child: Text('$num', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF37474F))),
+                const SizedBox(height: 4),
+                Text(description, style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade700, height: 1.4)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIdentifyScreen() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Icon(Icons.qr_code_scanner_rounded, size: 80, color: Color(0xFF00897B)),
+          const SizedBox(height: 32),
+          const Text(
+            'Identify the key you want to claim.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Scan the QR code of your old identity from another device or a backup.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade600),
+          ),
+          const SizedBox(height: 48),
+          ElevatedButton.icon(
+            onPressed: _scanOldIdentity,
+            icon: const Icon(Icons.qr_code_scanner),
+            label: const Text('SCAN OLD IDENTITY QR'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              backgroundColor: const Color(0xFF37474F),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          if (_oldIdentityToken != null) ...[
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green),
+                const SizedBox(width: 8),
+                Text('Identified: ${token6(_oldIdentityToken!)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _nextPage,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                backgroundColor: const Color(0xFF00897B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('FOUND IT, PROCEED', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _scanOldIdentity() async {
+    final result = await QrScanner.scan(
+      context,
+      title: 'Scan Old Identity',
+      validator: (s) async {
+        try {
+          final map = jsonDecode(s);
+          return map is Map;
+        } catch (_) {
+          return false;
+        }
+      },
+    );
+
+    if (result != null) {
+      try {
+        final json = jsonDecode(result);
+        
+        if (json is Map<String, dynamic> && isPubKey(json)) {
+          final token = getToken(json);
+          final exists = await _verifyIdentityExists(token);
+          if (exists) {
+            setState(() {
+              _oldIdentityToken = token;
+              _oldIdentityPubKeyJson = json;
+            });
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Identity found, but it has no history on the network.')),
+              );
+            }
+          }
+        } else {
+          throw Exception('Could not find identity token in the scanned QR code.');
+        }
+      } catch (e) {
+        if (mounted) ErrorDialog.show(context, 'Identification Error', e, null);
+      }
+    }
+  }
+
+  Future<bool> _verifyIdentityExists(String token) async {
+    debugPrint('[ReplaceFlow] _verifyIdentityExists (via HTTP): token=$token');
+    try {
+      final source = CloudFunctionsSource<TrustStatement>(
+        baseUrl: Config.exportUrl,
+        verifier: OouVerifier(),
+        // We only need to know if at least one exists
+        paramsOverride: {
+          "distinct": "true",
+          "includeId": "false",
+          "checkPrevious": "false",
+        },
+      );
+      final results = await source.fetch({token: null});
+      final exists = results[token]?.isNotEmpty ?? false;
+      debugPrint('[ReplaceFlow] _verifyIdentityExists result: $exists');
+      return exists;
+    } catch (e) {
+      debugPrint('[ReplaceFlow] _verifyIdentityExists error: $e');
+      return false;
+    }
+  }
+
+  List<TrustStatement>? _allStatements;
+  TrustStatement? _selectedLastValid;
+  bool _isLoadingHistory = false;
+
+  Future<void> _fetchHistory() async {
+    if (_oldIdentityToken == null) {
+      debugPrint('[ReplaceFlow] _fetchHistory: _oldIdentityToken is null');
+      return;
+    }
+    
+    setState(() {
+      _isLoadingHistory = true;
+      _allStatements = null;
+    });
+
+    try {
+      final source = CloudFunctionsSource<TrustStatement>(
+        baseUrl: Config.exportUrl,
+        verifier: OouVerifier(),
+        paramsOverride: {
+          "distinct": "false",
+          "includeId": "false",
+          "checkPrevious": "false",
+          "omit": [], // Don't omit anything so we can see full records in logs
+        },
+      );
+      
+      debugPrint('[ReplaceFlow] Executing HTTP fetch via CloudFunctionsSource for $_oldIdentityToken');
+      final results = await source.fetch({_oldIdentityToken!: null});
+      final List<TrustStatement> statements = results[_oldIdentityToken!] ?? [];
+      
+      debugPrint('[ReplaceFlow] _fetchHistory: statements=${statements.length}');
+      
+      // Sort manually to ensure descending order by time
+      statements.sort((a, b) => b.time.compareTo(a.time));
+      
+      if (mounted) {
+        setState(() {
+          _allStatements = statements;
+          _selectedLastValid = statements.firstOrNull;
+          _isLoadingHistory = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('[ReplaceFlow] _fetchHistory ERROR: $e');
+      if (mounted) {
+        setState(() => _isLoadingHistory = false);
+        ErrorDialog.show(context, 'Error fetching history', e, null);
+      }
+    }
+  }
+
+  Widget _buildReviewScreen() {
+    if (_allStatements == null && !_isLoadingHistory) {
+      // Trigger fetch on first enter
+      Future.microtask(_fetchHistory);
+    }
+
+    if (_isLoadingHistory) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Identify which statements are distinct up to the selection
+    final distinctTokens = _getDistinctStatementTokens();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            (_allStatements?.isEmpty ?? true)
+              ? 'No history found for this identity. You can proceed to purely rotate your key.'
+              : 'Select your last valid statement. \nAny statements made after this (e.g., by a compromise) will be ignored.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade700),
+          ),
+        ),
+        if (_allStatements != null && _allStatements!.isNotEmpty)
+          Expanded(
+            child: ListView.builder(
+              itemCount: _allStatements!.length,
+              itemBuilder: (context, index) {
+                final s = _allStatements![index];
+                final bool isInvalid = _selectedLastValid != null && s.time.compareTo(_selectedLastValid!.time) > 0;
+                final bool isNotDistinct = !isInvalid && !distinctTokens.contains(s.token);
+                final bool isSelected = s == _selectedLastValid;
+
+                Color textColor = const Color(0xFF37474F);
+                if (isInvalid) {
+                  textColor = Colors.grey.shade400; // Light gray
+                } else if (isNotDistinct) {
+                  textColor = Colors.grey.shade600; // Darker gray
+                }
+
+                return ListTile(
+                  selected: isSelected,
+                  selectedTileColor: const Color(0xFF00897B).withValues(alpha: 0.1),
+                  isThreeLine: s.jsonish['comment'] != null,
+                  leading: _buildStatementIcon(s, isInvalid, isNotDistinct),
+                  title: Text(
+                    _getStatementLabel(s),
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      decoration: isInvalid ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${s.time} • ${token6(s.token)}',
+                        style: TextStyle(color: textColor.withValues(alpha: 0.7), fontSize: 11),
+                      ),
+                      if (s.jsonish['comment'] != null)
+                        Text(
+                          s.jsonish['comment'],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: textColor.withValues(alpha: 0.6), fontSize: 11, fontStyle: FontStyle.italic),
+                        ),
+                    ],
+                  ),
+                  onTap: () => setState(() => _selectedLastValid = s),
+                );
+              },
+            ),
+          )
+        else
+          const Expanded(child: Center(child: Icon(Icons.history_toggle_off, size: 64, color: Colors.grey))),
+        
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: ElevatedButton(
+            onPressed: (_allStatements != null) ? _startRecovery : null,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              backgroundColor: const Color(0xFF37474F),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              minimumSize: const Size(double.infinity, 50),
+            ),
+            child: const Text('START RECOVERY', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool _isProcessing = false;
+  String _processingStatus = '';
+  double _processingProgress = 0.0;
+
+  Future<void> _startRecovery() async {
+    if (_allStatements == null) return;
+    
+    _nextPage(); // Move to processing screen
+    setState(() {
+      _isProcessing = true;
+      _processingStatus = 'Initializing...';
+      _processingProgress = 0.0;
+    });
+
+    try {
+      final keys = Keys();
+      final oldIdentity = _oldIdentityToken == keys.identityToken ? keys.identity : null;
+      
+      // 1. Generate new identity key
+      setState(() => _processingStatus = 'Generating new identity key...');
+      final newKeyPair = await const CryptoFactoryEd25519().createKeyPair();
+      final newPubKeyJson = await (await newKeyPair.publicKey).json;
+      final signer = await OouSigner.make(newKeyPair);
+      final writer = DirectFirestoreWriter(widget.firestore);
+      
+      // 2. Filter valid statements and re-publish
+      final validStatements = _allStatements!
+          .where((s) => _selectedLastValid == null || s.time.compareTo(_selectedLastValid!.time) <= 0)
+          .toList()
+          .reversed // Oldest first
+          .toList();
+
+      final distinctTokens = _getDistinctStatementTokens();
+      final toPublish = validStatements.where((s) => distinctTokens.contains(s.token)).toList();
+      
+      for (int i = 0; i < toPublish.length; i++) {
+        final s = toPublish[i];
+        setState(() {
+          _processingStatus = 'Re-publishing: ${_getStatementLabel(s)}';
+          _processingProgress = (i / (toPublish.length + 1)) * 0.8;
+        });
+
+        final oldJson = Map<String, dynamic>.from(s.jsonish.json);
+        oldJson['I'] = newPubKeyJson;
+        oldJson.remove('signature');
+        oldJson.remove('previous');
+        
+        await writer.push(oldJson, signer);
+        
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      // 3. Issue Replace + Revoke
+      setState(() {
+        _processingStatus = 'Publishing replacement claim...';
+        _processingProgress = 0.9;
+      });
+
+      final oldPubKeyJson = oldIdentity != null 
+          ? await (await oldIdentity.publicKey).json
+          : (_allStatements!.isNotEmpty 
+              ? validStatements.last.jsonish['I'] 
+              : _oldIdentityPubKeyJson);
+
+      if (oldPubKeyJson == null) {
+        throw Exception('Could not determine the public key of the identity being replaced.');
+      }
+
+      final replaceJson = TrustStatement.make(
+        newPubKeyJson,
+        oldPubKeyJson,
+        TrustVerb.replace,
+        revokeAt: kSinceAlways,
+        comment: 'Identity recovery/rotation.',
+      );
+      
+      await writer.push(replaceJson, signer);
+
+      // 4. Switch local storage
+      setState(() {
+        _processingStatus = 'Finalizing...';
+        _processingProgress = 1.0;
+      });
+      
+      final allKeyJsons = await keys.getAllKeyJsons();
+      allKeyJsons[kOneofusDomain] = await newKeyPair.json;
+      await keys.importKeys(jsonEncode(allKeyJsons));
+
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        _nextPage(); // Move to success screen
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _processingStatus = 'Error: $e';
+        });
+        ErrorDialog.show(context, 'Recovery Failed', e, null);
+      }
+    }
+  }
+
+  Set<String> _getDistinctStatementTokens() {
+    if (_allStatements == null) return {};
+    
+    final distincts = <String, TrustStatement>{};
+    // Work chronologically from start of time up to selection
+    final chronList = _allStatements!
+        .where((s) => _selectedLastValid == null || s.time.compareTo(_selectedLastValid!.time) <= 0)
+        .toList()
+        .reversed
+        .toList();
+
+    for (final s in chronList) {
+      distincts[s.subjectToken] = s;
+    }
+    return distincts.values.map((s) => s.token).toSet();
+  }
+
+  Widget _buildStatementIcon(TrustStatement s, bool isInvalid, bool isNotDistinct) {
+    IconData icon;
+    Color color;
+
+    switch (s.verb) {
+      case TrustVerb.trust:
+        icon = Icons.check_circle_outline;
+        color = Colors.teal;
+        break;
+      case TrustVerb.block:
+        icon = Icons.block;
+        color = Colors.red;
+        break;
+      case TrustVerb.clear:
+        icon = Icons.delete_outline;
+        color = Colors.grey;
+        break;
+      case TrustVerb.delegate:
+        icon = Icons.key;
+        color = Colors.orange;
+        break;
+      default:
+        icon = Icons.help_outline;
+        color = Colors.blueGrey;
+    }
+
+    if (isInvalid) {
+      color = Colors.grey.shade300;
+    } else if (isNotDistinct) {
+      color = Colors.grey.shade500;
+    }
+
+    return Icon(icon, color: color);
+  }
+
+  String _getStatementLabel(TrustStatement s) {
+    final verbStr = s.verb.name.toUpperCase();
+    final subject = s.moniker ?? token6(s.subjectToken);
+    return '$verbStr: $subject';
+  }
+
+  Widget _buildProcessingScreen() {
+    return Padding(
+      padding: const EdgeInsets.all(48),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 120,
+            height: 120,
+            child: CircularProgressIndicator(
+              value: _isProcessing ? _processingProgress : null,
+              strokeWidth: 8,
+              backgroundColor: Colors.teal.withValues(alpha: 0.1),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00897B)),
+            ),
+          ),
+          const SizedBox(height: 48),
+          Text(
+            _processingStatus,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Keep the app open until the process is complete.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuccessScreen() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.check_circle_rounded, size: 100, color: Color(0xFF00897B)),
+          const SizedBox(height: 32),
+          const Text(
+            'Identity Recovered!',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Your new key is now active. \n\nIMPORTANT: Since this is a new key, you MUST contact your trusted network and ask them to vouch for you again.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64)),
+          ),
+          const SizedBox(height: 48),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
+              backgroundColor: const Color(0xFF37474F),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('GO TO HOME', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          ),
+        ],
+      ),
+    );
+  }
+}

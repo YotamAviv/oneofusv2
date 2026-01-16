@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:intl/intl.dart';
 
 final DateTime date0 = DateTime.fromMicrosecondsSinceEpoch(0);
@@ -5,6 +6,11 @@ const String kSinceAlways = '<since always>';
 
 bool b(dynamic d) => d == null ? false : true;
 bool bb(bool? bb) => bb != null && bb;
+
+/// Checks if the Map represents a valid public key (JWK).
+bool isPubKey(Map<String, dynamic> json) {
+  return json.containsKey('x') && json.containsKey('crv') && json['kty'] == 'OKP';
+}
 
 abstract class Clock {
   DateTime get now;

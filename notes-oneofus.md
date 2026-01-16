@@ -21,6 +21,8 @@ Not required for launch:
 - showCrypto
 - sign in animation
 
+- show delegates we have locally differently from ones we know about but no longer have (private key)
+
 - replace key help
   - replace a key with revokeAt: "<since always>" only, TBD on the restating stuff
 - revoke delegate with revokeAt: "<since always>" only. TBD on picking statement

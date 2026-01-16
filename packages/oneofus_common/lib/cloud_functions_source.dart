@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:oneofus_common/io.dart';
 import 'package:oneofus_common/statement.dart';
@@ -11,12 +12,14 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
   final String statementType;
   final http.Client client;
   final StatementVerifier verifier;
-  final bool skipVerify; // Injected dependency
+  final bool skipVerify;
+  final Map<String, dynamic>? paramsOverride;
 
   final Map<String, SourceError> _errors = {};
 
   static const Map<String, dynamic> _paramsProto = {
-    "distinct": "true",
+    // Note: server-side query params are strings. 
+    // "false" is truthy in JS, so we should omit the key entirely if we want false.
     "orderStatements": "false",
     "includeId": "true",
     "checkPrevious": "true",
@@ -28,6 +31,7 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
     http.Client? client,
     required this.verifier,
     this.skipVerify = false,
+    this.paramsOverride,
   }) : statementType = Statement.type<T>(),
        client = client ?? http.Client() {
     print('baseUrl=$baseUrl');
@@ -47,9 +51,17 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
     }).toList();
 
     final Map<String, dynamic> params = Map.of(_paramsProto);
+    if (paramsOverride != null) {
+      params.addAll(paramsOverride!);
+    }
+    
+    // Remove "false" strings because they are truthy in the Cloud Function's JS
+    params.removeWhere((key, value) => value == "false" || value == false);
+    
     params['spec'] = jsonEncode(spec);
 
-    final Uri uri = Uri.parse(baseUrl).replace(queryParameters: params);
+    final Uri uri = Uri.parse(baseUrl).replace(queryParameters: params.map((k, v) => MapEntry(k, v.toString())));
+    debugPrint('[CloudFunctionsSource] URL: $uri');
 
     final http.Request request = http.Request('GET', uri);
     final http.StreamedResponse response = await client.send(request);
@@ -78,13 +90,18 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
 
         final List<dynamic> statementsJson = value as List<dynamic>;
         final List<T> list = results.putIfAbsent(token, () => []);
+        
         final Map<String, String> iJson = {'I': token};
 
         try {
           for (final dynamic json in statementsJson) {
-            final Jsonish? cached = Jsonish.find(token);
-            json['I'] = cached != null ? cached.json : iJson;
-            json['statement'] = statementType;
+            if (!json.containsKey('I')) {
+              final Jsonish? cached = Jsonish.find(token);
+              json['I'] = (cached != null) ? cached.json : iJson;
+            }
+            if (!json.containsKey('statement')) {
+              json['statement'] = statementType;
+            }
 
             final String? serverToken = json.remove('id');
 
@@ -93,6 +110,8 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
               try {
                 jsonish = await Jsonish.makeVerify(json, verifier);
               } catch (e) {
+                debugPrint('[CloudFunctionsSource] Verification failed for $token: $e');
+                debugPrint('[CloudFunctionsSource] Received Statement: $json');
                 throw SourceError('Invalid Signature: $e', token: token, originalError: e);
               }
             } else {
@@ -103,6 +122,7 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
             list.add(statement as T);
           }
         } catch (e) {
+          debugPrint('[CloudFunctionsSource] Error processing token $token: $e');
           _errors[token] = e is SourceError
               ? e
               : SourceError('Error processing statements: $e', token: token, originalError: e);

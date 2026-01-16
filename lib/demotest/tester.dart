@@ -30,6 +30,7 @@ class Tester {
     await doTrust(poser, hipster, moniker: 'Hipster', comment: 'Trusting Hipster');
     await doTrust(hipster, poser, moniker: 'Poser', comment: 'Trusting Poser');
     await doTrust(poser, jock, moniker: 'Jock', comment: 'Trusting Jock');
+    await doTrust(jock, poser, moniker: 'Poser', comment: 'Jock trusting Poser');
 
     TestKey activeDelegate = await TestKey.create();
     await doDelegate(poser, activeDelegate, domain: 'nerdster.org');
@@ -44,6 +45,15 @@ class Tester {
 
     await doBlock(poser, await TestKey.create(), comment: 'spam');
     await doReplace(poser, await TestKey.create(), comment: 'lost');
+
+    // --- Overrides and Compromise Simulation ---
+    // 1. Overwrites: poser updates previous trusts
+    await doTrust(poser, hipster, moniker: 'Hipster (updated)');
+    await doTrust(poser, jock, moniker: 'Jock (Last Valid)');
+
+    // 2. Fraudulent statements (Simulated compromise)
+    await doBlock(poser, hipster, comment: 'Fraudulent block from compromise');
+    await doTrust(poser, await TestKey.create(), moniker: 'Fake Friend');
 
     await Keys().importKeys(
       jsonEncode({kOneofusDomain: poser.keyPairJson, 'nerdster.org': activeDelegate.keyPairJson}),
