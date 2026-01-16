@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../../core/keys.dart';
-import '../../ui/error_dialog.dart';
-import '../../ui/qr_scanner.dart';
+import '../core/keys.dart';
+import '../ui/error_dialog.dart';
+import '../ui/qr_scanner.dart';
 
 class WelcomeScreen extends StatelessWidget {
   final FirebaseFirestore firestore;

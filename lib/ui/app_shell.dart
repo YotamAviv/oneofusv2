@@ -24,13 +24,18 @@ import '../core/keys.dart';
 import '../core/share_service.dart';
 import '../core/sign_in_service.dart';
 import '../demotest/tester.dart';
-import '../features/about/about_screen.dart';
-import '../features/dev/dev_screen.dart';
-import '../features/identity/card_screen.dart';
-import '../features/identity/import_export_screen.dart';
-import '../features/onboarding/welcome_screen.dart';
-import '../features/people/delegates_screen.dart';
-import '../features/people/people_screen.dart';
+import '../features/about_screen.dart';
+import '../features/advanced_screen.dart';
+import '../features/dev_screen.dart';
+import '../features/card_screen.dart';
+import '../features/import_export_screen.dart';
+import '../features/welcome_screen.dart';
+import '../features/delegates_screen.dart';
+import '../features/history_screen.dart';
+import '../features/blocks_screen.dart';
+import '../features/people_screen.dart';
+import 'dialogs/edit_statement_dialog.dart';
+import 'dialogs/clear_statement_dialog.dart';
 import 'error_dialog.dart';
 import 'qr_scanner.dart';
 
@@ -200,7 +205,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             ...results2,
           };
           assert(() {
-            Statement.validateOrderTypess(_statementsByIssuer.values);
+            Statement.validateOrderTypes(_statementsByIssuer.values);
             return true;
           }());
           _isLoading = false;
@@ -251,9 +256,12 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       context,
       title: 'Scan Sign-in or Personal Key',
       validator: (data) async {
-        if (await SignInService.validateSignIn(data)) return true;
         try {
           final json = jsonDecode(data);
+          if (json is! Map<String, dynamic>) return false;
+          
+          if (await SignInService.validateSignIn(data)) return true;
+          
           await const CryptoFactoryEd25519().parsePublicKey(json);
           return true;
         } catch (_) {
@@ -263,19 +271,28 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     );
 
     if (scanned != null && mounted) {
-      if (await SignInService.validateSignIn(scanned)) {
-        await SignInService.signIn(scanned, context, firestore: _firestore);
-      } else {
-        _handlePersonalKeyScan(scanned);
+      try {
+        final Map<String, dynamic> data = json.decode(scanned);
+        
+        if (await SignInService.validateSignIn(scanned)) {
+          await SignInService.signIn(scanned, context, firestore: _firestore);
+        } else {
+          // Verify it's a valid public key before proceeding
+          await const CryptoFactoryEd25519().parsePublicKey(data);
+          _handlePersonalKeyScan(data);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Invalid scan data: $e')),
+          );
+        }
       }
     }
   }
 
-  void _handlePersonalKeyScan(String scanned) async {
+  void _handlePersonalKeyScan(Map<String, dynamic> publicKeyJson) async {
     try {
-      final jsonData = json.decode(scanned);
-      final String? initialMoniker = jsonData['moniker'];
-      final Map<String, dynamic> publicKeyJson = (jsonData['publicKey'] as Map<String, dynamic>?) ?? jsonData;
       final String subjectToken = getToken(publicKeyJson);
       
       if (!mounted) return;
@@ -375,15 +392,23 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       
       final TrustStatement? latest = existingStatement.firstOrNull;
       
+      final TrustStatement finalStatement;
+      if (latest != null) {
+        finalStatement = latest;
+      } else {
+        final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
+        final json = TrustStatement.make(
+          myPubKeyJson!,
+          publicKeyJson,
+          TrustVerb.trust,
+        );
+        finalStatement = TrustStatement(Jsonish(json));
+      }
+
       await _showTrustBlockDialog(
         context: context,
-        subjectToken: subjectToken,
+        statement: finalStatement,
         publicKeyJson: publicKeyJson,
-        initialMoniker: latest?.moniker ?? initialMoniker,
-        initialComment: latest?.comment,
-        initialVerb: latest?.verb,
-        allowClear: latest != null,
-        existingTime: latest?.time,
       );
     } catch (e) {
       if (mounted) {
@@ -394,218 +419,70 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     }
   }
 
-  Future<void> _showTrustBlockDialog({
+  Future<void> _showEditStatementDialog({
     required BuildContext context,
-    required String subjectToken,
+    required TrustStatement statement,
     required Map<String, dynamic> publicKeyJson,
-    String? initialMoniker,
-    String? initialComment,
     TrustVerb? initialVerb,
-    TrustVerb? lockedVerb,
-    bool allowClear = false,
-    DateTime? existingTime,
-    String? domain,
   }) async {
-    final monikerController = TextEditingController(text: initialMoniker);
-    final commentController = TextEditingController(text: initialComment);
-    TrustVerb selectedVerb = lockedVerb ?? initialVerb ?? TrustVerb.trust;
-    final isDelegate = domain != null;
-    
     await showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final isTrust = selectedVerb == TrustVerb.trust;
-          final isBlock = selectedVerb == TrustVerb.block;
-          final isClear = selectedVerb == TrustVerb.clear;
-          
-          String title = isTrust 
-              ? (initialVerb == null ? 'Trust' : 'Update Trust') 
-              : (isBlock ? 'Block' : 'Clear');
-          if (lockedVerb == null) {
-            title = initialVerb == null ? 'Identity Vouching' : 'Update Disposition';
-          }
-          if (isDelegate && isClear) {
-            title = 'Clear Delegation';
-          }
-
-          return AlertDialog(
-            title: Text(title),
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!isDelegate) ...[
-                    const Text('Trust: "human, capable of acting in good faith"', 
-                      style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
-                    const Text('Block: "Bots, spammers, bad actors, careless, confused.."', 
-                      style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
-                    const SizedBox(height: 16),
-                  ],
-                  if (isDelegate) ... [
-                    Text('DOMAIN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
-                    const SizedBox(height: 4),
-                    Text(domain, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                  ],
-                  
-                  if (lockedVerb == null) ...[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Center(child: Text('TRUST')),
-                            selected: isTrust,
-                            onSelected: (val) => setDialogState(() {
-                              if (val) selectedVerb = TrustVerb.trust;
-                            }),
-                            selectedColor: const Color(0xFF00897B).withOpacity(0.2),
-                            labelStyle: TextStyle(
-                              color: isTrust ? const Color(0xFF00897B) : Colors.grey,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Center(child: Text('BLOCK')),
-                            selected: isBlock,
-                            onSelected: (val) => setDialogState(() {
-                              if (val) selectedVerb = TrustVerb.block;
-                            }),
-                            selectedColor: Colors.red.withOpacity(0.2),
-                            labelStyle: TextStyle(
-                              color: isBlock ? Colors.red : Colors.grey,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                        if (allowClear) ...[
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: ChoiceChip(
-                              label: const Center(child: Text('CLEAR')),
-                              selected: isClear,
-                              onSelected: (val) => setDialogState(() {
-                                if (val) selectedVerb = TrustVerb.clear;
-                              }),
-                              selectedColor: Colors.orange.withOpacity(0.2),
-                              labelStyle: TextStyle(
-                                color: isClear ? Colors.orange : Colors.grey,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  
-                  if (isTrust || initialMoniker != null) ...[
-                    Text('NAME ${isTrust ? "(REQUIRED)" : ""}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: monikerController,
-                      enabled: isTrust,
-                      style: isTrust ? null : const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey),
-                      decoration: InputDecoration(
-                        hintText: '',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      onChanged: (_) => setDialogState(() {}),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  
-                  if (!isDelegate && (isTrust || isBlock || initialComment != null)) ...[
-                    Text('COMMENT ${(isTrust || isBlock) ? "(OPTIONAL)" : ""}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: commentController,
-                      enabled: isTrust || isBlock,
-                      style: (isTrust || isBlock) ? null : const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey),
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        hintText: '',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      onChanged: (_) => setDialogState(() {}),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  if (isClear) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Text(
-                        'Clearing this ${isDelegate ? "delegation" : "vouch"} effectively wipes the slate clean, like it never happened at all.',
-                        style: const TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                  
-                  if (existingTime != null) ...[
-                    const SizedBox(height: 12),
-                    Text('LATEST STATEMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.shade600, letterSpacing: 1.2)),
-                    Text(formatUiDatetime(existingTime), style: const TextStyle(fontSize: 12)),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final curVerb = selectedVerb;
-                  final curMoniker = monikerController.text.trim();
-                  final curComment = commentController.text.trim();
-                  
-                  final hasChanged = initialVerb == null ||
-                                    curVerb != initialVerb ||
-                                    (curVerb == TrustVerb.trust && curMoniker != (initialMoniker ?? '')) ||
-                                    (!isDelegate && curVerb != TrustVerb.clear && curComment != (initialComment ?? ''));
-                  
-                  final isMonikerValid = curVerb != TrustVerb.trust || curMoniker.isNotEmpty;
-                  final canSubmit = hasChanged && isMonikerValid;
-
-                  if (!canSubmit) return null;
-
-                  return () async {
-                    Navigator.pop(context);
-                    await _pushTrustStatement(
-                      publicKeyJson: publicKeyJson,
-                      verb: curVerb,
-                      moniker: curVerb == TrustVerb.trust ? curMoniker : null,
-                      comment: (!isDelegate && curVerb != TrustVerb.clear) ? curComment : null,
-                      domain: isDelegate ? domain : null,
-                    );
-                  };
-                }(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isBlock ? Colors.red : (isClear ? Colors.orange : const Color(0xFF00897B)),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: Text(isBlock ? 'BLOCK' : (isClear ? 'CLEAR' : (isDelegate ? 'UPDATE' : 'TRUST')), style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-              ),
-            ],
+      builder: (context) => EditStatementDialog(
+        statement: statement,
+        initialVerb: initialVerb,
+        onSubmit: ({required verb, comment, domain, moniker, revokeAt}) {
+          _pushTrustStatement(
+            publicKeyJson: publicKeyJson,
+            verb: verb,
+            moniker: moniker,
+            comment: comment,
+            domain: domain,
+            revokeAt: revokeAt,
           );
-        }
+        },
       ),
+    );
+  }
+
+  Future<void> _showClearStatementDialog({
+    required BuildContext context,
+    required TrustStatement statement,
+    required Map<String, dynamic> publicKeyJson,
+  }) async {
+    await showDialog(
+      context: context,
+      builder: (context) => ClearStatementDialog(
+        statement: statement,
+        onSubmit: () {
+          _pushTrustStatement(
+            publicKeyJson: publicKeyJson,
+            verb: TrustVerb.clear,
+            domain: statement.domain,
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showTrustBlockDialog({
+    required BuildContext context,
+    required TrustStatement statement,
+    required Map<String, dynamic> publicKeyJson,
+    TrustVerb? lockedVerb,
+  }) async {
+    if (lockedVerb == TrustVerb.clear) {
+      return _showClearStatementDialog(
+        context: context,
+        statement: statement,
+        publicKeyJson: publicKeyJson,
+      );
+    }
+
+    return _showEditStatementDialog(
+      context: context,
+      statement: statement,
+      publicKeyJson: publicKeyJson,
+      initialVerb: lockedVerb,
     );
   }
 
@@ -895,6 +772,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         } else if (verb == TrustVerb.clear) {
           action = 'Cleared';
           bgColor = Colors.orange;
+        } else if (verb == TrustVerb.replace) {
+          action = 'Updated ID History';
+          bgColor = Colors.green;
         } else if (verb == TrustVerb.delegate) {
           action = revokeAt == null ? 'Delegated' : 'Revoked';
           bgColor = revokeAt == null ? const Color(0xFF0288D1) : Colors.blueGrey;
@@ -949,37 +829,25 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         onEdit: (statement) {
           _showTrustBlockDialog(
             context: context,
-            subjectToken: statement.subjectToken,
+            statement: statement,
             publicKeyJson: statement.subject,
-            initialMoniker: statement.moniker,
-            initialComment: statement.comment,
-            initialVerb: statement.verb,
             lockedVerb: TrustVerb.trust,
-            existingTime: statement.time,
           );
         },
         onBlock: (statement) {
           _showTrustBlockDialog(
             context: context,
-            subjectToken: statement.subjectToken,
+            statement: statement,
             publicKeyJson: statement.subject,
-            initialMoniker: statement.moniker,
-            initialComment: statement.comment,
-            initialVerb: statement.verb,
             lockedVerb: TrustVerb.block,
-            existingTime: statement.time,
           );
         },
         onClear: (statement) {
           _showTrustBlockDialog(
             context: context,
-            subjectToken: statement.subjectToken,
+            statement: statement,
             publicKeyJson: statement.subject,
-            initialMoniker: statement.moniker,
-            initialComment: statement.comment,
-            initialVerb: statement.verb,
             lockedVerb: TrustVerb.clear,
-            existingTime: statement.time,
           );
         },
       ),
@@ -1000,16 +868,18 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         onClear: (statement) {
           _showTrustBlockDialog(
             context: context,
-            subjectToken: statement.subjectToken,
+            statement: statement,
             publicKeyJson: statement.subject,
-            initialVerb: statement.verb,
             lockedVerb: TrustVerb.clear,
-            existingTime: statement.time,
-            domain: statement.domain,
           );
         },
       ),
       const ImportExportScreen(),
+      AdvancedScreen(
+        onShowBlocks: () => _showBlocksModal(context),
+        onShowEquivalents: () => _showEquivalentsModal(context),
+        onReplaceKey: () => _showReplaceKeyDialog(context),
+      ),
       AboutScreen(onDevClick: _handleDevClick),
       if (_isDevMode) DevScreen(onRefresh: _loadAllData),
     ];
@@ -1228,6 +1098,181 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     );
   }
 
+  void _showBlocksModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      builder: (modalContext) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return DraggableScrollableSheet(
+            initialChildSize: 1.0,
+            minChildSize: 0.9,
+            maxChildSize: 1.0,
+            expand: false,
+            builder: (context, scrollController) => Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
+                Expanded(
+                  child: BlocksScreen(
+                    statementsByIssuer: _statementsByIssuer,
+                    myKeyToken: _keys.identityToken!,
+                    scrollController: scrollController,
+                    onEdit: (s) async {
+                      await _showTrustBlockDialog(
+                        context: context,
+                        statement: s,
+                        publicKeyJson: s.subject,
+                        lockedVerb: TrustVerb.block,
+                      );
+                      setModalState(() {});
+                    },
+                    onClear: (s) async {
+                      await _showTrustBlockDialog(
+                        context: context,
+                        statement: s,
+                        publicKeyJson: s.subject,
+                        lockedVerb: TrustVerb.clear,
+                      );
+                      setModalState(() {});
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      ),
+    );
+  }
+
+  void _showEquivalentsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      builder: (modalContext) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return DraggableScrollableSheet(
+            initialChildSize: 1.0,
+            minChildSize: 0.9,
+            maxChildSize: 1.0,
+            expand: false,
+            builder: (context, scrollController) => Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
+                Expanded(
+                  child: HistoryScreen(
+                    statementsByIssuer: _statementsByIssuer,
+                    myKeyToken: _keys.identityToken!,
+                    scrollController: scrollController,
+                    onEdit: (s) async {
+                      await _showTrustBlockDialog(
+                        context: context,
+                        statement: s,
+                        publicKeyJson: s.subject,
+                        lockedVerb: TrustVerb.replace,
+                      );
+                      setModalState(() {});
+                    },
+                    onClear: (s) async {
+                      await _showTrustBlockDialog(
+                        context: context,
+                        statement: s,
+                        publicKeyJson: s.subject,
+                        lockedVerb: TrustVerb.clear,
+                      );
+                      setModalState(() {});
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      ),
+    );
+  }
+
+  void _showReplaceKeyDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Replace Identity Key'),
+        content: const Text(
+          'This will create a new identity key and revoke your current one. \n\n'
+          'No one will know it\'s you unless you have folks vouch for you again. \n\n'
+          'Are you sure you want to proceed?',
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _performKeyReplacement();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('CREATE NEW KEY'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performKeyReplacement() async {
+    final oldIdentity = _keys.identity;
+    if (oldIdentity == null) return;
+
+    try {
+      final oldPubKeyJson = await (await oldIdentity.publicKey).json;
+      
+      // 1. Generate new identity key
+      await _keys.newIdentity();
+      
+      // 2. State that the new key replaces the old one
+      await _pushTrustStatement(
+        publicKeyJson: oldPubKeyJson,
+        verb: TrustVerb.replace,
+        revokeAt: kSinceAlways,
+      );
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Success'),
+            content: const Text(
+              'A new identity key has been generated and your previous key has been revoked. \n\n'
+              'Your identity history now includes your old key.',
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error replacing key: $e')),
+        );
+      }
+    }
+  }
+
   void _showManagementHub(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -1241,12 +1286,13 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 32),
-            _HubTile(icon: Icons.badge_outlined, title: 'ID', onTap: () => _pageController.jumpToPage(0)),
+            _HubTile(icon: Icons.credit_card_outlined, title: 'CARD', onTap: () => _pageController.jumpToPage(0)),
             _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(1)),
             _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
             _HubTile(icon: Icons.vpn_key_outlined, title: 'IMPORT / EXPORT', onTap: () => _pageController.jumpToPage(3)),
-            _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => _pageController.jumpToPage(4)),
-            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => _pageController.jumpToPage(5)),
+            _HubTile(icon: Icons.settings_accessibility_rounded, title: 'ADVANCED', onTap: () => _pageController.jumpToPage(4)),
+            _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => _pageController.jumpToPage(5)),
+            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => _pageController.jumpToPage(6)),
           ],
         ),
       ),

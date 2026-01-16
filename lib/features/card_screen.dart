@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
-import '../../core/keys.dart';
-import '../../ui/identity_card_surface.dart';
+import '../core/keys.dart';
+import '../ui/identity_card_surface.dart';
 
 class CardScreen extends StatelessWidget {
   final Map<String, List<TrustStatement>> statementsByIssuer;

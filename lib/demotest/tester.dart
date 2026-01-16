@@ -32,9 +32,17 @@ class Tester {
     await doTrust(poser, jock, moniker: 'Jock', comment: 'Trusting Jock');
 
     await doDelegate(poser, await TestKey.create(), domain: 'nerdster.org');
-    await doDelegate(poser, await TestKey.create(), domain: 'nerdster.org', revokeAt: '<since always>');
+    await doDelegate(
+      poser,
+      await TestKey.create(),
+      domain: 'nerdster.org',
+      revokeAt: '<since always>',
+    );
     await doDelegate(hipster, await TestKey.create(), domain: 'nerdster.org');
     await doDelegate(jock, await TestKey.create(), domain: 'nerdster.org');
+
+    await doBlock(poser, await TestKey.create(), comment: 'spam');
+    await doReplace(poser, await TestKey.create(), comment: 'lost');
 
     await Keys().importKeys(jsonEncode({kOneofusDomain: poser.keyPairJson}));
   }
@@ -94,7 +102,32 @@ class Tester {
     OouSigner signer = await OouSigner.make(i.keyPair);
     await writer!.push(s, signer);
     return TrustStatement(Jsonish(s));
-  }}
+  }
+
+  static Future<TrustStatement> doBlock(TestKey i, TestKey subject, {String? comment}) async {
+    Json s = TrustStatement.make(
+      i.publicKeyJson,
+      subject.publicKeyJson,
+      TrustVerb.block,
+      comment: comment,
+    );
+    OouSigner signer = await OouSigner.make(i.keyPair);
+    await writer!.push(s, signer);
+    return TrustStatement(Jsonish(s));
+  }
+
+  static Future<TrustStatement> doReplace(TestKey i, TestKey subject, {String? comment}) async {
+    Json s = TrustStatement.make(
+      i.publicKeyJson,
+      subject.publicKeyJson,
+      TrustVerb.replace,
+      comment: comment,
+    );
+    OouSigner signer = await OouSigner.make(i.keyPair);
+    await writer!.push(s, signer);
+    return TrustStatement(Jsonish(s));
+  }
+}
 
 class TestKey {
   final OouKeyPair keyPair;

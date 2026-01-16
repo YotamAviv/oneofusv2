@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
-import '../../core/keys.dart';
-import '../../demotest/tester.dart';
+import '../core/keys.dart';
+import '../demotest/tester.dart';
 
 class DevScreen extends StatelessWidget {
   final VoidCallback onRefresh;

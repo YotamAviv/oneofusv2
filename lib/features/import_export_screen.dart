@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/keys.dart';
+import '../core/keys.dart';
 
 class ImportExportScreen extends StatefulWidget {
   const ImportExportScreen({super.key});
