@@ -119,6 +119,7 @@ void main() {
     // Validate: My name is now "Luke"
     debugPrint("TEST: Verifying name is 'Luke' on Identity Card.");
     expect(find.text('Luke'), findsOneWidget);
-    debugPrint("TEST: Name is now 'Luke'. SUCCESS.");
+    debugPrint("TEST: Name is now 'Luke'.");
+    debugPrint("TEST PASSED, SUCCESS.");
   });
 }

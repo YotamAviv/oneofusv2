@@ -62,6 +62,6 @@ void main() {
     expect(latest.verb, equals(TrustVerb.trust));
     expect(latest.moniker, equals('Bo'));
     
-    debugPrint('TEST: Basic Write-Read SUCCESS');
+    debugPrint("TEST PASSED, SUCCESS.");
   });
 }

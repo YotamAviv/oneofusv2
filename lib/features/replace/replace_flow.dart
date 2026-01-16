@@ -471,6 +471,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         oldJson['I'] = newPubKeyJson;
         oldJson.remove('signature');
         oldJson.remove('previous');
+        oldJson['time'] = clock.nowIso; // Set fresh timestamp for re-published content
         
         await writer.push(oldJson, signer);
         

@@ -8,11 +8,6 @@ AI Agent: Do not visit this file without invitation
 Required for launch
 Missing
 - confirm sign in with/without delegate
-- welcome screen
-  - claim (replace) my lost key 
-- advanced:
-  - claim (replace) my lost key 
-  - rotate key
 
 
 

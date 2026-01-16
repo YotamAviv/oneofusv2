@@ -44,7 +44,9 @@ A dedicated `ReplaceFlow` widget (or series of screens):
     *   **Logic (Sequential)**:
         1. Generate a new `OouKeyPair` for the identity.
         2. For every valid statement (up to the selected last valid): Re-issue with the new key.
-           - **Crucial**: Preserve everything: same verb, subject, moniker, comment, delegates, `revokeAt`, and original `time`.
+           - Preserve everything: same verb, subject, moniker, comment, delegates, and `revokeAt`, but **not** `time` (use the current time).
+           - Do not re-sign and publish overriden (not distinct) statements.
+           - Make sure to issue the statements preserving order. State them from oldest (oldest but distict) to newest.
         3. Issue a final `Replace` + `Revoke` statement referencing the old key.
         4. Switch the app's internal state to the new key.
 *   **Screen 5: Success & Mobilization**
