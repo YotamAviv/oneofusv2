@@ -1,5 +1,9 @@
 # Advanced Screen
 
+A gateway to functionality that is necessary for completeness but that is rarely used.
+The functionality should be provided by modal screens; for example, you click to see keys you've 
+blocked, and it looks similar  to your trusts or delegates, but it's not there all the time.
+
 ## My equivalent keys
 Lost or compromised keys can't be recovered. But they can be replaced.
 Your replaced keys remain associated with your identity so that those who trusted or followed those keys still follow you, recognize you You retain your identity even as you rotate through keys.
@@ -29,3 +33,4 @@ Click here to
 - use this new key to state that this your current key is revoked and is replaced by this new key.
 - if your key was not compromised, you can re-state everything it said using your new key.
 - in case it was compromised and may have been used to sign statements you didn't intend to, it's complicated..  We can help you out, though
+
