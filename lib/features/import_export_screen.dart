@@ -1,25 +1,33 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:oneofus_common/trust_statement.dart';
 import '../core/keys.dart';
 
-/* 
-import/export "identity"/"one-of-us.net" swap
 
-Take a look at the legacy code at oneofus-reference/lib/misc/import_export.dart
-The history:
+/* 
+"identity" vs "one-of-us.net" Label Swapping
+
+Initially, the app used "one-of-us.net" as the internal storage key for the 
+primary identity. 
 After I had already launched and had some users, I decided that it's better to display
 a person's identity as "identity" (not as "one-of-us.net").
-My recollection is that 
-- "one-of-us.net" is used to actually store your keys on your phone.
-- that's translated to "identity" when it's displayed for you to backup your keys.
-- "identity" is translated back in case you import your saved text to restore keys you've backed up.
-It may be that some people have already exported their keys under the old "one-of-us.net" whereas
-others may have backups that use the new "identity" label. 
-- All should work for import to ensure that all users can still import their previously exported keys,
-- Export should use the new "identity" label.
+This is visible and stored, as it is the exported JSON text.
 
-V2 (this project) should do the same.
+To maintain parity with V1 and ensure all legacy backups remain valid:
+1. EXPORT: Swap "one-of-us.net" -> "identity" for display.
+2. IMPORT: Swap "identity" -> "one-of-us.net" for internal storage.
+   Note: We accept both labels on import to support early V1 backups that 
+   may still use the raw domain label.
+
+Internal storage in V2 continues to use "one-of-us.net" (kOneofusDomain).
+
+In the future, we may want to phase out "one-of-us.net" entirely and store "identity" internally.
+We'll prepare for that now (in case users don't upgrade their phone apps for a long time) by starting
+to accept both labels on import.
+
+TODO: In a future major release, migrate internal storage from "one-of-us.net" to "identity" 
+across all layers (Keys service, Secure Storage) to simplify this mapping.
 */
 class ImportExportScreen extends StatefulWidget {
   const ImportExportScreen({super.key});
@@ -49,10 +57,11 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
     try {
       final keys = Keys();
       final allKeysJson = await keys.getAllKeyJsons();
+      final displayKeys = _internal2display(allKeysJson);
       const encoder = JsonEncoder.withIndent('  ');
       if (mounted) {
         setState(() {
-          _initialKeysJson = encoder.convert(allKeysJson);
+          _initialKeysJson = encoder.convert(displayKeys);
         });
       }
     } catch (e) {
@@ -92,7 +101,12 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
   Future<void> _importKeys() async {
     setState(() { _isImporting = true; });
     try {
-      await Keys().importKeys(_textController.text);
+      final input = _textController.text;
+      final Map<String, dynamic> jsonMap = jsonDecode(input) as Map<String, dynamic>;
+      final internalMap = _display2internal(jsonMap);
+      final internalJson = jsonEncode(internalMap);
+      
+      await Keys().importKeys(internalJson);
       await _loadInitialKeys();
       _textController.clear();
       _showSnackbar('Import successful!');
@@ -119,6 +133,23 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
         ),
       );
     }
+  }
+
+  Map<String, dynamic> _internal2display(Map<String, dynamic> keys) {
+    final result = Map<String, dynamic>.from(keys);
+    if (result.containsKey(kOneofusDomain)) {
+      result['identity'] = result.remove(kOneofusDomain);
+    }
+    return result;
+  }
+
+  Map<String, dynamic> _display2internal(Map<String, dynamic> keys) {
+    final result = Map<String, dynamic>.from(keys);
+    // V1 legacy support: prefer 'identity', but accept 'one-of-us.net' if present
+    if (result.containsKey('identity')) {
+      result[kOneofusDomain] = result.remove('identity');
+    }
+    return result;
   }
 
   @override

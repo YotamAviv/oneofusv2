@@ -6,7 +6,6 @@ AI Agent: Do not visit this file without invitation
 
 Required for launch
 Missing
-- import/export "identity"/"one-of-us.net" swap
 - replace my key?
 - welcome screen
   - claim (replace) key
