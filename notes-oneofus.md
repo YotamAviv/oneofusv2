@@ -2,14 +2,27 @@ These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
 
+Claim (replace) my old key
 
-The welcome screen's import from backup needs to be quite different, possibly rewritten.
-The expectation is that the user has previously backed up their keys and now has a new installation of the app
-and needs to restore that backup on this installtion.
-- no scanning, only paste
-- different phrasing
-  - Import Keys From a Backed Up Export
-  
+Describe the process to the user:
+The process of claiming (replacing) your old key and starting to use a new one will go like this:
+1) create a new key
+2) use your new key to: 
+  - state (sign and publish) everything your old key has stated (signed and published)
+    - in case your old key was compromised, you can identify that last valid statement 
+      and restate only what your old key had stated up to that.
+  - state that this new key replaces your old key
+3) at this point, no one will know your new key represents you, and so you'll have to update those 
+  who've vouched for your identity in the past and have them vouch for your new key.
+  Once some of your network has vouched for your new identity, the others will be notified and might
+  reach out to you to verify that, indeed, it is you attempting to claim your old key.
+4) Once this is done, folks who've followed your old identity key will continue to recognize that
+  it's still you. Your old key (along with your other old keys will be considered as equivalent keys
+  and will be visible in the IDENTITY HISTORY section on the ADVANCED screen)
+
+Click here to start this process
+
+
 
 
 Required for launch
