@@ -2,26 +2,6 @@ These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
 
-Claim (replace) my old key
-
-Describe the process to the user:
-The process of claiming (replacing) your old key and starting to use a new one will go like this:
-1) create a new key
-2) use your new key to: 
-  - state (sign and publish) everything your old key has stated (signed and published)
-    - in case your old key was compromised, you can identify that last valid statement 
-      and restate only what your old key had stated up to that.
-  - state that this new key replaces your old key
-3) at this point, no one will know your new key represents you, and so you'll have to update those 
-  who've vouched for your identity in the past and have them vouch for your new key.
-  Once some of your network has vouched for your new identity, the others will be notified and might
-  reach out to you to verify that, indeed, it is you attempting to claim your old key.
-4) Once this is done, folks who've followed your old identity key will continue to recognize that
-  it's still you. Your old key (along with your other old keys will be considered as equivalent keys
-  and will be visible in the IDENTITY HISTORY section on the ADVANCED screen)
-
-Click here to start this process
-
 
 
 
@@ -50,33 +30,13 @@ Not required for launch:
   - one-of-us.net / identity upgrade
 
 Bugs:
-- refresh takes me to home
 
 
 Minor:
-- Time of last statement is nicer for delegate than for trust.
-- replace Home with Card
-
-- delegate screen
-  - shows nerdster.org twice.
-  - what's the check for? (revoked? add tooltip?)
-
-- import / export
-  - display "identity" instead of "one-of-us.net". Make sure that it's stored correctly (one-of-us.net) to be compatible and that import and export work.
-    - see:
-      static Json internal2display(Json internal) => _swap(kOneofusDomain, kIdentity, internal);
-      static Json display2internal(Json display) => _swap(kIdentity, kOneofusDomain, display);
 
 
 
 TODO
-
-Load up equivalents
-
-Modal screens
-- my outstanding blocks (could be a mistake. allow [clear, trust])
-- my replaced (claimed) keys (could be a mistake. allow clear)
-- 
 
 Test mode
 - Start the app with FakeFirebase
@@ -91,6 +51,9 @@ Show more:
 
 Notifications:
   - key you trust [block, replace] you (or equivalent)
+  - key you trust trusts a key you've blocked
+  - key you trust blocks a key you trust
+  - (think about this more, replace, etc...)
   - key is corrupted (crash and notify if it's my key)
   - 
 

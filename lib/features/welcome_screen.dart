@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/keys.dart';
 import '../ui/error_dialog.dart';
+import 'replace/replace_flow.dart';
 
 class WelcomeScreen extends StatelessWidget {
   final FirebaseFirestore firestore;
@@ -96,8 +97,9 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   OutlinedButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Claim/Replace identity coming soon.')),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => ReplaceFlow(firestore: firestore)),
                       );
                     },
                     style: OutlinedButton.styleFrom(

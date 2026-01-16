@@ -34,6 +34,7 @@ import '../features/delegates_screen.dart';
 import '../features/history_screen.dart';
 import '../features/blocks_screen.dart';
 import '../features/people_screen.dart';
+import '../features/replace/replace_flow.dart';
 import 'dialogs/edit_statement_dialog.dart';
 import 'dialogs/clear_statement_dialog.dart';
 import 'error_dialog.dart';
@@ -1211,35 +1212,16 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   }
 
   void _showReplaceKeyDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Replace Identity Key'),
-        content: const Text(
-          'This will create a new identity key and revoke your current one. \n\n'
-          'No one will know it\'s you unless you have folks vouch for you again. \n\n'
-          'Are you sure you want to proceed?',
-          style: TextStyle(fontSize: 14),
+    final identityToken = _keys.identityToken;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReplaceFlow(
+          firestore: _firestore,
+          initialOldIdentityToken: identityToken,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCEL'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _performKeyReplacement();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('CREATE NEW KEY'),
-          ),
-        ],
       ),
-    );
+    ).then((_) => _loadAllData()); // Refresh after flow completes
   }
 
   Future<void> _performKeyReplacement() async {
