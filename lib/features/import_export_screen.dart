@@ -101,12 +101,7 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
   Future<void> _importKeys() async {
     setState(() { _isImporting = true; });
     try {
-      final input = _textController.text;
-      final Map<String, dynamic> jsonMap = jsonDecode(input) as Map<String, dynamic>;
-      final internalMap = _display2internal(jsonMap);
-      final internalJson = jsonEncode(internalMap);
-      
-      await Keys().importKeys(internalJson);
+      await Keys().importKeys(_textController.text);
       await _loadInitialKeys();
       _textController.clear();
       _showSnackbar('Import successful!');
@@ -139,15 +134,6 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
     final result = Map<String, dynamic>.from(keys);
     if (result.containsKey(kOneofusDomain)) {
       result['identity'] = result.remove(kOneofusDomain);
-    }
-    return result;
-  }
-
-  Map<String, dynamic> _display2internal(Map<String, dynamic> keys) {
-    final result = Map<String, dynamic>.from(keys);
-    // V1 legacy support: prefer 'identity', but accept 'one-of-us.net' if present
-    if (result.containsKey('identity')) {
-      result[kOneofusDomain] = result.remove('identity');
     }
     return result;
   }

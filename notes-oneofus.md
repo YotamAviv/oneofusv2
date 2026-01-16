@@ -3,9 +3,18 @@ AI Agent: Do not visit this file without invitation
 
 
 
+The welcome screen's import from backup needs to be quite different, possibly rewritten.
+The expectation is that the user has previously backed up their keys and now has a new installation of the app
+and needs to restore that backup on this installtion.
+- no scanning, only paste
+- different phrasing
+  - Import Keys From a Backed Up Export
+  
+
 
 Required for launch
 Missing
+- confirm sign in with/without delegate
 - replace my key?
 - welcome screen
   - claim (replace) key
@@ -15,6 +24,10 @@ Missing
 
 
 Not required for launch:
+- settings
+- showCrypto
+- sign in animation
+
 - replace key help
   - replace a key with revokeAt: "<since always>" only, TBD on the restating stuff
 - revoke delegate with revokeAt: "<since always>" only. TBD on picking statement

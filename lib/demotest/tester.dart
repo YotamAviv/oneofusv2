@@ -31,7 +31,8 @@ class Tester {
     await doTrust(hipster, poser, moniker: 'Poser', comment: 'Trusting Poser');
     await doTrust(poser, jock, moniker: 'Jock', comment: 'Trusting Jock');
 
-    await doDelegate(poser, await TestKey.create(), domain: 'nerdster.org');
+    TestKey activeDelegate = await TestKey.create();
+    await doDelegate(poser, activeDelegate, domain: 'nerdster.org');
     await doDelegate(
       poser,
       await TestKey.create(),
@@ -44,7 +45,9 @@ class Tester {
     await doBlock(poser, await TestKey.create(), comment: 'spam');
     await doReplace(poser, await TestKey.create(), comment: 'lost');
 
-    await Keys().importKeys(jsonEncode({kOneofusDomain: poser.keyPairJson}));
+    await Keys().importKeys(
+      jsonEncode({kOneofusDomain: poser.keyPairJson, 'nerdster.org': activeDelegate.keyPairJson}),
+    );
   }
 
   static Future<void> longname() async {

@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/keys.dart';
 import '../ui/error_dialog.dart';
-import '../ui/qr_scanner.dart';
 
 class WelcomeScreen extends StatelessWidget {
   final FirebaseFirestore firestore;
@@ -67,23 +67,31 @@ class WelcomeScreen extends StatelessWidget {
                       await keys.newIdentity();
                     },
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                       backgroundColor: const Color(0xFF37474F),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 4,
                     ),
-                    child: const Text('CREATE NEW IDENTITY KEY', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                    child: const Text(
+                      'CREATE NEW IDENTITY KEY', 
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)
+                    ),
                   ),
                   const SizedBox(height: 20),
                   OutlinedButton(
                     onPressed: () => _showImportDialog(context, keys),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                       side: const BorderSide(color: Color(0xFF37474F), width: 1.5),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('IMPORT IDENTITY KEY', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)),
+                    child: const Text(
+                      'IMPORT KEYS FROM A BACKED UP EXPORT', 
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)
+                    ),
                   ),
                   const SizedBox(height: 20),
                   OutlinedButton(
@@ -93,11 +101,15 @@ class WelcomeScreen extends StatelessWidget {
                       );
                     },
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                       side: const BorderSide(color: Color(0xFF37474F), width: 1.5),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('CLAIM (REPLACE) IDENTITY KEY', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)),
+                    child: const Text(
+                      'CLAIM (REPLACE) IDENTITY KEY', 
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)
+                    ),
                   ),
                 ],
               ),
@@ -113,45 +125,48 @@ class WelcomeScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('IMPORT IDENTITY'),
+        title: const Text('RESTORE FROM BACKUP'),
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              'Paste your backed up keys JSON below to restore your identity on this installation.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF546E7A)),
+            ),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('PASTE KEYS JSON', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)),
+                const Text(
+                  'PASTE KEYS JSON', 
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)
+                ),
                 TextButton.icon(
                   onPressed: () async {
-                    Navigator.pop(context);
-                    final scanned = await QrScanner.scan(
-                      context, 
-                      title: 'Scan Identity QR',
-                      validator: (s) async => s.contains('identity'),
-                    );
-                    if (scanned != null) {
-                      try {
-                        await keys.importKeys(scanned);
-                      } catch (e, stackTrace) {
-                        if (context.mounted) {
-                          ErrorDialog.show(context, 'Import Error', e, stackTrace);
-                        }
-                      }
+                    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+                    if (clipboardData != null && clipboardData.text != null) {
+                      controller.text = clipboardData.text!;
                     }
                   },
-                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 16),
-                  label: const Text('SCAN', style: TextStyle(fontSize: 10)),
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  icon: const Icon(Icons.content_paste_rounded, size: 16),
+                  label: const Text('PASTE', style: TextStyle(fontSize: 10)),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    foregroundColor: const Color(0xFF00897B),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             TextField(
               controller: controller,
               maxLines: 6,
+              autofocus: true,
               decoration: InputDecoration(
                 hintText: '{"identity": ...}',
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
@@ -186,7 +201,7 @@ class WelcomeScreen extends StatelessWidget {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('IMPORT'),
+            child: const Text('RESTORE'),
           ),
         ],
       ),

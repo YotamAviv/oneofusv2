@@ -136,11 +136,18 @@ class Keys extends ChangeNotifier {
   }
   
   Future<void> importKeys(String jsonString) async {
-    final Map<String, dynamic> keyMap;
+    Map<String, dynamic> keyMap;
     try {
       keyMap = jsonDecode(jsonString) as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Invalid JSON format: $e');
+    }
+
+    // Handle 'identity' -> 'one-of-us.net' swap for backward compatibility/user-friendly labels
+    // NOTE: Some of this logic duplicates code in import_export_screen.dart as well as possibly 
+    // welcome_screen.dart.
+    if (keyMap.containsKey('identity')) {
+      keyMap[kOneofusDomain] = keyMap.remove('identity');
     }
 
     if (!keyMap.containsKey(kOneofusDomain)) {
@@ -158,7 +165,8 @@ class Keys extends ChangeNotifier {
       throw Exception('Invalid key data in file: $e');
     }
 
-    await _storage.write(key: _storageKey, value: jsonString);
+    // Save the normalized JSON (using one-of-us.net)
+    await _storage.write(key: _storageKey, value: jsonEncode(keyMap));
     _keys = {};
     _isLoaded = false;
     await load();
