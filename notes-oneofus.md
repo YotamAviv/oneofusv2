@@ -15,11 +15,11 @@ and needs to restore that backup on this installtion.
 Required for launch
 Missing
 - confirm sign in with/without delegate
-- replace my key?
 - welcome screen
-  - claim (replace) key
-  - import key
-
+  - claim (replace) my lost key 
+- advanced:
+  - claim (replace) my lost key 
+  - rotate key
 
 
 
