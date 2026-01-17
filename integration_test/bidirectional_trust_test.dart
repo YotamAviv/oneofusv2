@@ -60,13 +60,21 @@ void main() {
     final meWriter = DirectFirestoreWriter(db);
     final meSigner = await OouSigner.make(myKeyPair);
 
+    final meToBoStatementIncorrect = TrustStatement.make(
+      myPublicKeyJson!,
+      boPublicKeyJson,
+      TrustVerb.trust,
+      moniker: 'Bo Incorrect',
+    );
+    await meWriter.push(meToBoStatementIncorrect, meSigner);
+    debugPrint("TEST: Me trusted Bo Incorrect.");
+
     final meToBoStatement = TrustStatement.make(
       myPublicKeyJson!,
       boPublicKeyJson,
       TrustVerb.trust,
       moniker: 'Bo',
     );
-
     await meWriter.push(meToBoStatement, meSigner);
     debugPrint("TEST: Me trusted Bo.");
 
@@ -81,6 +89,14 @@ void main() {
     debugPrint("TEST: Tapping Refresh (initial load might need it).");
     await tester.tap(find.byIcon(Icons.refresh_rounded));
     await tester.pump(const Duration(seconds: 2));
+
+    debugPrint("TEST: Looking for Incorrect.");
+    expect(find.text('Incorrect'), findsNothing);
+    debugPrint("TEST: Incorrect not found.");
+
+    // Bo doesn't trust me yet - check should be outline (validate: Bo doesn't trust me)
+    expect(find.byIcon(Icons.check_circle_outline_rounded), findsOneWidget);
+    debugPrint("TEST: Bo found, check is outline.");
 
     debugPrint("TEST: Looking for Bo.");
     expect(find.text('Bo'), findsOneWidget);
