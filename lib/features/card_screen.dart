@@ -8,11 +8,13 @@ import '../ui/identity_card_surface.dart';
 class CardScreen extends StatelessWidget {
   final Map<String, List<TrustStatement>> statementsByIssuer;
   final String myKeyToken;
+  final GlobalKey<IdentityCardSurfaceState>? cardKey;
 
   const CardScreen({
     super.key,
     required this.statementsByIssuer,
     required this.myKeyToken,
+    this.cardKey,
   });
 
   @override
@@ -42,6 +44,7 @@ class CardScreen extends StatelessWidget {
               if (s.moniker != null && s.moniker!.isNotEmpty) {
                 myMoniker = s.moniker!;
                 return IdentityCardSurface(
+                  key: cardKey,
                   isLandscape: isLandscape,
                   jsonKey: jsonKey,
                   moniker: myMoniker,
@@ -52,6 +55,7 @@ class CardScreen extends StatelessWidget {
         }
 
         return IdentityCardSurface(
+          key: cardKey,
           isLandscape: isLandscape,
           jsonKey: jsonKey,
           moniker: myMoniker,

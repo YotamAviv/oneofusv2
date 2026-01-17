@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'card_config.dart';
 
-class IdentityCardSurface extends StatelessWidget {
+class IdentityCardSurface extends StatefulWidget {
   final bool isLandscape;
   final String jsonKey;
   final String moniker;
@@ -16,6 +16,52 @@ class IdentityCardSurface extends StatelessWidget {
   });
 
   @override
+  State<IdentityCardSurface> createState() => IdentityCardSurfaceState();
+}
+
+class IdentityCardSurfaceState extends State<IdentityCardSurface> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<Offset> _offset; // px translation
+  late final Animation<double> _rot; // radians
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 520));
+    
+    // Jerky "throw" animation sequence
+    _offset = TweenSequence<Offset>([
+      TweenSequenceItem(tween: Tween(begin: Offset.zero, end: const Offset(-8, 0)), weight: 12),
+      TweenSequenceItem(
+          tween: Tween(begin: const Offset(-8, 0), end: const Offset(26, -8)), weight: 22),
+      TweenSequenceItem(
+          tween: Tween(begin: const Offset(26, -8), end: const Offset(46, -14)), weight: 22),
+      TweenSequenceItem(
+          tween: Tween(begin: const Offset(46, -14), end: const Offset(0, 0)), weight: 44),
+    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+
+    _rot = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -3 * pi / 180), weight: 12),
+      TweenSequenceItem(tween: Tween(begin: -3 * pi / 180, end: 5 * pi / 180), weight: 22),
+      TweenSequenceItem(tween: Tween(begin: 5 * pi / 180, end: 8 * pi / 180), weight: 22),
+      TweenSequenceItem(tween: Tween(begin: 8 * pi / 180, end: 0.0), weight: 44),
+    ]).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  /// Triggers the jerky QR "throw" animation.
+  Future<void> throwQr() async {
+    if (!_ctrl.isAnimating) {
+      await _ctrl.forward(from: 0);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -23,10 +69,10 @@ class IdentityCardSurface extends StatelessWidget {
         final screenH = constraints.maxHeight;
 
         // Using orientation-specific coefficients from CardConfig
-        final vertMargin = isLandscape ? CardConfig.verticalMarginL : CardConfig.verticalMarginP;
-        final horizMargin = isLandscape ? CardConfig.horizontalMarginL : CardConfig.horizontalMarginP;
-        final contentPadding = isLandscape ? CardConfig.contentPaddingL : CardConfig.contentPaddingP;
-        final qrRatio = isLandscape ? CardConfig.qrHeightRatioL : CardConfig.qrHeightRatioP;
+        final vertMargin = widget.isLandscape ? CardConfig.verticalMarginL : CardConfig.verticalMarginP;
+        final horizMargin = widget.isLandscape ? CardConfig.horizontalMarginL : CardConfig.horizontalMarginP;
+        final contentPadding = widget.isLandscape ? CardConfig.contentPaddingL : CardConfig.contentPaddingP;
+        final qrRatio = widget.isLandscape ? CardConfig.qrHeightRatioL : CardConfig.qrHeightRatioP;
 
         final availW = screenW * (1 - 2 * horizMargin);
         final availH = screenH * (1 - 2 * vertMargin);
@@ -74,17 +120,27 @@ class IdentityCardSurface extends StatelessWidget {
                     height: cardH,
                     child: Stack(
                       children: [
-                        // QR Code on the left
+                        // QR Code on the left (with jerky animation)
                         Positioned(
                           left: padding,
                           top: padding,
-                          child: QrImageView(
-                            data: jsonKey,
-                            version: QrVersions.auto,
-                            size: qrSize,
-                            backgroundColor: Colors.transparent,
-                            eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
-                            dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
+                          child: AnimatedBuilder(
+                            animation: _ctrl,
+                            builder: (context, child) => Transform.translate(
+                              offset: _offset.value,
+                              child: Transform.rotate(
+                                angle: _rot.value,
+                                child: child,
+                              ),
+                            ),
+                            child: QrImageView(
+                              data: widget.jsonKey,
+                              version: QrVersions.auto,
+                              size: qrSize,
+                              backgroundColor: Colors.transparent,
+                              eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
+                              dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
+                            ),
                           ),
                         ),
                         
@@ -100,7 +156,7 @@ class IdentityCardSurface extends StatelessWidget {
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.topRight,
                               child: Text(
-                                moniker,
+                                widget.moniker,
                                 textAlign: TextAlign.right,
                                 style: TextStyle(
                                   // Use a large ceiling so FittedBox handles the shrink

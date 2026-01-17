@@ -32,6 +32,7 @@ class SignInService {
   static Future<bool> signIn(String scanned, BuildContext context, {
     FirebaseFirestore? firestore,
     List<TrustStatement>? myStatements,
+    VoidCallback? onSending,
   }) async {
     try {
       if (!await validateSignIn(scanned)) {
@@ -147,17 +148,19 @@ class SignInService {
         send['delegateCiphertext'] = delegateCiphertext;
       }
 
-      // 4. Send POST
-      // 'uri' was already parsed and verified at the beginning of this method.
-      Uri postUri = uri;
+        // 4. Send POST
+        // 'uri' was already parsed and verified at the beginning of this method.
+        Uri postUri = uri;
 
-      // Handle Android Emulator localhost mapping if needed
-      if (postUri.host == 'localhost' || postUri.host == '127.0.0.1') {
-        // This is a common pattern for local dev
-        postUri = postUri.replace(host: '10.0.2.2');
-      }
+        // Handle Android Emulator localhost mapping if needed
+        if (postUri.host == 'localhost' || postUri.host == '127.0.0.1') {
+          // This is a common pattern for local dev
+          postUri = postUri.replace(host: '10.0.2.2');
+        }
 
-      final response = await http.post(postUri, headers: _headers, body: jsonEncode(send));
+        if (onSending != null) onSending();
+
+        final response = await http.post(postUri, headers: _headers, body: jsonEncode(send));
 
       if (context.mounted) {
         if (response.statusCode >= 200 && response.statusCode < 300) {

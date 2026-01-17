@@ -38,6 +38,7 @@ import 'dialogs/edit_statement_dialog.dart';
 import 'dialogs/clear_statement_dialog.dart';
 import 'error_dialog.dart';
 import 'qr_scanner.dart';
+import 'identity_card_surface.dart';
 
 class AppShell extends StatefulWidget {
   final bool isTesting;
@@ -53,6 +54,7 @@ const double heightKludge = 20;
 
 class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
+  final GlobalKey<IdentityCardSurfaceState> _cardKey = GlobalKey();
   final Keys _keys = Keys();
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSubscription;
@@ -240,6 +242,14 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   }
 
   void _handleIncomingLink(Uri uri) async {
+    // Wait for the app to finish its initial loading sequence (keys + cloud data)
+    // to ensure we have the identity token and latest trust statements.
+    while (_isLoading && mounted) {
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+
+    if (!mounted || !_hasKey) return;
+
     if (uri.scheme == 'keymeid') {
       final dataBase64 = uri.queryParameters['parameters'];
       if (dataBase64 != null) {
@@ -249,10 +259,16 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             data, 
             context, 
             firestore: _firestore, 
-            myStatements: _statementsByIssuer[_keys.identityToken]
+            myStatements: _statementsByIssuer[_keys.identityToken],
+            onSending: () => _cardKey.currentState?.throwQr(),
           );
           if (success && mounted) {
             _loadAllData();
+            _pageController.animateToPage(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
           }
         } catch (e) {}
       }
@@ -263,10 +279,16 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           data, 
           context, 
           firestore: _firestore, 
-          myStatements: _statementsByIssuer[_keys.identityToken]
+          myStatements: _statementsByIssuer[_keys.identityToken],
+          onSending: () => _cardKey.currentState?.throwQr(),
         );
         if (success && mounted) {
           _loadAllData();
+          _pageController.animateToPage(
+            0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
         }
       }
     }
@@ -297,10 +319,16 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             scanned, 
             context, 
             firestore: _firestore, 
-            myStatements: _statementsByIssuer[_keys.identityToken]
+            myStatements: _statementsByIssuer[_keys.identityToken],
+            onSending: () => _cardKey.currentState?.throwQr(),
           );
           if (success && mounted) {
             _loadAllData();
+            _pageController.animateToPage(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
           }
         } else if (isPubKey(json)) {
           _handlePersonalKeyScan(json);
@@ -887,7 +915,11 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     final Map<String, List<TrustStatement>> statementMap = _statementsByIssuer;
 
     final pages = [
-      CardScreen(statementsByIssuer: statementMap, myKeyToken: myToken),
+      CardScreen(
+        statementsByIssuer: statementMap, 
+        myKeyToken: myToken,
+        cardKey: _cardKey,
+      ),
       PeopleScreen(
         statementsByIssuer: statementMap,
         myKeyToken: myToken,
