@@ -87,7 +87,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         verifier: OouVerifier(),
       );
     } else {
-      baseSource = FirestoreSource<TrustStatement>(_firestore);
+      baseSource = DirectFirestoreSource<TrustStatement>(_firestore);
     }
     _source = CachedStatementSource<TrustStatement>(baseSource);
 

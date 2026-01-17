@@ -1,13 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'distincter.dart' as d;
 import 'jsonish.dart';
 import 'statement.dart';
 import 'io.dart';
 import 'source_error.dart';
 
-class FirestoreSource<T extends Statement> implements StatementSource<T> {
+class DirectFirestoreSource<T extends Statement> implements StatementSource<T> {
   final FirebaseFirestore _firestore;
+  final bool isDistinct;
 
-  FirestoreSource(this._firestore);
+  DirectFirestoreSource(this._firestore, {bool distinct = true}) : isDistinct = distinct;
 
   @override
   final List<SourceError> errors = [];
@@ -29,7 +31,7 @@ class FirestoreSource<T extends Statement> implements StatementSource<T> {
             .orderBy('time', descending: true);
 
         final snapshot = await query.get();
-        final List<T> statements = [];
+        List<T> statements = [];
 
         bool foundRevokeAt = false;
         for (var doc in snapshot.docs) {
@@ -48,9 +50,13 @@ class FirestoreSource<T extends Statement> implements StatementSource<T> {
           statements.add(statement);
         }
 
+        if (isDistinct) {
+          statements = d.distinct(statements).toList();
+        }
+
         results[issuerToken] = statements;
       } catch (e) {
-        print('FIRESTORE_SOURCE ERROR for $issuerToken: $e');
+        print('DIRECT_FIRESTORE_SOURCE ERROR for $issuerToken: $e');
         errors.add(SourceError(
           'Error fetching statements for $issuerToken: $e',
           token: issuerToken,

@@ -49,7 +49,7 @@ void main() {
     debugPrint("TEST: Confirmed: Name is 'Me'.");
 
     // Get my token/identity info
-    final myPublicKeyJson = await Keys().getIdentityPublicKeyJson();
+    final myPublicKeyJson = (await Keys().getIdentityPublicKeyJson())!;
     final myKeyPair = Keys().identity!;
 
     // 3. Create key for "Bo" (code: create new key for "Bo")
@@ -61,7 +61,7 @@ void main() {
     final meSigner = await OouSigner.make(myKeyPair);
 
     final meToBoStatementIncorrect = TrustStatement.make(
-      myPublicKeyJson!,
+      myPublicKeyJson,
       boPublicKeyJson,
       TrustVerb.trust,
       moniker: 'Bo Incorrect',
@@ -70,7 +70,7 @@ void main() {
     debugPrint("TEST: Me trusted Bo Incorrect.");
 
     final meToBoStatement = TrustStatement.make(
-      myPublicKeyJson!,
+      myPublicKeyJson,
       boPublicKeyJson,
       TrustVerb.trust,
       moniker: 'Bo',

@@ -6,6 +6,7 @@ import 'package:oneofus/core/keys.dart';
 import 'package:oneofus/main.dart' as app;
 import 'test_utils.dart';
 
+// This test relies on Lisa from the Simpsons Demo to be there.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
