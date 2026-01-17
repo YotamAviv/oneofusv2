@@ -61,8 +61,8 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   bool _isLoading = true;
   bool _hasKey = false;
   bool _hasAlerts = true;
-  // TODO: Set to false before deploying to App Stores
-  bool _isDevMode = true;
+  // Initialize Dev Mode based on environment; secret tap (AboutScreen) allows override.
+  late bool _isDevMode = Config.fireChoice != FireChoice.prod;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedStatementSource<TrustStatement> _source;
@@ -862,7 +862,10 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
 
   void _handleDevClick() {
     _devClickCount++;
-    if (_devClickCount >= 7 && !_isDevMode) {
+    if (_devClickCount >= 3 && !_isDevMode) {
+      if (Tester.writer == null) {
+        Tester.init(DirectFirestoreWriter(_firestore));
+      }
       setState(() {
         _isDevMode = true;
       });
