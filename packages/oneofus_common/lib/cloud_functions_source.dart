@@ -12,7 +12,7 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
   final String statementType;
   final http.Client client;
   final StatementVerifier verifier;
-  final bool skipVerify;
+  final bool skipVerify; // Injected dependency
   final Map<String, dynamic>? paramsOverride;
 
   final Map<String, SourceError> _errors = {};
@@ -61,8 +61,7 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
     
     params['spec'] = jsonEncode(spec);
 
-    final Uri uri = Uri.parse(baseUrl).replace(queryParameters: params.map((k, v) => MapEntry(k, v.toString())));
-    debugPrint('[CloudFunctionsSource] URL: $uri');
+    final Uri uri = Uri.parse(baseUrl).replace(queryParameters: params);
 
     final http.Request request = http.Request('GET', uri);
     final http.StreamedResponse response = await client.send(request);

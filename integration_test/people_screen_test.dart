@@ -55,6 +55,6 @@ void main() {
     expect(find.text('Maggie'), findsOneWidget);
     expect(find.text('Mom'), findsOneWidget);
     expect(find.text('Homer'), findsOneWidget);
-    debugPrint("TEST PASSED, SUCCESS.");
+    debugPrint("TEST: PASSED, SUCCESS.");
   });
 }

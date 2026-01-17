@@ -136,6 +136,6 @@ void main() {
     debugPrint("TEST: Verifying name is 'Luke' on Identity Card.");
     expect(find.text('Luke'), findsOneWidget);
     debugPrint("TEST: Name is now 'Luke'.");
-    debugPrint("TEST PASSED, SUCCESS.");
+    debugPrint("TEST: PASSED, SUCCESS.");
   });
 }
