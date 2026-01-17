@@ -1,7 +1,7 @@
 These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
-Good ones:
+## Nice ones:
 flutter emulators --launch Pixel_7a_API_35
 flutter emulators --launch Pixel_7
 flutter emulators --launch Pixel_3a_API_35
@@ -9,91 +9,52 @@ adb shell pm clear net.oneofus.app
 flutter run -d emulator-5554
 
 
-Required for launch:
-(nada)
+## Bugs:
 
-Not required for launch:
+## Not required for launch:
 - settings
 - showCrypto
-- sign in animation
+- display delegate keys we have locally (private key) differently from ones we know about but don't have
 
-- show delegates we have locally differently from ones we know about but no longer have (private key)
-
-- replace key help
-  - replace a key with revokeAt: "<since always>" only, TBD on the restating stuff
-- revoke delegate with revokeAt: "<since always>" only. TBD on picking statement
-- settings
-  - crypto
-  - do not show my name
-  - one-of-us.net / identity upgrade
-
-Bugs:
-
-
-Minor:
-
-
-
-TODO
-
-Test mode
-- Start the app with FakeFirebase
-  - stoked it with some test statements and an identity.
-    - functions like egosCircle, but here.
-    - use helpers for trust, block, clear, delegate and enforce rules (comment, moniker, domain, etc...)
-      Use those same helpers in the code
-    - could be used for unit tests for a MVC style model with notifications, tooltips per thing (trusted key, any key (corrupt), ...)
-
-Show more:
-  - if they trusted you, give the details. (could be handled by Crypto mode)
-
-Notifications:
+## Notifications:
   - key you trust [block, replace] you (or equivalent)
   - key you trust trusts a key you've blocked
   - key you trust blocks a key you trust
   - (think about this more, replace, etc...)
   - key is corrupted (crash and notify if it's my key)
-  - 
+  - you replaced a key but didn't revoke it "<since always>"
+- 
 
-- navigation
-  - import / export to screen 3
+## Settings
+  - showCrypto
+  - do not show my name
+  - one-of-us.net / identity upgrade
 
-Trusting, Blocking
-Take 4:
-- Do not enable the action button unless a change has been made.
-- When I scan a key, check what we already know about it:
-  - bring up my existing trust or block if I have one and let me change it (can block, can trust, must maintain rules of trust always requires moniker, block does not allow moniker)
-  - Do not let me trust or block my own key, equivalent keys (DEFER), or delegates (including delegate keys)
-
-
-- delegate screen
-  Consider displaying "Yotam@nerdster.org"
-  - revokeAt "<since always>" or at specific statement token.
+### showCrypto
+- sign in credentials sent..
+  - identity public key (and/or delegate public/private key pair) sent to nerdster.org
+- keys icons..
+  - revoked: crossed out key icon, on people keys, delegate keys
+  - mine, theirs, my delegates
+- LGTM'ish..
 
 
-- advanced..
-  - claim identity key ("replace", must revokeAt "<since always>")
-  - claim delegate key
+Show more:
+  - if they trusted you, give the details (name, comment). (could be handled by Crypto mode)
 
-- tech
-  - common package
-    - Jsonish
-    - FakeFirestore support (and Direct, why not) (might be working)
-    - renames
-      - s / ContentStatement / NerdsterStatement
 
-- Settings
-  - don't show my name on my card
-  - show Crypto
-    - identity (delegate) key(s) sent to <nerdster.org>
-    - key icon, crossed out key icon, on people keys, delegate keys
-    - LGTM'ish..
+Minor
+- delegate screen: Consider displaying "Yotam@nerdster.org"
 
-Display keys and export them as "<identity>".
-Read the legacy code and verify how it saved keys.
-Be compatible with a variety: "one-of-us.net", "identity", "<identity>"
+
+Tech
+- common package
+  - Jsonish
+  - renames
+    - s / ContentStatement / NerdsterStatement
+
+...
 
 Dropped functionality (from legacy phone app)
-- Replace key
 - Create delegate
 - Replace with specific revokeAt
