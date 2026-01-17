@@ -766,6 +766,41 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       throw StateError("Cannot push statement without an identity key.");
     }
 
+    // Check if we need to warn about deleting a local delegate key
+    final token = getToken(publicKeyJson);
+    final isMyDelegate = _keys.isDelegateToken(token);
+    final isRevoking = (verb == TrustVerb.delegate && revokeAt != null);
+    final isClearing = (verb == TrustVerb.clear);
+    
+    if (isMyDelegate && (isRevoking || isClearing)) {
+      final bool? proceed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Remove Local Key?'),
+          content: Text(
+            'You are ${isRevoking ? "revoking" : "clearing"} a delegate authorization '
+            'for which you have the private key stored on this device.\n\n'
+            'If you proceed, this key will be PERMANENTLY deleted from your local keyring after the network statement is published.'
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('CANCEL'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                isRevoking ? 'REVOKE & DELETE' : 'CLEAR & DELETE',
+                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      );
+      
+      if (proceed != true) return;
+    }
+
     try {
       final myPubKeyJson = await (await identity.publicKey).json;
       
@@ -783,6 +818,10 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       final signer = await OouSigner.make(identity);
       
       await writer.push(statementJson, signer);
+
+      if (isMyDelegate && (isRevoking || isClearing)) {
+        await _keys.removeDelegateByToken(token);
+      }
       
       if (mounted) {
         String action = 'Updated';

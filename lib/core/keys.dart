@@ -7,6 +7,23 @@ import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
 
 /// A singleton class responsible for managing the user's cryptographic keys.
+///
+/// ### Synchronization & Key Lifecycle
+/// We make an effort to keep delegate keys in storage and delegate statements about
+/// them synchronized. This is hard to do transactionally as either async operation
+/// can fail.
+///
+/// **Revocation Flow:**
+/// When a user revokes or clears a delegate authorization for which they hold the
+/// local private key (verified via [isDelegateToken]), the UI warns that the 
+/// local key will be permanently deleted upon success.
+///
+/// **Constraints:**
+/// - Deleted keys cannot be recovered.
+/// - Cleared statements can be easily re-issued if the key still exists.
+/// - Users with multiple devices may have replicated keys; revoking on one device 
+///   will purge the local key there, but other devices will only see the 
+///   revocation on the network.
 class Keys extends ChangeNotifier {
   // --- Singleton Setup ---
   static final Keys _instance = Keys._internal();
@@ -174,6 +191,35 @@ class Keys extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Removes a delegate key from memory and secure storage.
+  /// Used when revoking or clearing a delegate authorization.
+  Future<void> removeDelegate(String domain) async {
+    if (domain == kOneofusDomain) {
+      throw ArgumentError('Cannot remove the primary identity key using removeDelegate.');
+    }
+    if (_keys.containsKey(domain)) {
+      _keys.remove(domain);
+      await refreshTokens();
+      await _save();
+    }
+  }
+
+  /// Removes a delegate by its public key token.
+  Future<void> removeDelegateByToken(String token) async {
+    String? domainToRemove;
+    for (final entry in _keys.entries) {
+      if (entry.key == kOneofusDomain) continue;
+      final pubKey = await entry.value.publicKey;
+      final t = getToken(await pubKey.json);
+      if (t == token) {
+        domainToRemove = entry.key;
+        break;
+      }
+    }
+    if (domainToRemove != null) {
+      await removeDelegate(domainToRemove);
+    }
+  }
 
   /// Returns the full public key JSON of the current identity.
   Future<Json?> getIdentityPublicKeyJson() async {

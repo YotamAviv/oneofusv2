@@ -9,16 +9,26 @@ adb shell pm clear net.oneofus.app
 flutter run -d emulator-5554
 
 
-BUGS:
-Keep delegate keys in storage and delegate statements about them sychronized.
+Document this in the code:
+/*
+Make an effort to eep delegate keys in storage and delegate statements about them sychronized.
+
 This is hard to do transactionally as either async operation can fail.
-Option: Warn the user if he has stored delegate keys that are 
+
+we could warn the user if he has stored delegate keys that are 
 - not associated with him, or
 - revoked.
-Hmm...
-- If I revoke a delegate key, offer/recommend I remove it from Keys
-- If I clear a delegate key, offer/recommend remove it from Keys.
+The user could, after all, use multiple devices, replicate their own keys to those devices, and 
+then revoke or clear a delegate statement using one of those devices.
 
+Deleted keys cannont be recovered.
+Cleared statements can easily be issued
+*/
+
+Implement this in the code:
+If a user revokes or clears a delegate key that he has stored in Keys, warn him that we'll remove
+it from Keys unless he cancels.
+If he proceeds, sign and publish the statement first, then delete the key.
 
 Required for launch
 Missing
