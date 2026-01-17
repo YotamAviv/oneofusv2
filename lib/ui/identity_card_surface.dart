@@ -43,14 +43,8 @@ class IdentityCardSurface extends StatelessWidget {
         final maxQrSize = cardH - (2 * padding);
         final qrSize = min(maxQrSize, cardH * qrRatio);
         
-        double fontSize = cardH;
-        if (moniker.length <= 6) {
-          fontSize = cardH * 0.20;
-        } else if (moniker.length <= 10) {
-          fontSize = cardH * 0.14;
-        } else {
-          fontSize = cardH * 0.10;
-        }
+        // Define a generous area for the name
+        final labelAreaHeight = cardH * 0.6; 
 
         return Center(
           child: SizedBox(
@@ -99,17 +93,24 @@ class IdentityCardSurface extends StatelessWidget {
                           left: padding + qrSize + (cardW * 0.05),
                           right: padding,
                           top: padding,
-                          child: Text(
-                            moniker,
-                            textAlign: TextAlign.right,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: fontSize,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.black87,
-                              fontFamily: 'serif',
-                              height: 1.1,
+                          height: labelAreaHeight,
+                          child: Align(
+                            alignment: Alignment.topRight,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.topRight,
+                              child: Text(
+                                moniker,
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  // Use a large ceiling so FittedBox handles the shrink
+                                  fontSize: cardH * 0.22, 
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.black87,
+                                  fontFamily: 'serif',
+                                  height: 1.0,
+                                ),
+                              ),
                             ),
                           ),
                         ),
