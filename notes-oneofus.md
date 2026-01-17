@@ -39,15 +39,11 @@ flutter run -d emulator-5554
 - LGTM'ish..
 
 
-Show more:
-  - if they trusted you, give the details (name, comment). (could be handled by Crypto mode)
-
-
-Minor
+### Minor
 - delegate screen: Consider displaying "Yotam@nerdster.org"
+- if they vouched for you, give the details (name, comment). (could be handled by Crypto mode)
 
-
-Tech
+## Tech
 - common package
   - Jsonish
   - renames
@@ -55,6 +51,11 @@ Tech
 
 ...
 
-Dropped functionality (from legacy phone app)
+### Dropped functionality (from legacy phone app)
 - Create delegate
 - Replace with specific revokeAt
+
+### PoV mode!?
+(Don't actually spend time on it)
+But yes, you could browse around, see who they trust, sign into services as them (without their delegate key)
+Wouldn't even be that hard
