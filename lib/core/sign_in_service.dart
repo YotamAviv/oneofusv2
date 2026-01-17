@@ -27,7 +27,12 @@ class SignInService {
     }
   }
 
-  static Future<void> signIn(String scanned, BuildContext context, {FirebaseFirestore? firestore}) async {
+  /// Returns `true` if the sign-in was successful (and any new delegate statement published).
+  /// Returns `false` if the sign-in failed or was cancelled by the user.
+  static Future<bool> signIn(String scanned, BuildContext context, {
+    FirebaseFirestore? firestore,
+    List<TrustStatement>? myStatements,
+  }) async {
     try {
       if (!await validateSignIn(scanned)) {
         if (context.mounted) {
@@ -35,15 +40,27 @@ class SignInService {
             context,
           ).showSnackBar(const SnackBar(content: Text('Invalid sign-in data')));
         }
-        return;
+        return false;
       }
 
       final Json received = jsonDecode(scanned);
       final String domain = received['domain']!;
       final String urlKey = 'url';
+      final String urlString = received[urlKey]!;
       final String encryptionPkKey = 'encryptionPk';
 
-      final keys = Keys();
+      // 1. Verify that the URL matches the domain specified.
+      final Uri uri = Uri.parse(urlString);
+      final String host = uri.host;
+      if (host != domain && !host.endsWith('.$domain')) {
+        // Allow local development overrides (Android emulator, localhost)
+        final bool isLocal = host == 'localhost' || host == '127.0.0.1' || host == '10.0.2.2';
+        if (!isLocal) {
+          throw Exception('Security mismatch: Sign-in URL ($urlString) does not match the service domain ($domain)');
+        }
+      }
+
+      final Keys keys = Keys();
       assert (keys.identity != null, 'No identity key.. Unexpected.');
 
       final factory = const CryptoFactoryEd25519();
@@ -60,6 +77,33 @@ class SignInService {
       if (delegateKeyPair == null) {
         final bool? proceed = await _showCreateDelegateDialog(context, domain);
         if (proceed == true) {
+          // If we have cached statements, check if a delegate already exists for this domain
+          if (myStatements != null && context.mounted) {
+            final existing = myStatements.where((s) => 
+              s.verb == TrustVerb.delegate && s.domain == domain
+            ).firstOrNull;
+
+            if (existing != null) {
+              final bool rotate = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Existing Delegate Found'),
+                  content: Text(
+                    'The network shows you already have a delegate for $domain, '
+                    'but the key is not on this device. \n\n'
+                    'Creating a new one will rotate your delegate for this service. Proceed?'
+                  ),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('ROTATE KEY')),
+                  ],
+                ),
+              ) ?? false;
+              
+              if (!rotate) return false;
+            }
+          }
+
           delegateKeyPair = await keys.newDelegate(domain);
 
           final identity = keys.identity!;
@@ -78,7 +122,7 @@ class SignInService {
           await writer.push(statementJson, signer);
         } else if (proceed == null) {
           // User cancelled
-          return;
+          return false;
         }
         // If proceed is false, we continue with just identity (no delegate)
       }
@@ -104,33 +148,38 @@ class SignInService {
       }
 
       // 4. Send POST
-      Uri uri = Uri.parse(received[urlKey]);
+      // 'uri' was already parsed and verified at the beginning of this method.
+      Uri postUri = uri;
 
       // Handle Android Emulator localhost mapping if needed
-      if (uri.host == 'localhost' || uri.host == '127.0.0.1') {
+      if (postUri.host == 'localhost' || postUri.host == '127.0.0.1') {
         // This is a common pattern for local dev
-        uri = uri.replace(host: '10.0.2.2');
+        postUri = postUri.replace(host: '10.0.2.2');
       }
 
-      final response = await http.post(uri, headers: _headers, body: jsonEncode(send));
+      final response = await http.post(postUri, headers: _headers, body: jsonEncode(send));
 
       if (context.mounted) {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Successfully signed in to $domain')));
+          return true;
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Sign in failed: ${response.statusCode} - ${response.body}')),
           );
+          return false;
         }
       }
+      return false;
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error during sign in: $e')));
       }
+      return false;
     }
   }
 

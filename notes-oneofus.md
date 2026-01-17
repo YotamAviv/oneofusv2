@@ -1,8 +1,23 @@
 These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
+Good ones:
+flutter emulators --launch Pixel_7a_API_35
+flutter emulators --launch Pixel_7
+flutter emulators --launch Pixel_3a_API_35
+adb shell pm clear net.oneofus.app
+flutter run -d emulator-5554
 
 
+BUGS:
+Keep delegate keys in storage and delegate statements about them sychronized.
+This is hard to do transactionally as either async operation can fail.
+Option: Warn the user if he has stored delegate keys that are 
+- not associated with him, or
+- revoked.
+Hmm...
+- If I revoke a delegate key, offer/recommend I remove it from Keys
+- If I clear a delegate key, offer/recommend remove it from Keys.
 
 
 Required for launch

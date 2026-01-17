@@ -239,19 +239,35 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     });
   }
 
-  void _handleIncomingLink(Uri uri) {
+  void _handleIncomingLink(Uri uri) async {
     if (uri.scheme == 'keymeid') {
       final dataBase64 = uri.queryParameters['parameters'];
       if (dataBase64 != null) {
         try {
           final data = utf8.decode(base64Url.decode(dataBase64));
-          SignInService.signIn(data, context, firestore: _firestore);
+          final success = await SignInService.signIn(
+            data, 
+            context, 
+            firestore: _firestore, 
+            myStatements: _statementsByIssuer[_keys.identityToken]
+          );
+          if (success && mounted) {
+            _loadAllData();
+          }
         } catch (e) {}
       }
     } else if (uri.path.contains('sign-in')) {
       final data = uri.queryParameters['data'];
       if (data != null) {
-        SignInService.signIn(data, context, firestore: _firestore);
+        final success = await SignInService.signIn(
+          data, 
+          context, 
+          firestore: _firestore, 
+          myStatements: _statementsByIssuer[_keys.identityToken]
+        );
+        if (success && mounted) {
+          _loadAllData();
+        }
       }
     }
   }
@@ -277,7 +293,15 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         final Map<String, dynamic> json = jsonDecode(scanned);
         
         if (await SignInService.validateSignIn(scanned)) {
-          await SignInService.signIn(scanned, context, firestore: _firestore);
+          final success = await SignInService.signIn(
+            scanned, 
+            context, 
+            firestore: _firestore, 
+            myStatements: _statementsByIssuer[_keys.identityToken]
+          );
+          if (success && mounted) {
+            _loadAllData();
+          }
         } else if (isPubKey(json)) {
           _handlePersonalKeyScan(json);
         }

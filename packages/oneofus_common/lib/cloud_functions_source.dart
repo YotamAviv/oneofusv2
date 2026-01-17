@@ -18,6 +18,7 @@ class CloudFunctionsSource<T extends Statement> implements StatementSource<T> {
   final Map<String, SourceError> _errors = {};
 
   static const Map<String, dynamic> _paramsProto = {
+    "distinct": "true",
     // Note: server-side query params are strings. 
     // "false" is truthy in JS, so we should omit the key entirely if we want false.
     "orderStatements": "false",
