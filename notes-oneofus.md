@@ -8,6 +8,15 @@ flutter emulators --launch Pixel_3a_API_35
 adb shell pm clear net.oneofus.app
 flutter run -d emulator-5554
 
+## required for launch
+- welcome
+- fix all strings
+- intro screen
+- Import / Export (Backup and restore your private keys. If you lose them, they cannot be recovered.)
+- magic sign in, s/keys sent.. / not successfully signed in
+
+### Nerdster side
+- keys received, just a text snackbar
 
 ## Bugs:
 

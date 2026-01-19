@@ -49,7 +49,7 @@ class Tester {
     // --- Overrides and Compromise Simulation ---
     // 1. Overwrites: poser updates previous trusts
     await doTrust(poser, hipster, moniker: 'Hipster (updated)');
-    await doTrust(poser, jock, moniker: 'Jock (Last Valid)');
+    await doTrust(poser, jock, moniker: 'Jock', comment: '(Last Valid)');
 
     // 2. Fraudulent statements (Simulated compromise)
     await doBlock(poser, hipster, comment: 'Fraudulent block from compromise');
