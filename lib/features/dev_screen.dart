@@ -18,18 +18,6 @@ class DevScreen extends StatelessWidget {
       children: [
         const Text('DIAGNOSTICS (DEV)', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
         const Divider(),
-        const Text('PRIVATE KEYS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
-        const SizedBox(height: 12),
-        FutureBuilder<Map<String, Json>>(
-          future: keys.getAllKeyJsons(),
-          builder: (context, snapshot) {
-            return SelectableText(
-              const JsonEncoder.withIndent('  ').convert(snapshot.data ?? {}), 
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 10)
-            );
-          },
-        ),
-        const Divider(),
         const Text('DEMO DATA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
         const SizedBox(height: 12),
         ...Tester.tests.entries.map((entry) => Padding(

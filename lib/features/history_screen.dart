@@ -50,7 +50,7 @@ class HistoryScreen extends StatelessWidget {
       config: StatementCardConfig(
         themeColor: Colors.green.shade700,
         statusIcon: Icons.key_off_outlined,
-        statusTooltip: 'Replaced: This identity key was previously yours',
+        statusTooltip: 'Replaced: This is one of your equivalent identity keys',
         title: s.moniker ?? 'Equivalent Key',
         subtitle: shortId,
         comment: s.comment,

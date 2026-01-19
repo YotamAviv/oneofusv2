@@ -444,9 +444,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       
       final TrustStatement? latest = existingStatement.firstOrNull;
       
-      final TrustStatement finalStatement;
+      final TrustStatement statement;
       if (latest != null) {
-        finalStatement = latest;
+        statement = latest;
       } else {
         final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
         final json = TrustStatement.make(
@@ -454,12 +454,12 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           publicKeyJson,
           TrustVerb.trust,
         );
-        finalStatement = TrustStatement(Jsonish(json));
+        statement = TrustStatement(Jsonish(json));
       }
 
       await _showTrustBlockDialog(
         context: context,
-        statement: finalStatement,
+        statement: statement,
         publicKeyJson: publicKeyJson,
       );
     } catch (e) {
@@ -522,14 +522,6 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required Map<String, dynamic> publicKeyJson,
     TrustVerb? lockedVerb,
   }) async {
-    if (lockedVerb == TrustVerb.clear) {
-      return _showClearStatementDialog(
-        context: context,
-        statement: statement,
-        publicKeyJson: publicKeyJson,
-      );
-    }
-
     return _showEditStatementDialog(
       context: context,
       statement: statement,
