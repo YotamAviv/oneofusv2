@@ -5,6 +5,28 @@ import 'package:oneofus_common/jsonish.dart';
 /// The EditStatementDialog handles the refinement or transformation of an existing
 /// statement. In our singular disposition model, we don't 'edit' data in-place;
 /// we restate our stance towards a subject.
+
+
+/// New direction:
+/// - Don't allow blocking from PEOPLE dialog.
+///   This makes things simpler as we vouch for people but block keys.
+/// - This class should be used for the verbs [trust, block, replace].
+/// - The spcial one is for trust OR block after scanning a key.
+///   In this special case, we do want to show this:
+///     'Trust: "human, capable of acting in good faith"',
+///     'Block: "Bots, spammers, bad actors, careless, confused.."',
+/// 
+/// If this special case is too complex, we don't have to force it.
+/// Also, if using this dialog for the verb [replace] is too complex, we don't have to force it.
+/// 
+/// This is a good time to use better language and have clearer text for confused users.
+/// 
+/// So:
+/// This upcoming "new direction" change will change
+/// - this class
+/// - the PEOPLE screen
+/// 
+
 ///
 /// Business Rules:
 /// - Verbs [delegate, replace, block] are 'locked': once you've taken this stance,
