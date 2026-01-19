@@ -8,13 +8,19 @@ import 'package:oneofus_common/jsonish.dart';
 
 
 /// New direction:
-/// - Don't allow blocking from PEOPLE dialog.
-///   This makes things simpler as we vouch for people but block keys.
-/// - This class should be used for the verbs [trust, block, replace].
-/// - The spcial one is for trust OR block after scanning a key.
-///   In this special case, we do want to show this:
+/// - Don't allow blocking from PEOPLE screen.
+///   This makes things simpler as, sematically, we vouch for "people" but block "keys".
+/// - This class could be used for editing statements with verbs [trust, block, replace].
+/// 
+/// - Scanning a key is different from strict editing:
+/// We should allow both [TRUST, BLOCK] and not be predispositioned to either.
+/// We want to show:
 ///     'Trust: "human, capable of acting in good faith"',
 ///     'Block: "Bots, spammers, bad actors, careless, confused.."',
+/// 
+/// We don't want to show that text the same exact way for editing an existing trust or block. 
+/// We probably want to 
+/// just show half of it, or possibly show half of it greyed out.
 /// 
 /// If this special case is too complex, we don't have to force it.
 /// Also, if using this dialog for the verb [replace] is too complex, we don't have to force it.
