@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:oneofus_common/jsonish.dart';
 import 'core/config.dart';
 import 'ui/app_shell.dart';
+import 'ui/widgets/json_display.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Config.initFirebase();
+
+  JsonDisplay.highlightKeys = Set.unmodifiable({
+    'I',
+    'moniker',
+    'domain',
+    ...TrustVerb.values.map((e) => e.label),
+    ...ContentVerb.values.map((e) => e.label),
+  });
 
   runApp(const App());
 }

@@ -3,7 +3,10 @@ import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/util.dart';
 
+import 'json_display.dart';
 import 'key_widget.dart';
+import '../interpreter.dart';
+import '../../core/labeler.dart';
 
 class CardAction {
   final IconData icon;
@@ -84,6 +87,11 @@ class StatementCard extends StatelessWidget {
         : '';
 
     final actions = [
+      CardAction(
+        icon: Icons.shield_outlined,
+        onTap: () => _showJson(context, statement),
+        color: Colors.blueGrey,
+      ),
       CardAction(
         icon: Icons.edit_outlined,
         onTap: () => onEdit(statement),
@@ -222,6 +230,47 @@ class StatementCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showJson(BuildContext context, TrustStatement statement) {
+    final labeler = Labeler(statementsByIssuer, myKeyToken);
+    final interpreter = OneOfUsInterpreter(labeler);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            height: 400, // Fixed height for scrolling
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Statement Data',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: JsonDisplay(
+                    statement.jsonish.json,
+                    instanceInterpreter: interpreter,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
