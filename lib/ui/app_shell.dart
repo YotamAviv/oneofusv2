@@ -461,6 +461,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         context: context,
         statement: statement,
         publicKeyJson: publicKeyJson,
+        isNewScan: latest == null,
       );
     } catch (e) {
       if (mounted) {
@@ -475,6 +476,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required BuildContext context,
     required TrustStatement statement,
     required Map<String, dynamic> publicKeyJson,
+    bool isNewScan = false,
     TrustVerb? initialVerb,
   }) async {
     await showDialog(
@@ -482,6 +484,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       builder: (context) => EditStatementDialog(
         statement: statement,
         initialVerb: initialVerb,
+        isNewScan: isNewScan,
         onSubmit: ({required verb, comment, domain, moniker, revokeAt}) async {
           await _pushTrustStatement(
             publicKeyJson: publicKeyJson,
@@ -520,13 +523,23 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required BuildContext context,
     required TrustStatement statement,
     required Map<String, dynamic> publicKeyJson,
+    bool isNewScan = false,
     TrustVerb? lockedVerb,
   }) async {
+    if (lockedVerb == TrustVerb.clear) {
+      return _showClearStatementDialog(
+        context: context,
+        statement: statement,
+        publicKeyJson: publicKeyJson,
+      );
+    }
+
     return _showEditStatementDialog(
       context: context,
       statement: statement,
       publicKeyJson: publicKeyJson,
       initialVerb: lockedVerb,
+      isNewScan: isNewScan,
     );
   }
 
@@ -922,15 +935,6 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             statement: statement,
             publicKeyJson: statement.subject,
             lockedVerb: TrustVerb.trust,
-          );
-          if (mounted) setState(() {});
-        },
-        onBlock: (statement) async {
-          await _showTrustBlockDialog(
-            context: context,
-            statement: statement,
-            publicKeyJson: statement.subject,
-            lockedVerb: TrustVerb.block,
           );
           if (mounted) setState(() {});
         },

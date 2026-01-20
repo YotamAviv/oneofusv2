@@ -49,36 +49,12 @@ class DelegatesScreenState extends State<DelegatesScreen> {
   }
 
   Widget _buildServiceCard(TrustStatement statement) {
-    final isRevoked = statement.revokeAt != null;
-    
-    final shortId = statement.subjectToken.length >= 6 
-        ? '#${statement.subjectToken.substring(statement.subjectToken.length - 6)}' 
-        : '';
-
-    final config = StatementCardConfig(
-      themeColor: const Color(0xFF006064),
-      statusIcon: isRevoked ? Icons.key_off_outlined : Icons.vpn_key_outlined,
-      statusTooltip: isRevoked 
-          ? 'Revoked: This service is no longer authorized'
-          : 'Authorized: This service can act on your behalf',
-      title: statement.domain ?? 'Unknown Service',
-      subtitle: shortId,
-      comment: statement.comment,
-      timestamp: statement.time,
-      actions: [
-        CardAction(
-          icon: Icons.settings_outlined,
-          onTap: () => widget.onEdit(statement),
-        ),
-        CardAction(
-          icon: Icons.clear_outlined,
-          label: 'CLEAR',
-          color: Colors.orange.shade400,
-          onTap: () => widget.onClear(statement),
-        ),
-      ],
+    return StatementCard(
+      statement: statement,
+      statementsByIssuer: widget.statementsByIssuer,
+      myKeyToken: widget.myKeyToken,
+      onEdit: widget.onEdit,
+      onClear: widget.onClear,
     );
-
-    return StatementCard(config: config);
   }
 }

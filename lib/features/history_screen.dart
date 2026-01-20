@@ -42,32 +42,12 @@ class HistoryScreen extends StatelessWidget {
   }
 
   Widget _buildHistoryCard(TrustStatement s) {
-    final shortId = s.subjectToken.length >= 6 
-        ? '#${s.subjectToken.substring(s.subjectToken.length - 6)}' 
-        : '';
-
     return StatementCard(
-      config: StatementCardConfig(
-        themeColor: Colors.green.shade700,
-        statusIcon: Icons.key_off_outlined,
-        statusTooltip: 'Replaced: This is one of your equivalent identity keys',
-        title: s.moniker ?? 'Equivalent Key',
-        subtitle: shortId,
-        comment: s.comment,
-        timestamp: s.time,
-        actions: [
-          CardAction(
-            icon: Icons.settings_outlined,
-            onTap: () => onEdit(s),
-          ),
-          CardAction(
-            icon: Icons.backspace_outlined,
-            label: 'CLEAR',
-            color: Colors.orange.shade400,
-            onTap: () => onClear(s),
-          ),
-        ],
-      ),
+      statement: s,
+      statementsByIssuer: statementsByIssuer,
+      myKeyToken: myKeyToken,
+      onEdit: onEdit,
+      onClear: onClear,
     );
   }
 }

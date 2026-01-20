@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/util.dart';
+
+import 'key_widget.dart';
 
 class CardAction {
   final IconData icon;
@@ -15,37 +19,83 @@ class CardAction {
   });
 }
 
-class StatementCardConfig {
-  final Color themeColor;
-  final IconData statusIcon;
-  final String statusTooltip;
-  final String title;
-  final String? subtitle;
-  final String? comment;
-  final DateTime timestamp;
-  final Widget? trailingIcon;
-  final List<CardAction> actions;
-
-  const StatementCardConfig({
-    required this.themeColor,
-    required this.statusIcon,
-    required this.statusTooltip,
-    required this.title,
-    this.subtitle,
-    this.comment,
-    required this.timestamp,
-    this.trailingIcon,
-    required this.actions,
-  });
-}
-
 class StatementCard extends StatelessWidget {
-  final StatementCardConfig config;
+  final TrustStatement statement;
+  final Map<String, List<TrustStatement>> statementsByIssuer;
+  final String myKeyToken;
+  final Function(TrustStatement) onEdit;
+  final Function(TrustStatement) onClear;
 
-  const StatementCard({super.key, required this.config});
+  const StatementCard({
+    super.key,
+    required this.statement,
+    required this.statementsByIssuer,
+    required this.myKeyToken,
+    required this.onEdit,
+    required this.onClear,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final subjectToken = statement.subjectToken;
+    final verb = statement.verb;
+
+    // 1. Determine Color
+    Color themeColor;
+    switch (verb) {
+      case TrustVerb.delegate:
+        themeColor = Colors.blue.shade700;
+        break;
+      case TrustVerb.trust:
+        themeColor = const Color(0xFF00897B); // Teal/Green for Identity
+        break;
+      case TrustVerb.block:
+        themeColor = Colors.red.shade700;
+        break;
+      case TrustVerb.replace:
+        themeColor = const Color(0xFF00897B); // Green (Identity)
+        break;
+      default:
+        themeColor = Colors.grey;
+    }
+
+    // 2. Determine "Verified" Badge (Only for Trust)
+    Widget? trailingIcon;
+    if (verb == TrustVerb.trust) {
+      final vouchesBack = statementsByIssuer[subjectToken]?.any((s) =>
+              s.subjectToken == myKeyToken && s.verb == TrustVerb.trust) ??
+          false;
+
+      trailingIcon = Tooltip(
+        message: vouchesBack
+            ? 'Verified: They trust you back'
+            : 'They have not trusted you yet',
+        child: Icon(
+          vouchesBack ? Icons.check_circle : Icons.check_circle_outline_rounded,
+          size: 20,
+          color: vouchesBack ? themeColor : Colors.grey.shade300,
+        ),
+      );
+    }
+
+    // 3. Common Metadata
+    final shortId = subjectToken.length >= 6
+        ? '#${subjectToken.substring(subjectToken.length - 6)}'
+        : '';
+
+    final actions = [
+      CardAction(
+        icon: Icons.edit_outlined,
+        onTap: () => onEdit(statement),
+      ),
+      CardAction(
+        icon: Icons.backspace_outlined,
+        label: 'CLEAR',
+        color: Colors.orange.shade400,
+        onTap: () => onClear(statement),
+      ),
+    ];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -67,7 +117,7 @@ class StatementCard extends StatelessWidget {
             children: [
               Container(
                 width: 6,
-                color: config.themeColor,
+                color: themeColor,
               ),
               Expanded(
                 child: Padding(
@@ -79,7 +129,7 @@ class StatementCard extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              config.title,
+                              statement.moniker ?? (statement.domain ?? 'Unknown'),
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -89,21 +139,14 @@ class StatementCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (config.trailingIcon != null) ...[
-                            config.trailingIcon!,
+                          if (trailingIcon != null) ...[
+                            trailingIcon,
                             const SizedBox(width: 8),
                           ],
-                          Tooltip(
-                            message: config.statusTooltip,
-                            child: Icon(
-                              config.statusIcon,
-                              size: 20,
-                              color: config.themeColor,
-                            ),
-                          ),
+                          KeyWidget(statement: statement, color: themeColor),
                           const SizedBox(width: 8),
                           Tooltip(
-                            message: 'Latest statement: ${formatUiDatetime(config.timestamp)}',
+                            message: 'Latest statement: ${formatUiDatetime(statement.time)}',
                             child: Icon(
                               Icons.info_outline,
                               size: 16,
@@ -112,10 +155,10 @@ class StatementCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (config.subtitle != null) ...[
+                      if (shortId.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(
-                          config.subtitle!,
+                          shortId,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.blueGrey.shade400,
@@ -124,11 +167,13 @@ class StatementCard extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (config.comment != null && config.comment!.isNotEmpty) ...[
+                      if (statement.comment != null &&
+                          statement.comment!.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade50,
                             borderRadius: BorderRadius.circular(8),
@@ -139,12 +184,13 @@ class StatementCard extends StatelessWidget {
                             children: [
                               Padding(
                                 padding: const EdgeInsets.only(top: 2),
-                                child: Icon(Icons.comment_outlined, size: 12, color: Colors.grey.shade400),
+                                child: Icon(Icons.comment_outlined,
+                                    size: 12, color: Colors.grey.shade400),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  config.comment!,
+                                  statement.comment!,
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey.shade600,
@@ -159,11 +205,12 @@ class StatementCard extends StatelessWidget {
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
-                        children: config.actions.map((action) {
-                          final isLast = config.actions.last == action;
+                        children: actions.map((action) {
+                          final isLast = actions.last == action;
                           return Padding(
                             padding: EdgeInsets.only(right: isLast ? 0 : 8),
-                            child: _ActionButtonWidget(action: action, themeColor: config.themeColor),
+                            child: _ActionButtonWidget(
+                                action: action, themeColor: themeColor),
                           );
                         }).toList(),
                       ),

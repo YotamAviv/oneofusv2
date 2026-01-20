@@ -11,7 +11,6 @@ class PeopleScreen extends StatefulWidget {
   final Future<void> Function()? onRefresh;
   final Function(TrustStatement) onEdit;
   final Function(TrustStatement) onClear;
-  final Function(TrustStatement) onBlock;
 
   const PeopleScreen({
     super.key,
@@ -20,7 +19,6 @@ class PeopleScreen extends StatefulWidget {
     this.onRefresh,
     required this.onEdit,
     required this.onClear,
-    required this.onBlock,
   });
 
   @override
@@ -54,50 +52,12 @@ class _PeopleScreenState extends State<PeopleScreen> {
   }
 
   Widget _buildPersonCard(TrustStatement statement) {
-    final vouchesBack = widget.statementsByIssuer[statement.subjectToken]?.any((s) =>
-        s.subjectToken == widget.myKeyToken &&
-        s.verb == TrustVerb.trust) ?? false;
-
-    final shortId = statement.subjectToken.length >= 6 
-        ? '#${statement.subjectToken.substring(statement.subjectToken.length - 6)}' 
-        : '';
-
-    final config = StatementCardConfig(
-      themeColor: const Color(0xFF00897B),
-      statusIcon: Icons.verified_outlined,
-      statusTooltip: 'Trusted: A human capable of acting in good faith',
-      title: statement.moniker ?? 'Unknown',
-      subtitle: shortId,
-      comment: statement.comment,
-      timestamp: statement.time,
-      trailingIcon: Tooltip(
-        message: vouchesBack ? 'Verified: They trust you back' : 'They have not trusted you yet',
-        child: Icon(
-          vouchesBack ? Icons.check_circle : Icons.check_circle_outline_rounded,
-          size: 20,
-          color: vouchesBack ? const Color(0xFF00897B) : Colors.grey.shade300,
-        ),
-      ),
-      actions: [
-        CardAction(
-          icon: Icons.edit_outlined,
-          onTap: () => widget.onEdit(statement),
-        ),
-        CardAction(
-          icon: Icons.block_flipped,
-          label: 'BLOCK',
-          color: Colors.red.shade400,
-          onTap: () => widget.onBlock(statement),
-        ),
-        CardAction(
-          icon: Icons.backspace_outlined,
-          label: 'CLEAR',
-          color: Colors.orange.shade400,
-          onTap: () => widget.onClear(statement),
-        ),
-      ],
+    return StatementCard(
+      statement: statement,
+      statementsByIssuer: widget.statementsByIssuer,
+      myKeyToken: widget.myKeyToken,
+      onEdit: widget.onEdit,
+      onClear: widget.onClear,
     );
-
-    return StatementCard(config: config);
   }
 }

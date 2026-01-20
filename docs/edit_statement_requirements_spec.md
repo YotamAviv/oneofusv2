@@ -5,10 +5,29 @@ Edit Statement / Establish New Statement
 - show crypto
   - statements
   - keys
+
 - display keys
-  - blue / green (identity / delegate)
+### Key Display
+  - green / blue / red (identity / delegate / blocked)
   - crossed out (revoked)
   - solid / outline (have private key / don't)
+
+Since we maintain "singular disposition" a single key will be the subject of at most one statement by us.
+That statement's verb can define one aspect of what kind of key the subject is:
+- delegate: delegate key (blue)
+- trust: identity key (green)
+- block: presumably a rejected identity key (red, crossed out)
+- replace: one of our equivalent, replaced, and revoked identity keys (green, crossed out)
+
+
+
+- display statements
+Something like JsonDisplay with an "interpret" like the Nerdster has.
+We'll have to build or re-use that widget.
+We'll have to build our own Interpreter implementation that knows and can label:
+- our delegate keys (Poser@nerdster.org, Poser@nerdster.org (2), etcc)
+- our trusted associates (Hipster, Jock, ...)
+- <unknown key>
 
 # Requirements
 
@@ -114,7 +133,7 @@ EditStatement dialog
   - comment
 - Use DelegateRevokeAt for delegate verb
   - the UI we have is good
-- Use UseDelegateRevokeAt for replace verb
+- Use Use ReplaceRevokeAt for replace verb (shows read only revokeAt="<since always>")
 
 Use those different editor widget types to plop into the EditStatement dialog.
 Those different widgets establish the value of their single responsiblity.

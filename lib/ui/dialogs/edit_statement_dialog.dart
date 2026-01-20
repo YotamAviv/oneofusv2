@@ -32,6 +32,12 @@ import 'package:oneofus_common/jsonish.dart';
 /// - this class
 /// - the PEOPLE screen
 /// 
+/// When scanning a key that we've said something about before, that is we've found a statement
+/// signed by our key about the scanned key, we should open the appropriate dialog for  editing
+/// that statement, be it trust, block, replace, or delegate.
+/// 
+/// 
+/// 
 
 ///
 /// Business Rules:
@@ -44,6 +50,7 @@ import 'package:oneofus_common/jsonish.dart';
 class EditStatementDialog extends StatefulWidget {
   final TrustStatement statement;
   final TrustVerb? initialVerb; // Optional override for the starting state
+  final bool isNewScan;
 
   /// Callback to push the final statement to the storage layer
   final Future<void> Function({
@@ -58,6 +65,7 @@ class EditStatementDialog extends StatefulWidget {
     super.key,
     required this.statement,
     this.initialVerb,
+    this.isNewScan = false,
     required this.onSubmit,
   });
 
@@ -82,7 +90,7 @@ class EditStatementDialog extends StatefulWidget {
 class _EditStatementDialogState extends State<EditStatementDialog> {
   late TextEditingController _monikerController;
   late TextEditingController _commentController;
-  late TrustVerb _selectedVerb;
+  TrustVerb? _selectedVerb;
   final String kSinceAlways = '<since always>';
   bool _isSaving = false;
   bool _lastCanSubmit = false;
@@ -92,7 +100,12 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
     super.initState();
     _monikerController = TextEditingController(text: widget.statement.moniker);
     _commentController = TextEditingController(text: widget.statement.comment);
-    _selectedVerb = widget.initialVerb ?? widget.statement.verb;
+    
+    if (widget.isNewScan) {
+      _selectedVerb = null;
+    } else {
+      _selectedVerb = widget.initialVerb ?? widget.statement.verb;
+    }
 
     _lastCanSubmit = _canSubmit();
 
@@ -122,7 +135,7 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
   bool get _isBlock => _selectedVerb == TrustVerb.block;
   bool get _isReplace => _selectedVerb == TrustVerb.replace;
 
-  bool get _verbIsFluid => widget.statement.verb == TrustVerb.trust;
+  bool get _verbIsFluid => widget.statement.verb == TrustVerb.trust || widget.isNewScan;
 
   String get _submitButtonLabel {
     if (_isBlock) return 'BLOCK';
@@ -131,8 +144,18 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
 
   @override
   Widget build(BuildContext context) {
+    
+    TextStyle trustStyle = const TextStyle(fontSize: 12, fontStyle: FontStyle.italic);
+    TextStyle blockStyle = const TextStyle(fontSize: 12, fontStyle: FontStyle.italic);
+
+    if (_isTrust) {
+      blockStyle = blockStyle.copyWith(color: Colors.grey.shade300);
+    } else if (_isBlock) {
+      trustStyle = trustStyle.copyWith(color: Colors.grey.shade300);
+    }
+
     return AlertDialog(
-      title: Text(widget.title),
+      title: Text(widget.isNewScan ? "Set Disposition" : widget.title),
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       content: SingleChildScrollView(
@@ -140,13 +163,13 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Trust: "human, capable of acting in good faith"',
-              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              style: trustStyle,
             ),
-            const Text(
+            Text(
               'Block: "Bots, spammers, bad actors, careless, confused.."',
-              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              style: blockStyle,
             ),
             const SizedBox(height: 16),
 
@@ -169,7 +192,7 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
                       label: const Center(child: Text('TRUST')),
                       selected: _isTrust,
                       onSelected:
-                          (widget.initialVerb == null || widget.initialVerb == TrustVerb.trust)
+                          (widget.initialVerb == null || widget.initialVerb == TrustVerb.trust || widget.isNewScan)
                           ? (val) => setState(() {
                               if (val) {
                                 _selectedVerb = TrustVerb.trust;
@@ -191,7 +214,7 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
                       label: const Center(child: Text('BLOCK')),
                       selected: _isBlock,
                       onSelected:
-                          (widget.initialVerb == null || widget.initialVerb == TrustVerb.block)
+                          (widget.initialVerb == null || widget.initialVerb == TrustVerb.block || widget.isNewScan)
                           ? (val) => setState(() {
                               if (val) {
                                 _selectedVerb = TrustVerb.block;
@@ -329,16 +352,18 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
     bool hasChanged = changedVerb || (_isTrust && changedMoniker) || changedComment;
 
     // Check validation
+    bool isVerbSelected = _selectedVerb != null;
     bool isMonikerValid = _selectedVerb != TrustVerb.trust || curMoniker.isNotEmpty;
 
-    return hasChanged && isMonikerValid;
+    return hasChanged && isMonikerValid && isVerbSelected;
   }
 
   void _handleSave() async {
     setState(() => _isSaving = true);
+    if (_selectedVerb == null) return;
     try {
       await widget.onSubmit(
-        verb: _selectedVerb,
+        verb: _selectedVerb!,
         moniker: _selectedVerb == TrustVerb.trust ? _monikerController.text.trim() : null,
         comment: _commentController.text.trim().isNotEmpty ? _commentController.text.trim() : null,
         revokeAt: _selectedVerb == TrustVerb.replace ? kSinceAlways : null,
