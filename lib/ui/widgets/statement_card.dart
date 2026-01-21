@@ -63,18 +63,22 @@ class StatementCard extends StatelessWidget {
     // 2. Determine "Verified" Badge (Only for Trust)
     Widget? trailingIcon;
     if (verb == TrustVerb.trust) {
-      final vouchesBack = peersStatements[subjectToken]?.any((s) =>
-              s.subjectToken == myKeyToken && s.verb == TrustVerb.trust) ??
-          false;
+      final TrustStatement? peerStatement = peersStatements[subjectToken]?.where((s) =>
+              s.subjectToken == myKeyToken && s.verb == TrustVerb.trust).firstOrNull;
+      final bool vouchesBack = peerStatement != null;
 
       trailingIcon = Tooltip(
         message: vouchesBack
             ? 'Verified: They trust you back'
             : 'They have not trusted you yet',
-        child: Icon(
-          vouchesBack ? Icons.check_circle : Icons.check_circle_outline_rounded,
-          size: 20,
-          color: vouchesBack ? themeColor : Colors.grey.shade300,
+        child: InkWell(
+          onTap: peerStatement != null ? () => _showJson(context, peerStatement) : null,
+          borderRadius: BorderRadius.circular(20),
+          child: Icon(
+            vouchesBack ? Icons.check_circle : Icons.check_circle_outline_rounded,
+            size: 20,
+            color: vouchesBack ? themeColor : Colors.grey.shade300,
+          ),
         ),
       );
     }
@@ -233,14 +237,19 @@ class StatementCard extends StatelessWidget {
 
   void _showJson(BuildContext context, TrustStatement statement) {
     // Construct a context map for the Labeler.
-    // Ideally we would have 'myStatements' here too, but for 'peersStatements' contexts (like PeopleScreen) 
-    // it is sufficient. In screens without peersStatements (Blocks), labels will just be less rich.
     final Map<String, List<TrustStatement>> combined = {};
+    
     if (AppShell.instance.peersStatements.value.isNotEmpty) {
       combined.addAll(AppShell.instance.peersStatements.value);
     }
+
+    // Add my statements so the Labeler can resolve names I've assigned
+    final myToken = Keys().identityToken;
+    if (myToken != null && AppShell.instance.myStatements.value.isNotEmpty) {
+      combined[myToken] = AppShell.instance.myStatements.value;
+    }
     
-    final labeler = Labeler(combined, Keys().identityToken!);
+    final labeler = Labeler(combined, myToken!);
     final interpreter = OneOfUsInterpreter(labeler);
 
     showDialog(
