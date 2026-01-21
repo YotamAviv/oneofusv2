@@ -50,7 +50,7 @@ You reading this now are either one of us or one of them.''',
           ),
           const SizedBox(height: 40),
           const Text(
-            '''We're building our own network by cryptographically signing each other's public keys, creating a web of trust. Share the app and vouch for us humans.''',
+            '''We're building our own human identity network by cryptographically signing each other's public keys, creating a web of trust. Share the app and vouch for us humans.''',
             style: _textStyle,
           ),
           const SizedBox(height: 12),

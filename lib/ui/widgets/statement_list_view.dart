@@ -13,6 +13,7 @@ class StatementListView extends StatelessWidget {
   final VoidCallback? onAdd;
   final String? addLabel;
   final String? description;
+  final String? bottomDescription;
 
   const StatementListView({
     super.key,
@@ -28,6 +29,7 @@ class StatementListView extends StatelessWidget {
     this.onAdd,
     this.addLabel,
     this.description,
+    this.bottomDescription,
   });
 
   @override
@@ -58,8 +60,8 @@ class StatementListView extends StatelessWidget {
                 Text(
                   description!,
                   style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.blueGrey.shade600,
+                    fontSize: 14,
+                    // color: Colors.blueGrey.shade600,
                     height: 1.4,
                   ),
                 ),
@@ -77,6 +79,19 @@ class StatementListView extends StatelessWidget {
                   itemBuilder: itemBuilder,
                 ),
         ),
+        if (bottomDescription != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+            child: Text(
+              bottomDescription!,
+              style: TextStyle(
+                fontSize: 14,
+                // color: Colors.blueGrey.shade400,
+                height: 1.4,
+              ),
+              // textAlign: TextAlign.center,
+            ),
+          ),
         if (onAdd != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 16.0),

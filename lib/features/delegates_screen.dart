@@ -18,8 +18,7 @@ class DelegatesScreenState extends State<DelegatesScreen> {
     return ValueListenableBuilder<List<TrustStatement>>(
       valueListenable: AppShell.instance.myStatements,
       builder: (context, myStatements, _) {
-        // Filter by delegate verb
-        final delegates = myStatements
+        final List<TrustStatement> delegates = myStatements
             .where((s) => s.verb == TrustVerb.delegate)
             .toList();
         
@@ -27,6 +26,8 @@ class DelegatesScreenState extends State<DelegatesScreen> {
           child: StatementListView(
             title: 'SERVICES',
             description: 'Services (websites, apps) you have authorized to state stuff as your identity.',
+            bottomDescription: '''You sign delegate statements using your identity private key and state that the delegate public/private key pair you created and gave that service represents you.
+The private keys are securely transmitted to that service when you sign in using a delegate key pair''',
             headerPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
             emptyTitle: 'No Authorized Delegates',
             emptySubtitle: 'Services you authorize will appear here.',
