@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:oneofus_common/util.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'package:oneofus_common/crypto.dart';
 import 'package:oneofus_common/crypto25519.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/direct_firestore_writer.dart';
@@ -17,11 +18,13 @@ import '../../ui/qr_scanner.dart';
 class ReplaceFlow extends StatefulWidget {
   final FirebaseFirestore firestore;
   final String? initialOldIdentityToken;
+  final bool claimMode;
 
   const ReplaceFlow({
     super.key,
     required this.firestore,
     this.initialOldIdentityToken,
+    this.claimMode = false,
   });
 
   @override
@@ -75,7 +78,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F0EF),
       appBar: AppBar(
-        title: const Text('REPLACE IDENTITY', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 4)),
+        title: Text(widget.claimMode ? 'CLAIM OLD IDENTITY' : 'REPLACE IDENTITY', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 4)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: const Color(0xFF37474F),
@@ -94,6 +97,37 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
   }
 
   Widget _buildIntroScreen() {
+    if (widget.claimMode) {
+       return SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'The process of claiming an old key to merge its history into your current identity has these steps:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+            ),
+            const SizedBox(height: 24),
+            _buildStepItem(1, 'Identify Old Key', 'Scan or verify the key you want to claim.'),
+            _buildStepItem(2, 'Re-sign Content', 'Your current key will re-publish all active trusts, blocks, and delegate assignments issued by the old key.'),
+            _buildStepItem(3, 'Claim & Replace', 'Your current key will publish a Replace statement, formally claiming the old key.'),
+            _buildStepItem(4, 'Equivalence', 'The network will recognize the old key as equivalent to your current key.'),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: _nextPage,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                backgroundColor: const Color(0xFF37474F),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('I UNDERSTAND, PROCEED', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            ),
+          ],
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -161,14 +195,16 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         children: [
           const Icon(Icons.qr_code_scanner_rounded, size: 80, color: Color(0xFF00897B)),
           const SizedBox(height: 32),
-          const Text(
-            'Identify the key you want to claim.',
+          Text(
+            widget.claimMode ? 'Identify the key you want to claim.' : 'Identify your old identity.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
           ),
           const SizedBox(height: 12),
           Text(
-            'Scan the QR code of your old identity from another device or a backup.',
+            widget.claimMode 
+              ? 'Scan the QR code of the identity you want to merge into this one.'
+              : 'Scan the QR code of your old identity from another device or a backup.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade600),
           ),
@@ -443,11 +479,26 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
       final keys = Keys();
       final oldIdentity = _oldIdentityToken == keys.identityToken ? keys.identity : null;
       
-      // 1. Generate new identity key
-      setState(() => _processingStatus = 'Generating new identity key...');
-      final newKeyPair = await const CryptoFactoryEd25519().createKeyPair();
-      final newPubKeyJson = await (await newKeyPair.publicKey).json;
-      final signer = await OouSigner.make(newKeyPair);
+      final OouSigner signer;
+      final Json newPubKeyJson;
+      final OouKeyPair? newKeyPair; // Only used if not claiming
+
+      if (widget.claimMode) {
+        // 1. Load Current Identity
+        setState(() => _processingStatus = 'Loading current identity...');
+        final kp = keys.identity;
+        if (kp == null) throw Exception("Current identity key pair not found");
+        newKeyPair = null;
+        signer = await OouSigner.make(kp);
+        newPubKeyJson = await (await kp.publicKey).json;
+      } else {
+        // 1. Generate new identity key
+        setState(() => _processingStatus = 'Generating new identity key...');
+        newKeyPair = await const CryptoFactoryEd25519().createKeyPair();
+        newPubKeyJson = await (await newKeyPair.publicKey).json;
+        signer = await OouSigner.make(newKeyPair);
+      }
+
       final writer = DirectFirestoreWriter(widget.firestore);
       
       // 2. Filter valid statements and re-publish
@@ -499,20 +550,24 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         oldPubKeyJson,
         TrustVerb.replace,
         revokeAt: kSinceAlways,
-        comment: 'Identity recovery/rotation.',
+        comment: widget.claimMode 
+             ? 'Identity claim.' 
+             : 'Identity recovery/rotation.',
       );
       
       await writer.push(replaceJson, signer);
 
-      // 4. Switch local storage
-      setState(() {
-        _processingStatus = 'Finalizing...';
-        _processingProgress = 1.0;
-      });
-      
-      final allKeyJsons = await keys.getAllKeyJsons();
-      allKeyJsons[kOneofusDomain] = await newKeyPair.json;
-      await keys.importKeys(jsonEncode(allKeyJsons));
+      // 4. Switch local storage (Only if replacing with NEW key)
+      if (!widget.claimMode && newKeyPair != null) {
+        setState(() {
+          _processingStatus = 'Finalizing...';
+          _processingProgress = 1.0;
+        });
+        
+        final allKeyJsons = await keys.getAllKeyJsons();
+        allKeyJsons[kOneofusDomain] = await newKeyPair.json;
+        await keys.importKeys(jsonEncode(allKeyJsons));
+      }
 
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -628,15 +683,17 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         children: [
           const Icon(Icons.check_circle_rounded, size: 100, color: Color(0xFF00897B)),
           const SizedBox(height: 32),
-          const Text(
-            'Identity Recovered!',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+          Text(
+            widget.claimMode ? 'Key Claimed!' : 'Identity Recovered!',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Your new key is now active. \n\nIMPORTANT: Since this is a new key, you MUST contact your trusted network and ask them to vouch for you again.',
+          Text(
+            widget.claimMode 
+              ? 'The old key history has been merged into your current identity.\n\nAll valid statements have been re-issued by you and the network will now recognize the old key as an equivalent to your current key.'
+              : 'Your new key is now active. \n\nIMPORTANT: Since this is a new key, you MUST contact your trusted network and ask them to vouch for you again.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64)),
+            style: const TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64)),
           ),
           const SizedBox(height: 48),
           ElevatedButton(

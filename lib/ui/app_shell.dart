@@ -884,6 +884,10 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
                 Expanded(
                   child: HistoryScreen(
                     scrollController: scrollController,
+                    onClaimKey: () {
+                      Navigator.pop(context); // Close modal
+                      _showReplaceKeyDialog(context, claimMode: true);
+                    },
                   ),
                 ),
               ],
@@ -894,14 +898,15 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     );
   }
 
-  void _showReplaceKeyDialog(BuildContext context) {
+  void _showReplaceKeyDialog(BuildContext context, {bool claimMode = false}) {
     final identityToken = _keys.identityToken;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ReplaceFlow(
           firestore: _firestore,
-          initialOldIdentityToken: identityToken,
+          initialOldIdentityToken: claimMode ? null : identityToken,
+          claimMode: claimMode,
         ),
       ),
     ).then((_) => _loadAllData()); // Refresh after flow completes

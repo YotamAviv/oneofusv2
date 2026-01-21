@@ -7,10 +7,12 @@ import '../ui/app_shell.dart';
 
 class HistoryScreen extends StatelessWidget {
   final ScrollController? scrollController;
+  final VoidCallback? onClaimKey;
 
   const HistoryScreen({
     super.key,
     this.scrollController,
+    this.onClaimKey,
   });
 
   @override
@@ -30,6 +32,8 @@ class HistoryScreen extends StatelessWidget {
           emptyIcon: Icons.history_outlined,
           itemCount: equivalents.length,
           scrollController: scrollController,
+          onAdd: onClaimKey,
+          addLabel: 'CLAIM KEY',
           itemBuilder: (context, index) {
             final s = equivalents[index];
             return StatementCard(statement: s);
