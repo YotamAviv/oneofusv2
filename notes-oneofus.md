@@ -9,12 +9,13 @@ adb shell pm clear net.oneofus.app
 flutter run -d emulator-5554
 
 ## required for launch
-claim key from welcome screen broken.
 
 ### Nerdster side
 - keys received, just a text snackbar
 
 ## Bugs:
+claim key from welcome screen broken.
+restore key from welcome screen congratulates me, which it shouldn't.
 
 ## Not required for launch:
 - settings
