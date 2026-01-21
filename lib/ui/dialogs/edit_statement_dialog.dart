@@ -2,29 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
 
+import '../../core/keys.dart';
 import '../widgets/editors.dart';
 import '../widgets/verb_conflict_warning.dart';
 import '../qr_scanner.dart';
 
 class EditStatementDialog extends StatefulWidget {
-  final TrustStatement statement;
+  final TrustStatement proposedStatement;
   final TrustStatement? existingStatement;
-  final TrustVerb? initialVerb;
   final bool isNewScan;
 
-  final Future<void> Function({
-    required TrustVerb verb,
-    String? moniker,
-    String? comment,
-    String? domain,
-    String? revokeAt,
-  }) onSubmit;
+  final Future<void> Function(TrustStatement statement) onSubmit;
 
   const EditStatementDialog({
     super.key,
-    required this.statement,
+    required this.proposedStatement,
     this.existingStatement,
-    this.initialVerb,
     this.isNewScan = false,
     required this.onSubmit,
   });
@@ -54,7 +47,7 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedVerb = widget.initialVerb ?? widget.statement.verb;
+    _selectedVerb = widget.proposedStatement.verb;
     
     // Initialize Keys
     _monikerKey = GlobalKey<FieldEditorState>();
@@ -63,8 +56,8 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
     _revokeAtKey = GlobalKey<FieldEditorState>();
 
     // Initial validation state based on existing data
-    _monikerValid = widget.statement.moniker?.isNotEmpty ?? false;
-    _domainValid = widget.statement.domain?.isNotEmpty ?? false;
+    _monikerValid = widget.proposedStatement.moniker?.isNotEmpty ?? false;
+    _domainValid = widget.proposedStatement.domain?.isNotEmpty ?? false;
     
     // Determine initial "has changes" state:
     // 1. If no existing statement, we are creating new -> Changed
@@ -215,10 +208,10 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
     }
 
     // Normalize nulls vs empty strings for comparison
-    final initialMoniker = widget.statement.moniker ?? '';
-    final initialComment = widget.statement.comment ?? '';
-    final initialDomain = widget.statement.domain ?? '';
-    final initialRevokeAt = widget.statement.revokeAt; // can be null
+    final initialMoniker = widget.proposedStatement.moniker ?? '';
+    final initialComment = widget.proposedStatement.comment ?? '';
+    final initialDomain = widget.proposedStatement.domain ?? '';
+    final initialRevokeAt = widget.proposedStatement.revokeAt; // can be null
 
     final isChanged = (currentMoniker != null && currentMoniker != initialMoniker) ||
                       (currentComment != null && currentComment != initialComment) ||
@@ -233,87 +226,99 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
   List<Widget> _buildFields() {
     switch (_selectedVerb) {
       case TrustVerb.trust:
-        return [
-          TextFieldEditor(
-            key: _monikerKey,
-            label: 'MONIKER (Required)',
-            initialValue: widget.statement.moniker,
-            hint: 'Name you know them by',
-            required: true,
-            onValidityChanged: (valid) {
-              if (_monikerValid != valid) setState(() => _monikerValid = valid);
-            },
-            onChanged: (_) => _checkForChanges(),
-          ),
-          const SizedBox(height: 16),
-          TextBoxEditor(
-            key: _commentKey,
-            label: 'COMMENT (Optional)',
-            initialValue: widget.statement.comment,
-            hint: 'E.g. "Colleague from work", "Met at conference"',
-            onChanged: (_) => _checkForChanges(),
-          ),
-        ];
-
+        return _buildTrustFields();
       case TrustVerb.block:
-        return [
-          TextBoxEditor(
-            key: _commentKey,
-            label: 'REASON (Recommended)',
-            initialValue: widget.statement.comment,
-            hint: 'Why are you blocking this key?',
-            onChanged: (_) => _checkForChanges(),
-          ),
-        ];
-
+        return _buildBlockFields();
       case TrustVerb.delegate:
-        return [
-          TextFieldEditor(
-            key: _domainKey,
-            label: 'DOMAIN',
-            initialValue: widget.statement.domain,
-            hint: 'e.g. nerdster.org',
-            enabled: widget.isNewScan, // Typically domain is set on creation
-            required: true,
-            onValidityChanged: (valid) {
-              if (_domainValid != valid) setState(() => _domainValid = valid);
-            },
-            onChanged: (_) => _checkForChanges(),
-          ),
-          const SizedBox(height: 16),
-          DelegateRevokeAtEditor(
-            key: _revokeAtKey,
-            initialRevokeAt: widget.statement.revokeAt,
-            onScan: (context) async {
-               return await QrScanner.scan(
-                 context,
-                 title: 'Scan Revocation Token',
-                 validator: (code) async => RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(code),
-               );
-            },
-            onValidityChanged: (valid) {
-              if (_delegateValid != valid) setState(() => _delegateValid = valid);
-            },
-            onChanged: (_) => _checkForChanges(),
-          ),
-        ];
-
+        return _buildDelegateFields();
       case TrustVerb.replace:
-        return [
-          const ReplaceRevokeAt(),
-          const SizedBox(height: 16),
-          TextBoxEditor(
-            key: _commentKey,
-            label: 'COMMENT',
-            initialValue: widget.statement.comment,
-            hint: 'Reason for replacement',
-            onChanged: (_) => _checkForChanges(),
-          ),
-        ];
-
+        return _buildReplaceFields();
       default:
         return [];
     }
+  }
+
+  List<Widget> _buildTrustFields() {
+    return [
+      TextFieldEditor(
+        key: _monikerKey,
+        label: 'MONIKER (Required)',
+        initialValue: widget.proposedStatement.moniker,
+        hint: 'Name you know them by',
+        required: true,
+        onValidityChanged: (valid) {
+          if (_monikerValid != valid) setState(() => _monikerValid = valid);
+        },
+        onChanged: (_) => _checkForChanges(),
+      ),
+      const SizedBox(height: 16),
+      TextBoxEditor(
+        key: _commentKey,
+        label: 'COMMENT (Optional)',
+        initialValue: widget.proposedStatement.comment,
+        hint: 'E.g. "Colleague from work", "Met at conference"',
+        onChanged: (_) => _checkForChanges(),
+      ),
+    ];
+  }
+
+  List<Widget> _buildBlockFields() {
+    return [
+      TextBoxEditor(
+        key: _commentKey,
+        label: 'REASON (Recommended)',
+        initialValue: widget.proposedStatement.comment,
+        hint: 'Why are you blocking this key?',
+        onChanged: (_) => _checkForChanges(),
+      ),
+    ];
+  }
+
+  List<Widget> _buildDelegateFields() {
+    return [
+      TextFieldEditor(
+        key: _domainKey,
+        label: 'DOMAIN',
+        initialValue: widget.proposedStatement.domain,
+        hint: 'e.g. nerdster.org',
+        enabled: widget.isNewScan,
+        required: true,
+        onValidityChanged: (valid) {
+          if (_domainValid != valid) setState(() => _domainValid = valid);
+        },
+        onChanged: (_) => _checkForChanges(),
+      ),
+      const SizedBox(height: 16),
+      DelegateRevokeAtEditor(
+        key: _revokeAtKey,
+        initialRevokeAt: widget.proposedStatement.revokeAt,
+        onScan: (context) async {
+           return await QrScanner.scan(
+             context,
+             title: 'Scan Revocation Token',
+             validator: (code) async => RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(code),
+           );
+        },
+        onValidityChanged: (valid) {
+          if (_delegateValid != valid) setState(() => _delegateValid = valid);
+        },
+        onChanged: (_) => _checkForChanges(),
+      ),
+    ];
+  }
+
+  List<Widget> _buildReplaceFields() {
+    return [
+      const ReplaceRevokeAt(),
+      const SizedBox(height: 16),
+      TextBoxEditor(
+        key: _commentKey,
+        label: 'COMMENT',
+        initialValue: widget.proposedStatement.comment,
+        hint: 'Reason for replacement',
+        onChanged: (_) => _checkForChanges(),
+      ),
+    ];
   }
 
   Future<void> _submit() async {
@@ -347,23 +352,35 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
       } else if (_selectedVerb == TrustVerb.replace) {
         revokeAt = '<since always>';
       } else {
-         revokeAt = widget.statement.revokeAt; // Fallback? should be in key
+         revokeAt = widget.proposedStatement.revokeAt; // Fallback? should be in key
       }
 
-      await widget.onSubmit(
-        verb: _selectedVerb!,
+      Json iJson = (await Keys().getIdentityPublicKeyJson())!;
+      
+      final subjectJson = widget.proposedStatement[widget.proposedStatement.verb.label];
+
+      final json = TrustStatement.make(
+        iJson,
+        subjectJson,
+        _selectedVerb!,
         moniker: moniker,
         comment: comment,
         domain: domain,
         revokeAt: revokeAt,
       );
+
+      final statement = TrustStatement(Jsonish(json));
+
+      await widget.onSubmit(statement);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        if (!e.toString().contains("UserCancelled")) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
       }
     }
   }

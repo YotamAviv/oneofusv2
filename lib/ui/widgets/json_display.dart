@@ -55,35 +55,10 @@ class _State extends State<JsonDisplay> {
     List<TextSpan> spans = highlightJsonKeys(display, baseStyle,
         keysToHighlight: JsonDisplay.highlightKeys);
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: SelectionArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 64, left: 16, right: 16),
-              child: Text.rich(TextSpan(children: spans)),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 0,
-          right: 0,
-          child: FloatingActionButton(
-              heroTag: 'Interpret',
-              mini: true, 
-              tooltip: !widget.interpret.value
-                  ? 'Raw JSON shown; click to interpret'
-                  : 'Interpreted JSON shown; click to show raw',
-              backgroundColor: Colors.white,
-              child: Icon(Icons.transform,
-                  color: widget.interpret.value ? Colors.green[900] : Colors.grey),
-              onPressed: () {
-                setState(() {
-                  widget.interpret.value = !widget.interpret.value;
-                });
-              }),
-        ),
-      ],
+    return SelectionArea(
+      child: SingleChildScrollView(
+        child: Text.rich(TextSpan(children: spans)),
+      ),
     );
   }
 }

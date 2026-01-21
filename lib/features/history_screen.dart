@@ -5,7 +5,7 @@ import '../ui/widgets/statement_card.dart';
 import '../ui/widgets/statement_list_view.dart';
 
 class HistoryScreen extends StatelessWidget {
-  final Map<String, List<TrustStatement>> statementsByIssuer;
+  final List<TrustStatement> myStatements;
   final String myKeyToken;
   final ScrollController? scrollController;
   final Function(TrustStatement) onEdit;
@@ -13,7 +13,7 @@ class HistoryScreen extends StatelessWidget {
 
   const HistoryScreen({
     super.key,
-    required this.statementsByIssuer,
+    required this.myStatements,
     required this.myKeyToken,
     this.scrollController,
     required this.onEdit,
@@ -22,7 +22,7 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final equivalents = (statementsByIssuer[myKeyToken] ?? [])
+    final equivalents = myStatements
         .where((s) => s.verb == TrustVerb.replace)
         .toList();
 
@@ -44,7 +44,6 @@ class HistoryScreen extends StatelessWidget {
   Widget _buildHistoryCard(TrustStatement s) {
     return StatementCard(
       statement: s,
-      statementsByIssuer: statementsByIssuer,
       myKeyToken: myKeyToken,
       onEdit: onEdit,
       onClear: onClear,

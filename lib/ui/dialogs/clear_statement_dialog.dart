@@ -95,9 +95,11 @@ class _ClearStatementDialogState extends State<ClearStatementDialog> {
                   } catch (e) {
                     if (mounted) {
                       setState(() => _isSaving = false);
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      if (!e.toString().contains("UserCancelled")) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
                     }
                   }
                 },

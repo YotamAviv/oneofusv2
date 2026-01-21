@@ -5,7 +5,7 @@ import '../ui/widgets/statement_card.dart';
 import '../ui/widgets/statement_list_view.dart';
 
 class DelegatesScreen extends StatefulWidget {
-  final Map<String, List<TrustStatement>> statementsByIssuer;
+  final List<TrustStatement> myStatements;
   final String myKeyToken;
   final Future<void> Function()? onRefresh;
   final Function(TrustStatement) onEdit;
@@ -14,7 +14,7 @@ class DelegatesScreen extends StatefulWidget {
 
   const DelegatesScreen({
     super.key,
-    required this.statementsByIssuer,
+    required this.myStatements,
     required this.myKeyToken,
     this.onRefresh,
     required this.onEdit,
@@ -29,7 +29,8 @@ class DelegatesScreen extends StatefulWidget {
 class DelegatesScreenState extends State<DelegatesScreen> {
   @override
   Widget build(BuildContext context) {
-    final myStatements = widget.statementsByIssuer[widget.myKeyToken] ?? [];
+    // Filter by delegate verb
+    final List<TrustStatement> myStatements = widget.myStatements;
     
     final delegates = myStatements
         .where((s) => s.verb == TrustVerb.delegate)
@@ -55,7 +56,7 @@ class DelegatesScreenState extends State<DelegatesScreen> {
   Widget _buildServiceCard(TrustStatement statement) {
     return StatementCard(
       statement: statement,
-      statementsByIssuer: widget.statementsByIssuer,
+      // Delegates screen doesn't typically show bi-directional trust
       myKeyToken: widget.myKeyToken,
       onEdit: widget.onEdit,
       onClear: widget.onClear,

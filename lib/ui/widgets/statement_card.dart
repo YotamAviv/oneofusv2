@@ -24,7 +24,7 @@ class CardAction {
 
 class StatementCard extends StatelessWidget {
   final TrustStatement statement;
-  final Map<String, List<TrustStatement>> statementsByIssuer;
+  final Map<String, List<TrustStatement>>? peersStatements;
   final String myKeyToken;
   final Function(TrustStatement) onEdit;
   final Function(TrustStatement) onClear;
@@ -32,7 +32,7 @@ class StatementCard extends StatelessWidget {
   const StatementCard({
     super.key,
     required this.statement,
-    required this.statementsByIssuer,
+    this.peersStatements,
     required this.myKeyToken,
     required this.onEdit,
     required this.onClear,
@@ -64,8 +64,8 @@ class StatementCard extends StatelessWidget {
 
     // 2. Determine "Verified" Badge (Only for Trust)
     Widget? trailingIcon;
-    if (verb == TrustVerb.trust) {
-      final vouchesBack = statementsByIssuer[subjectToken]?.any((s) =>
+    if (verb == TrustVerb.trust && peersStatements != null) {
+      final vouchesBack = peersStatements![subjectToken]?.any((s) =>
               s.subjectToken == myKeyToken && s.verb == TrustVerb.trust) ??
           false;
 
@@ -234,7 +234,15 @@ class StatementCard extends StatelessWidget {
   }
 
   void _showJson(BuildContext context, TrustStatement statement) {
-    final labeler = Labeler(statementsByIssuer, myKeyToken);
+    // Construct a context map for the Labeler.
+    // Ideally we would have 'myStatements' here too, but for 'peersStatements' contexts (like PeopleScreen) 
+    // it is sufficient. In screens without peersStatements (Blocks), labels will just be less rich.
+    final Map<String, List<TrustStatement>> combined = {};
+    if (peersStatements != null) {
+      combined.addAll(peersStatements!);
+    }
+    
+    final labeler = Labeler(combined, myKeyToken);
     final interpreter = OneOfUsInterpreter(labeler);
 
     showDialog(

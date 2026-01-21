@@ -5,7 +5,7 @@ import '../ui/widgets/statement_card.dart';
 import '../ui/widgets/statement_list_view.dart';
 
 class BlocksScreen extends StatelessWidget {
-  final Map<String, List<TrustStatement>> statementsByIssuer;
+  final List<TrustStatement> myStatements;
   final String myKeyToken;
   final ScrollController? scrollController;
   final Function(TrustStatement) onEdit;
@@ -14,7 +14,7 @@ class BlocksScreen extends StatelessWidget {
 
   const BlocksScreen({
     super.key,
-    required this.statementsByIssuer,
+    required this.myStatements,
     required this.myKeyToken,
     this.scrollController,
     required this.onEdit,
@@ -24,7 +24,7 @@ class BlocksScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final blocks = (statementsByIssuer[myKeyToken] ?? [])
+    final blocks = myStatements
         .where((s) => s.verb == TrustVerb.block)
         .toList();
 
@@ -48,7 +48,6 @@ class BlocksScreen extends StatelessWidget {
   Widget _buildBlockCard(TrustStatement s) {
     return StatementCard(
       statement: s,
-      statementsByIssuer: statementsByIssuer,
       myKeyToken: myKeyToken,
       onEdit: onEdit,
       onClear: onClear,

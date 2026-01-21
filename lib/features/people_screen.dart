@@ -6,7 +6,8 @@ import '../ui/widgets/statement_list_view.dart';
 
 /// Read: http://trust_block_disposition_semantics.md
 class PeopleScreen extends StatefulWidget {
-  final Map<String, List<TrustStatement>> statementsByIssuer;
+  final List<TrustStatement> myStatements;
+  final Map<String, List<TrustStatement>> peersStatements;
   final String myKeyToken;
   final Future<void> Function()? onRefresh;
   final Function(TrustStatement) onEdit;
@@ -14,7 +15,8 @@ class PeopleScreen extends StatefulWidget {
 
   const PeopleScreen({
     super.key,
-    required this.statementsByIssuer,
+    required this.myStatements,
+    required this.peersStatements,
     required this.myKeyToken,
     this.onRefresh,
     required this.onEdit,
@@ -28,10 +30,8 @@ class PeopleScreen extends StatefulWidget {
 class _PeopleScreenState extends State<PeopleScreen> {
   @override
   Widget build(BuildContext context) {
-    final List<TrustStatement> myStatements = widget.statementsByIssuer[widget.myKeyToken] ?? [];
-
     // Filter for those where the latest verb is 'trust'.
-    final myTrustStatements = myStatements
+    final myTrustStatements = widget.myStatements
         .where((s) => s.verb == TrustVerb.trust)
         .toList();
 
@@ -54,7 +54,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
   Widget _buildPersonCard(TrustStatement statement) {
     return StatementCard(
       statement: statement,
-      statementsByIssuer: widget.statementsByIssuer,
+      peersStatements: widget.peersStatements,
       myKeyToken: widget.myKeyToken,
       onEdit: widget.onEdit,
       onClear: widget.onClear,

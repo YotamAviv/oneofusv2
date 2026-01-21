@@ -6,13 +6,15 @@ import '../core/keys.dart';
 import '../ui/identity_card_surface.dart';
 
 class CardScreen extends StatelessWidget {
-  final Map<String, List<TrustStatement>> statementsByIssuer;
+  final List<TrustStatement> myStatements;
+  final Map<String, List<TrustStatement>> peersStatements;
   final String myKeyToken;
   final GlobalKey<IdentityCardSurfaceState>? cardKey;
 
   const CardScreen({
     super.key,
-    required this.statementsByIssuer,
+    required this.myStatements,
+    required this.peersStatements,
     required this.myKeyToken,
     this.cardKey,
   });
@@ -30,13 +32,13 @@ class CardScreen extends StatelessWidget {
         String myMoniker = 'Me';
         
         // Find people I trust
-        final trustedByMe = (statementsByIssuer[myKeyToken] ?? [])
+        final trustedByMe = myStatements
             .where((s) => s.verb == TrustVerb.trust)
             .map((s) => s.subjectToken)
             .toSet();
 
         // Search for trusts of ME from someone I trust
-        for (final entry in statementsByIssuer.entries) {
+        for (final entry in peersStatements.entries) {
           if (!trustedByMe.contains(entry.key)) continue;
           
           for (final s in entry.value) {

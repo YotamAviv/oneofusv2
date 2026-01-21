@@ -20,9 +20,11 @@ import 'package:oneofus_common/util.dart';
 
 import '../core/config.dart';
 import '../core/keys.dart';
+import '../core/labeler.dart';
 import '../core/share_service.dart';
 import '../core/sign_in_service.dart';
 import '../demotest/tester.dart';
+import '../ui/interpreter.dart';
 import '../features/about_screen.dart';
 import '../features/advanced_screen.dart';
 import '../features/dev_screen.dart';
@@ -36,6 +38,7 @@ import '../features/people_screen.dart';
 import '../features/replace/replace_flow.dart';
 import 'dialogs/edit_statement_dialog.dart';
 import 'dialogs/clear_statement_dialog.dart';
+import 'dialogs/lgtm_dialog.dart';
 import 'error_dialog.dart';
 import 'qr_scanner.dart';
 import 'identity_card_surface.dart';
@@ -49,8 +52,8 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-// It's been a struggle to get the top junk aligned...
-const double heightKludge = 20;
+// Padding to ensure the top content clears the status bar/notch nicely.
+const double _topSafeAreaPadding = 20;
 
 class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
   final PageController _pageController = PageController();
@@ -68,7 +71,8 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedStatementSource<TrustStatement> _source;
-  Map<String, List<TrustStatement>> _statementsByIssuer = {};
+  List<TrustStatement> _myStatements = [];
+  Map<String, List<TrustStatement>> _peersStatements = {};
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -167,7 +171,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     
     // Only show the full-screen loader if we have absolutely no data yet.
     // If we're already displaying things, just set _isRefreshing.
-    final bool showFullLoader = _statementsByIssuer.isEmpty && !_isRefreshing;
+    final bool showFullLoader = _myStatements.isEmpty && !_isRefreshing;
     if (showFullLoader) {
       setState(() => _isLoading = true);
     } else {
@@ -177,40 +181,40 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     _source.clear();
     
     try {
-      // 1. Fetch statements from Me
-      final Map<String, List<TrustStatement>> results1 = await _source.fetch({myToken: null});
-      final List<TrustStatement> myStatements = results1[myToken] ?? [];
+      // Fetch statements authored by the current user
+      final Map<String, List<TrustStatement>> myStatementsMap = await _source.fetch({myToken: null});
+      final List<TrustStatement> newMyStatements = myStatementsMap[myToken] ?? [];
       
-      myStatements.removeWhere((s) => s.verb == TrustVerb.clear);
+      newMyStatements.removeWhere((s) => s.verb == TrustVerb.clear);
 
-      // 2. Extract everyone I trust (direct contacts)
-      final Set<String> directContacts = myStatements
+      // Identify direct contacts (identities trusted by the user)
+      final Set<String> directContacts = newMyStatements
           .where((s) => s.verb == TrustVerb.trust)
           .map((s) => s.subjectToken)
           .toSet();
       
       directContacts.remove(myToken);
       
-      Map<String, List<TrustStatement>> results2 = {};
+      Map<String, List<TrustStatement>> newPeersStatements = {};
       if (directContacts.isNotEmpty) {
-        // 3. Fetch statements from direct contacts
+        // Fetch statements from all direct contacts
         final Map<String, String?> keysToFetch = {
           for (final String token in directContacts) token: null
         };
-        results2 = await _source.fetch(keysToFetch);
-        for (final list in results2.values) {
+        newPeersStatements = await _source.fetch(keysToFetch);
+        for (final list in newPeersStatements.values) {
           list.removeWhere((s) => s.verb == TrustVerb.clear);
         }
       }
       
       if (mounted) {
         setState(() {
-          _statementsByIssuer = {
-            ...results1,
-            ...results2,
-          };
+          _myStatements = newMyStatements;
+          _peersStatements = newPeersStatements;
+
           assert(() {
-            for (final list in _statementsByIssuer.values) {
+            Statement.validateOrderTypes(_myStatements);
+            for (final list in _peersStatements.values) {
               Statement.validateOrderTypes(list);
             }
             return true;
@@ -241,6 +245,28 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     });
   }
 
+  Future<void> _executeSignIn(String data) async {
+    try {
+      final success = await SignInService.signIn(
+        data, 
+        context, 
+        firestore: _firestore, 
+        myStatements: _myStatements,
+        onSending: () => _cardKey.currentState?.throwQr(),
+      );
+      if (success && mounted) {
+        _loadAllData();
+        _pageController.animateToPage(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    } catch (e) {
+      // Logic might catch errors during sign-in
+    }
+  }
+
   void _handleIncomingLink(Uri uri) async {
     // Wait for the app to finish its initial loading sequence (keys + cloud data)
     // to ensure we have the identity token and latest trust statements.
@@ -255,41 +281,13 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       if (dataBase64 != null) {
         try {
           final data = utf8.decode(base64Url.decode(dataBase64));
-          final success = await SignInService.signIn(
-            data, 
-            context, 
-            firestore: _firestore, 
-            myStatements: _statementsByIssuer[_keys.identityToken],
-            onSending: () => _cardKey.currentState?.throwQr(),
-          );
-          if (success && mounted) {
-            _loadAllData();
-            _pageController.animateToPage(
-              0,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-          }
+          await _executeSignIn(data);
         } catch (e) {}
       }
     } else if (uri.path.contains('sign-in')) {
       final data = uri.queryParameters['data'];
       if (data != null) {
-        final success = await SignInService.signIn(
-          data, 
-          context, 
-          firestore: _firestore, 
-          myStatements: _statementsByIssuer[_keys.identityToken],
-          onSending: () => _cardKey.currentState?.throwQr(),
-        );
-        if (success && mounted) {
-          _loadAllData();
-          _pageController.animateToPage(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        }
+        await _executeSignIn(data);
       }
     }
   }
@@ -315,23 +313,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         final Map<String, dynamic> json = jsonDecode(scanned);
         
         if (await SignInService.validateSignIn(scanned)) {
-          final success = await SignInService.signIn(
-            scanned, 
-            context, 
-            firestore: _firestore, 
-            myStatements: _statementsByIssuer[_keys.identityToken],
-            onSending: () => _cardKey.currentState?.throwQr(),
-          );
-          if (success && mounted) {
-            _loadAllData();
-            _pageController.animateToPage(
-              0,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-          }
+          await _executeSignIn(scanned);
         } else if (isPubKey(json)) {
-          await _handleScanResult(json, targetVerb: targetVerb);
+          await _handlePublicKeyScan(json, targetVerb: targetVerb);
         }
       } catch (e) {
         if (mounted) {
@@ -343,7 +327,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     }
   }
 
-  Future<void> _handleScanResult(Map<String, dynamic> publicKeyJson, {TrustVerb targetVerb = TrustVerb.trust}) async {
+  Future<void> _handlePublicKeyScan(Map<String, dynamic> publicKeyJson, {TrustVerb targetVerb = TrustVerb.trust}) async {
     try {
       final String subjectToken = getToken(publicKeyJson);
       
@@ -361,12 +345,14 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         return;
       }
 
-      
-      final TrustStatement? latest = _statementsByIssuer[_keys.identityToken]?.firstOrNull;
+      // Check if I have already issued a statement for this subject
+      final TrustStatement? existing = _myStatements
+          .where((s) => s.subjectToken == subjectToken)
+          .firstOrNull;
 
       final TrustStatement template;
-      if (latest != null && latest.verb == targetVerb) {
-        template = latest;
+      if (existing != null && existing.verb == targetVerb) {
+        template = existing;
       } else {
         final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
         final json = TrustStatement.make(
@@ -377,10 +363,10 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         template = TrustStatement(Jsonish(json));
       }
 
-      await _showTrustBlockDialog(
+      await _openStatementDialog(
         context: context,
         statement: template,
-        existingStatement: latest,
+        existingStatement: existing,
         publicKeyJson: publicKeyJson,
         isNewScan: true,
         // If we are initiating a Block or Delegate scan, we lock the verb.
@@ -402,24 +388,15 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required Map<String, dynamic> publicKeyJson,
     TrustStatement? existingStatement,
     bool isNewScan = false,
-    TrustVerb? initialVerb,
   }) async {
     await showDialog(
       context: context,
       builder: (context) => EditStatementDialog(
-        statement: statement,
+        proposedStatement: statement,
         existingStatement: existingStatement,
-        initialVerb: initialVerb,
         isNewScan: isNewScan,
-        onSubmit: ({required verb, comment, domain, moniker, revokeAt}) async {
-          await _pushTrustStatement(
-            publicKeyJson: publicKeyJson,
-            verb: verb,
-            moniker: moniker,
-            comment: comment,
-            domain: domain,
-            revokeAt: revokeAt,
-          );
+        onSubmit: (statement) async {
+          await _pushTrustStatement(statement);
         },
       ),
     );
@@ -430,22 +407,26 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required TrustStatement statement,
     required Map<String, dynamic> publicKeyJson,
   }) async {
+    final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
     await showDialog(
       context: context,
       builder: (context) => ClearStatementDialog(
         statement: statement,
         onSubmit: () async {
-          await _pushTrustStatement(
-            publicKeyJson: publicKeyJson,
-            verb: TrustVerb.clear,
-            domain: statement.domain,
+          final json = TrustStatement.make(
+             myPubKeyJson!, // Assuming identity exists as checked in callers
+             publicKeyJson,
+             TrustVerb.clear,
+             domain: statement.domain,
           );
+          
+          await _pushTrustStatement(TrustStatement(Jsonish(json)));
         },
       ),
     );
   }
 
-  Future<void> _showTrustBlockDialog({
+  Future<void> _openStatementDialog({
     required BuildContext context,
     required TrustStatement statement,
     required Map<String, dynamic> publicKeyJson,
@@ -466,29 +447,46 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       statement: statement,
       existingStatement: existingStatement,
       publicKeyJson: publicKeyJson,
-      initialVerb: lockedVerb,
       isNewScan: isNewScan,
     );
   }
 
-  Future<void> _pushTrustStatement({
-    required Map<String, dynamic> publicKeyJson,
-    required TrustVerb verb,
-    String? moniker,
-    String? comment,
-    String? domain,
-    String? revokeAt,
-  }) async {
+  Future<void> _pushTrustStatement(TrustStatement statement) async {
     final identity = _keys.identity;
     if (identity == null) {
       throw StateError("Cannot push statement without an identity key.");
     }
 
+    // Build interpreter for LGTM dialog
+    final Map<String, List<TrustStatement>> combined = {};
+    if (_peersStatements.isNotEmpty) {
+      combined.addAll(_peersStatements);
+    }
+    final labeler = Labeler(combined, _keys.identityToken!);
+    final interpreter = OneOfUsInterpreter(labeler);
+
+    // Show LGTM confirmation
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return LgtmDialog(
+          statement: statement,
+          interpreter: interpreter,
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      throw Exception('UserCancelled');
+    }
+
+    final publicKeyJson = statement[statement.verb.label];
+
     // Check if we need to warn about deleting a local delegate key
     final token = getToken(publicKeyJson);
     final isMyDelegate = _keys.isDelegateToken(token);
-    final isRevoking = (verb == TrustVerb.delegate && revokeAt != null);
-    final isClearing = (verb == TrustVerb.clear);
+    final isRevoking = (statement.verb == TrustVerb.delegate && statement.revokeAt != null);
+    final isClearing = (statement.verb == TrustVerb.clear);
     
     if (isMyDelegate && (isRevoking || isClearing)) {
       final bool? proceed = await showDialog<bool>(
@@ -520,22 +518,12 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     }
 
     try {
-      final myPubKeyJson = await (await identity.publicKey).json;
-      
-      final statementJson = TrustStatement.make(
-        myPubKeyJson,
-        publicKeyJson,
-        verb,
-        moniker: moniker,
-        comment: comment,
-        domain: domain,
-        revokeAt: revokeAt,
-      );
-      
       final writer = DirectFirestoreWriter(_firestore);
       final signer = await OouSigner.make(identity);
       
-      await writer.push(statementJson, signer);
+      // Ensure the JSON is mutable for signing
+      final mutableJson = Map<String, dynamic>.from(statement.json);
+      await writer.push(mutableJson, signer);
 
       if (isMyDelegate && (isRevoking || isClearing)) {
         await _keys.removeDelegateByToken(token);
@@ -544,6 +532,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       if (mounted) {
         String action = 'Updated';
         Color bgColor = const Color(0xFF00897B);
+        final verb = statement.verb;
         
         if (verb == TrustVerb.trust) {
           action = 'Trusted';
@@ -557,8 +546,8 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           action = 'Updated ID History';
           bgColor = Colors.green;
         } else if (verb == TrustVerb.delegate) {
-          action = revokeAt == null ? 'Delegated' : 'Revoked';
-          bgColor = revokeAt == null ? const Color(0xFF0288D1) : Colors.blueGrey;
+          action = statement.revokeAt == null ? 'Delegated' : 'Revoked';
+          bgColor = statement.revokeAt == null ? const Color(0xFF0288D1) : Colors.blueGrey;
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -602,20 +591,20 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     final myToken = _keys.identityToken;
     if (!_hasKey || myToken == null) return WelcomeScreen(firestore: _firestore);
 
-    final Map<String, List<TrustStatement>> statementMap = _statementsByIssuer;
-
     final pages = [
       CardScreen(
-        statementsByIssuer: statementMap, 
+        myStatements: _myStatements,
+        peersStatements: _peersStatements,
         myKeyToken: myToken,
         cardKey: _cardKey,
       ),
       PeopleScreen(
-        statementsByIssuer: statementMap,
+        myStatements: _myStatements,
+        peersStatements: _peersStatements,
         myKeyToken: myToken,
         onRefresh: _loadAllData,
         onEdit: (statement) async {
-          await _showTrustBlockDialog(
+          await _openStatementDialog(
             context: context,
             statement: statement,
             existingStatement: statement,
@@ -625,7 +614,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           if (mounted) setState(() {});
         },
         onClear: (statement) async {
-          await _showTrustBlockDialog(
+          await _openStatementDialog(
             context: context,
             statement: statement,
             existingStatement: statement,
@@ -636,11 +625,11 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         },
       ),
       DelegatesScreen(
-        statementsByIssuer: statementMap,
+        myStatements: _myStatements,
         myKeyToken: myToken,
         onRefresh: _loadAllData,
         onEdit: (statement) async {
-          await _showTrustBlockDialog(
+          await _openStatementDialog(
             context: context,
             statement: statement,
             existingStatement: statement,
@@ -650,7 +639,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           if (mounted) setState(() {});
         },
         onClear: (statement) async {
-          await _showTrustBlockDialog(
+          await _openStatementDialog(
             context: context,
             statement: statement,
             existingStatement: statement,
@@ -693,7 +682,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, heightKludge, 24, 8),
+                    padding: const EdgeInsets.fromLTRB(24, _topSafeAreaPadding, 24, 8),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -905,7 +894,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
                 Expanded(
                   child: BlocksScreen(
-                    statementsByIssuer: _statementsByIssuer,
+                    myStatements: _myStatements,
                     myKeyToken: _keys.identityToken!,
                     scrollController: scrollController,
                     onScan: () async {
@@ -913,7 +902,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                       setModalState(() {});
                     },
                     onEdit: (s) async {
-                      await _showTrustBlockDialog(
+                      await _openStatementDialog(
                         context: context,
                         statement: s,
                         existingStatement: s,
@@ -923,7 +912,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                       setModalState(() {});
                     },
                     onClear: (s) async {
-                      await _showTrustBlockDialog(
+                      await _openStatementDialog(
                         context: context,
                         statement: s,
                         existingStatement: s,
@@ -962,11 +951,11 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
                 Expanded(
                   child: HistoryScreen(
-                    statementsByIssuer: _statementsByIssuer,
+                    myStatements: _myStatements,
                     myKeyToken: _keys.identityToken!,
                     scrollController: scrollController,
                     onEdit: (s) async {
-                      await _showTrustBlockDialog(
+                      await _openStatementDialog(
                         context: context,
                         statement: s,
                         publicKeyJson: s.subject,
@@ -975,7 +964,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                       setModalState(() {});
                     },
                     onClear: (s) async {
-                      await _showTrustBlockDialog(
+                      await _openStatementDialog(
                         context: context,
                         statement: s,
                         publicKeyJson: s.subject,
