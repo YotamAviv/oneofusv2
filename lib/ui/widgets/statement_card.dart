@@ -7,6 +7,7 @@ import 'json_display.dart';
 import 'key_widget.dart';
 import '../interpreter.dart';
 import '../../core/labeler.dart';
+import '../../core/keys.dart';
 
 class CardAction {
   final IconData icon;
@@ -25,7 +26,6 @@ class CardAction {
 class StatementCard extends StatelessWidget {
   final TrustStatement statement;
   final Map<String, List<TrustStatement>>? peersStatements;
-  final String myKeyToken;
   final Function(TrustStatement) onEdit;
   final Function(TrustStatement) onClear;
 
@@ -33,7 +33,6 @@ class StatementCard extends StatelessWidget {
     super.key,
     required this.statement,
     this.peersStatements,
-    required this.myKeyToken,
     required this.onEdit,
     required this.onClear,
   });
@@ -42,6 +41,7 @@ class StatementCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final subjectToken = statement.subjectToken;
     final verb = statement.verb;
+    final myKeyToken = Keys().identityToken!;
 
     // 1. Determine Color
     Color themeColor;
@@ -80,6 +80,7 @@ class StatementCard extends StatelessWidget {
         ),
       );
     }
+
 
     // 3. Common Metadata
     final shortId = subjectToken.length >= 6
@@ -242,7 +243,7 @@ class StatementCard extends StatelessWidget {
       combined.addAll(peersStatements!);
     }
     
-    final labeler = Labeler(combined, myKeyToken);
+    final labeler = Labeler(combined, Keys().identityToken!);
     final interpreter = OneOfUsInterpreter(labeler);
 
     showDialog(

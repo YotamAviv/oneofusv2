@@ -595,13 +595,11 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       CardScreen(
         myStatements: _myStatements,
         peersStatements: _peersStatements,
-        myKeyToken: myToken,
         cardKey: _cardKey,
       ),
       PeopleScreen(
         myStatements: _myStatements,
         peersStatements: _peersStatements,
-        myKeyToken: myToken,
         onRefresh: _loadAllData,
         onEdit: (statement) async {
           await _openStatementDialog(
@@ -626,7 +624,6 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       ),
       DelegatesScreen(
         myStatements: _myStatements,
-        myKeyToken: myToken,
         onRefresh: _loadAllData,
         onEdit: (statement) async {
           await _openStatementDialog(
@@ -895,7 +892,6 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 Expanded(
                   child: BlocksScreen(
                     myStatements: _myStatements,
-                    myKeyToken: _keys.identityToken!,
                     scrollController: scrollController,
                     onScan: () async {
                       await _onScanPressed(targetVerb: TrustVerb.block);
@@ -952,7 +948,6 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 Expanded(
                   child: HistoryScreen(
                     myStatements: _myStatements,
-                    myKeyToken: _keys.identityToken!,
                     scrollController: scrollController,
                     onEdit: (s) async {
                       await _openStatementDialog(

@@ -8,7 +8,6 @@ import '../ui/widgets/statement_list_view.dart';
 class PeopleScreen extends StatefulWidget {
   final List<TrustStatement> myStatements;
   final Map<String, List<TrustStatement>> peersStatements;
-  final String myKeyToken;
   final Future<void> Function()? onRefresh;
   final Function(TrustStatement) onEdit;
   final Function(TrustStatement) onClear;
@@ -17,7 +16,6 @@ class PeopleScreen extends StatefulWidget {
     super.key,
     required this.myStatements,
     required this.peersStatements,
-    required this.myKeyToken,
     this.onRefresh,
     required this.onEdit,
     required this.onClear,
@@ -55,7 +53,6 @@ class _PeopleScreenState extends State<PeopleScreen> {
     return StatementCard(
       statement: statement,
       peersStatements: widget.peersStatements,
-      myKeyToken: widget.myKeyToken,
       onEdit: widget.onEdit,
       onClear: widget.onClear,
     );

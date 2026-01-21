@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
+import '../core/keys.dart';
 import '../ui/widgets/statement_card.dart';
 import '../ui/widgets/statement_list_view.dart';
 
 class BlocksScreen extends StatelessWidget {
   final List<TrustStatement> myStatements;
-  final String myKeyToken;
   final ScrollController? scrollController;
   final Function(TrustStatement) onEdit;
   final Function(TrustStatement) onClear;
@@ -15,7 +15,6 @@ class BlocksScreen extends StatelessWidget {
   const BlocksScreen({
     super.key,
     required this.myStatements,
-    required this.myKeyToken,
     this.scrollController,
     required this.onEdit,
     required this.onClear,
@@ -48,7 +47,6 @@ class BlocksScreen extends StatelessWidget {
   Widget _buildBlockCard(TrustStatement s) {
     return StatementCard(
       statement: s,
-      myKeyToken: myKeyToken,
       onEdit: onEdit,
       onClear: onClear,
     );

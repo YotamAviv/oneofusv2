@@ -8,14 +8,12 @@ import '../ui/identity_card_surface.dart';
 class CardScreen extends StatelessWidget {
   final List<TrustStatement> myStatements;
   final Map<String, List<TrustStatement>> peersStatements;
-  final String myKeyToken;
   final GlobalKey<IdentityCardSurfaceState>? cardKey;
 
   const CardScreen({
     super.key,
     required this.myStatements,
     required this.peersStatements,
-    required this.myKeyToken,
     this.cardKey,
   });
 
@@ -38,6 +36,7 @@ class CardScreen extends StatelessWidget {
             .toSet();
 
         // Search for trusts of ME from someone I trust
+        final myKeyToken = keys.identityToken!;
         for (final entry in peersStatements.entries) {
           if (!trustedByMe.contains(entry.key)) continue;
           
