@@ -15,54 +15,57 @@ class AdvancedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 80, 24, 40),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'ADVANCED',
-                style: AppTypography.header,
-              ),
-              const SizedBox(height: 16),
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('ADVANCED', style: AppTypography.header),
+                const SizedBox(height: 16),
 
-              _buildSection(
-                context,
-                title: 'My equivalent keys',
-                content: 'Lost or compromised keys can\'t be recovered. But they can be replaced. '
-                    'Your replaced keys remain associated with your identity so that those who trusted or followed those keys still follow you.',
-                buttonLabel: 'MANAGE IDENTITY HISTORY',
-                icon: Icons.history_rounded,
-                onTap: onShowEquivalents,
-              ),
+                _buildSection(
+                  context,
+                  title: 'My equivalent keys',
+                  content:
+                      'Lost or compromised keys can\'t be recovered. But they can be replaced. '
+                      'Your replaced keys remain associated with your identity so that those who trusted or followed those keys still follow you.',
+                  buttonLabel: 'MANAGE IDENTITY HISTORY',
+                  icon: Icons.history_rounded,
+                  onTap: onShowEquivalents,
+                ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              _buildSection(
-                context,
-                title: 'My outstanding blocks',
-                content: 'In case you\'ve blocked a key, you can see them here and change your mind.',
-                buttonLabel: 'VIEW BLOCKED KEYS',
-                icon: Icons.block_flipped,
-                onTap: onShowBlocks,
-              ),
+                _buildSection(
+                  context,
+                  title: 'My blocks',
+                  content:
+                      'In case you\'ve blocked a key, you can see them here and change your mind.',
+                  buttonLabel: 'VIEW BLOCKED KEYS',
+                  icon: Icons.block_flipped,
+                  onTap: onShowBlocks,
+                ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              _buildSection(
-                context,
-                title: 'Replace my key',
-                content: 'Create and start using a new key. No one will know it\'s you unless you have folks vouch for you all over again. '
-                    'Avoid it if you can.',
-                buttonLabel: 'ROTATE IDENTITY KEY',
-                icon: Icons.published_with_changes_rounded,
-                color: Colors.red.shade700,
-                onTap: onReplaceKey,
-              ),
-            ],
+                _buildSection(
+                  context,
+                  title: 'Replace my key',
+                  content:
+                      'Create and start using a new key. No one will know it\'s you unless you have folks vouch for you all over again. '
+                      'Avoid it if you can.',
+                  buttonLabel: 'ROTATE IDENTITY KEY',
+                  icon: Icons.published_with_changes_rounded,
+                  color: Colors.red.shade700,
+                  onTap: onReplaceKey,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -82,15 +85,9 @@ class AdvancedScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title.toUpperCase(),
-          style: AppTypography.labelSmall,
-        ),
+        Text(title.toUpperCase(), style: AppTypography.labelSmall),
         const SizedBox(height: 8),
-        Text(
-          content,
-          style: AppTypography.body,
-        ),
+        Text(content, style: AppTypography.body),
         const SizedBox(height: 12),
         ElevatedButton.icon(
           onPressed: onTap,

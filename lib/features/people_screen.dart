@@ -31,6 +31,8 @@ class _PeopleScreenState extends State<PeopleScreen> {
               child: StatementListView(
                 title: 'PEOPLE',
                 description: 'People whose identity you have explicitly vouched for.',
+                bottomDescription: '''Trust: Human, capable, acting in good faith.
+Block: Bots, spammers, bad actors, careless, confused..''',
                 headerPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
                 emptyTitle: 'No Trusted People',
                 emptySubtitle: 'People you trust by scanning their QR code will appear here.',
