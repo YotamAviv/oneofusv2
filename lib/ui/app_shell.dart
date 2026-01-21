@@ -471,19 +471,11 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   }
 
   Future<void> _pushTrustStatement(TrustStatement statement) async {
-    final identity = _keys.identity;
-    if (identity == null) {
-      throw StateError("Cannot push statement without an identity key.");
-    }
-
     // Build interpreter for LGTM dialog
-    final Map<String, List<TrustStatement>> combined = {};
-    if (_peersStatements.isNotEmpty) {
-      combined.addAll(_peersStatements);
-    }
+    final Map<String, List<TrustStatement>> combined = {_keys.identityToken!: _myStatements};
+    combined.addAll(_peersStatements);
     final labeler = Labeler(combined, _keys.identityToken!);
     final interpreter = OneOfUsInterpreter(labeler);
-
     // Show LGTM confirmation
     final bool? confirmed = await showDialog<bool>(
       context: context,
