@@ -48,14 +48,19 @@ class AppShell extends StatefulWidget {
   final FirebaseFirestore? firestore;
   const AppShell({super.key, this.isTesting = false, this.firestore});
 
+  static AppShellState get instance => AppShellState.instance;
+
   @override
-  State<AppShell> createState() => _AppShellState();
+  State<AppShell> createState() => AppShellState();
 }
 
 // Padding to ensure the top content clears the status bar/notch nicely.
 const double _topSafeAreaPadding = 20;
 
-class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
+class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
+  static AppShellState? _instance;
+  static AppShellState get instance => _instance!;
+
   final PageController _pageController = PageController();
   final GlobalKey<IdentityCardSurfaceState> _cardKey = GlobalKey();
   final Keys _keys = Keys();
@@ -71,8 +76,14 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedStatementSource<TrustStatement> _source;
-  List<TrustStatement> _myStatements = [];
-  Map<String, List<TrustStatement>> _peersStatements = {};
+  
+  // Data State
+  final ValueNotifier<List<TrustStatement>> myStatements = ValueNotifier([]);
+  final ValueNotifier<Map<String, List<TrustStatement>>> peersStatements = ValueNotifier({});
+  
+  // Legacy getters (can refactor later or keep for internal use)
+  List<TrustStatement> get _myStatements => myStatements.value;
+  Map<String, List<TrustStatement>> get _peersStatements => peersStatements.value;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -80,6 +91,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    _instance = this;
     TrustStatement.init();
 
     // Initialize the statement source based on the environment
@@ -209,8 +221,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       
       if (mounted) {
         setState(() {
-          _myStatements = newMyStatements;
-          _peersStatements = newPeersStatements;
+          // Update internal and public state
+          myStatements.value = newMyStatements;
+          peersStatements.value = newPeersStatements;
 
           assert(() {
             Statement.validateOrderTypes(_myStatements);
@@ -231,6 +244,31 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         });
       }
     }
+  }
+
+  Future<void> editStatement(TrustStatement s, {TrustVerb? lockedVerb}) async {
+    await _showEditStatementDialog(
+      context: context,
+      statement: s,
+      existingStatement: s,
+      publicKeyJson: s.subject,
+      lockedVerb: lockedVerb,
+    );
+    _loadAllData();
+  }
+
+  Future<void> clearStatement(TrustStatement s) async {
+    await _showClearStatementDialog(
+      context: context,
+      statement: s,
+      publicKeyJson: s.subject,
+    );
+    _loadAllData();
+  }
+
+  Future<void> scan(TrustVerb targetVerb) async {
+    await _onScanPressed(targetVerb: targetVerb);
+    _loadAllData();
   }
 
   void _initDeepLinks() {
@@ -363,7 +401,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         template = TrustStatement(Jsonish(json));
       }
 
-      await _openStatementDialog(
+      await _showEditStatementDialog(
         context: context,
         statement: template,
         existingStatement: existing,
@@ -388,6 +426,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required Map<String, dynamic> publicKeyJson,
     TrustStatement? existingStatement,
     bool isNewScan = false,
+    TrustVerb? lockedVerb,
   }) async {
     await showDialog(
       context: context,
@@ -395,9 +434,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         proposedStatement: statement,
         existingStatement: existingStatement,
         isNewScan: isNewScan,
-        onSubmit: (statement) async {
-          await _pushTrustStatement(statement);
-        },
+        onSubmit: _pushTrustStatement,
       ),
     );
   }
@@ -408,46 +445,23 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required Map<String, dynamic> publicKeyJson,
   }) async {
     final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
+    if (!mounted) return;
+    
     await showDialog(
       context: context,
       builder: (context) => ClearStatementDialog(
         statement: statement,
         onSubmit: () async {
           final json = TrustStatement.make(
-             myPubKeyJson!, // Assuming identity exists as checked in callers
-             publicKeyJson,
-             TrustVerb.clear,
-             domain: statement.domain,
+            myPubKeyJson!,
+            publicKeyJson,
+            TrustVerb.clear,
+            domain: statement.domain,
           );
           
           await _pushTrustStatement(TrustStatement(Jsonish(json)));
         },
       ),
-    );
-  }
-
-  Future<void> _openStatementDialog({
-    required BuildContext context,
-    required TrustStatement statement,
-    required Map<String, dynamic> publicKeyJson,
-    TrustStatement? existingStatement,
-    bool isNewScan = false,
-    TrustVerb? lockedVerb,
-  }) async {
-    if (lockedVerb == TrustVerb.clear) {
-      return _showClearStatementDialog(
-        context: context,
-        statement: statement,
-        publicKeyJson: publicKeyJson,
-      );
-    }
-
-    return _showEditStatementDialog(
-      context: context,
-      statement: statement,
-      existingStatement: existingStatement,
-      publicKeyJson: publicKeyJson,
-      isNewScan: isNewScan,
     );
   }
 
@@ -593,60 +607,10 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
 
     final pages = [
       CardScreen(
-        myStatements: _myStatements,
-        peersStatements: _peersStatements,
         cardKey: _cardKey,
       ),
-      PeopleScreen(
-        myStatements: _myStatements,
-        peersStatements: _peersStatements,
-        onRefresh: _loadAllData,
-        onEdit: (statement) async {
-          await _openStatementDialog(
-            context: context,
-            statement: statement,
-            existingStatement: statement,
-            publicKeyJson: statement.subject,
-            lockedVerb: TrustVerb.trust,
-          );
-          if (mounted) setState(() {});
-        },
-        onClear: (statement) async {
-          await _openStatementDialog(
-            context: context,
-            statement: statement,
-            existingStatement: statement,
-            publicKeyJson: statement.subject,
-            lockedVerb: TrustVerb.clear,
-          );
-          if (mounted) setState(() {});
-        },
-      ),
-      DelegatesScreen(
-        myStatements: _myStatements,
-        onRefresh: _loadAllData,
-        onEdit: (statement) async {
-          await _openStatementDialog(
-            context: context,
-            statement: statement,
-            existingStatement: statement,
-            publicKeyJson: statement.subject,
-            lockedVerb: TrustVerb.delegate,
-          );
-          if (mounted) setState(() {});
-        },
-        onClear: (statement) async {
-          await _openStatementDialog(
-            context: context,
-            statement: statement,
-            existingStatement: statement,
-            publicKeyJson: statement.subject,
-            lockedVerb: TrustVerb.clear,
-          );
-          if (mounted) setState(() {});
-        },
-        onScan: () => _onScanPressed(targetVerb: TrustVerb.delegate),
-      ),
+      const PeopleScreen(),
+      const DelegatesScreen(),
       const ImportExportScreen(),
       AdvancedScreen(
         onShowBlocks: () => _showBlocksModal(context),
@@ -891,32 +855,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
                 Expanded(
                   child: BlocksScreen(
-                    myStatements: _myStatements,
                     scrollController: scrollController,
-                    onScan: () async {
-                      await _onScanPressed(targetVerb: TrustVerb.block);
-                      setModalState(() {});
-                    },
-                    onEdit: (s) async {
-                      await _openStatementDialog(
-                        context: context,
-                        statement: s,
-                        existingStatement: s,
-                        publicKeyJson: s.subject,
-                        lockedVerb: TrustVerb.block,
-                      );
-                      setModalState(() {});
-                    },
-                    onClear: (s) async {
-                      await _openStatementDialog(
-                        context: context,
-                        statement: s,
-                        existingStatement: s,
-                        publicKeyJson: s.subject,
-                        lockedVerb: TrustVerb.clear,
-                      );
-                      setModalState(() {});
-                    },
                   ),
                 ),
               ],
@@ -947,26 +886,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
                 Expanded(
                   child: HistoryScreen(
-                    myStatements: _myStatements,
                     scrollController: scrollController,
-                    onEdit: (s) async {
-                      await _openStatementDialog(
-                        context: context,
-                        statement: s,
-                        publicKeyJson: s.subject,
-                        lockedVerb: TrustVerb.replace,
-                      );
-                      setModalState(() {});
-                    },
-                    onClear: (s) async {
-                      await _openStatementDialog(
-                        context: context,
-                        statement: s,
-                        publicKeyJson: s.subject,
-                        lockedVerb: TrustVerb.clear,
-                      );
-                      setModalState(() {});
-                    },
                   ),
                 ),
               ],

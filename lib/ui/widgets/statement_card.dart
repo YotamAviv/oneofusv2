@@ -8,6 +8,7 @@ import 'key_widget.dart';
 import '../interpreter.dart';
 import '../../core/labeler.dart';
 import '../../core/keys.dart';
+import '../app_shell.dart';
 
 class CardAction {
   final IconData icon;
@@ -25,16 +26,10 @@ class CardAction {
 
 class StatementCard extends StatelessWidget {
   final TrustStatement statement;
-  final Map<String, List<TrustStatement>>? peersStatements;
-  final Function(TrustStatement) onEdit;
-  final Function(TrustStatement) onClear;
 
   const StatementCard({
     super.key,
     required this.statement,
-    this.peersStatements,
-    required this.onEdit,
-    required this.onClear,
   });
 
   @override
@@ -42,6 +37,9 @@ class StatementCard extends StatelessWidget {
     final subjectToken = statement.subjectToken;
     final verb = statement.verb;
     final myKeyToken = Keys().identityToken!;
+    
+    // Access global state
+    final peersStatements = AppShell.instance.peersStatements.value;
 
     // 1. Determine Color
     Color themeColor;
@@ -64,8 +62,8 @@ class StatementCard extends StatelessWidget {
 
     // 2. Determine "Verified" Badge (Only for Trust)
     Widget? trailingIcon;
-    if (verb == TrustVerb.trust && peersStatements != null) {
-      final vouchesBack = peersStatements![subjectToken]?.any((s) =>
+    if (verb == TrustVerb.trust) {
+      final vouchesBack = peersStatements[subjectToken]?.any((s) =>
               s.subjectToken == myKeyToken && s.verb == TrustVerb.trust) ??
           false;
 
@@ -81,7 +79,6 @@ class StatementCard extends StatelessWidget {
       );
     }
 
-
     // 3. Common Metadata
     final shortId = subjectToken.length >= 6
         ? '#${subjectToken.substring(subjectToken.length - 6)}'
@@ -95,13 +92,13 @@ class StatementCard extends StatelessWidget {
       ),
       CardAction(
         icon: Icons.edit_outlined,
-        onTap: () => onEdit(statement),
+        onTap: () => AppShell.instance.editStatement(statement),
       ),
       CardAction(
         icon: Icons.backspace_outlined,
         label: 'CLEAR',
         color: Colors.orange.shade400,
-        onTap: () => onClear(statement),
+        onTap: () => AppShell.instance.clearStatement(statement),
       ),
     ];
 
@@ -239,8 +236,8 @@ class StatementCard extends StatelessWidget {
     // Ideally we would have 'myStatements' here too, but for 'peersStatements' contexts (like PeopleScreen) 
     // it is sufficient. In screens without peersStatements (Blocks), labels will just be less rich.
     final Map<String, List<TrustStatement>> combined = {};
-    if (peersStatements != null) {
-      combined.addAll(peersStatements!);
+    if (AppShell.instance.peersStatements.value.isNotEmpty) {
+      combined.addAll(AppShell.instance.peersStatements.value);
     }
     
     final labeler = Labeler(combined, Keys().identityToken!);
