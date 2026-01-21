@@ -10,11 +10,7 @@ class WelcomeScreen extends StatelessWidget {
   final FirebaseFirestore? firestore;
   final VoidCallback? onIdentityCreated;
 
-  const WelcomeScreen({
-    super.key, 
-    required this.firestore, 
-    this.onIdentityCreated,
-  });
+  const WelcomeScreen({super.key, required this.firestore, this.onIdentityCreated});
 
   static const double heightKludge = 20;
 
@@ -44,25 +40,23 @@ class WelcomeScreen extends StatelessWidget {
                         onPressed: () => Navigator.of(context).pop(),
                         tooltip: 'Close',
                       )
-                    else 
+                    else
                       const SizedBox(width: 16),
-                    
+
                     Image.asset(
                       'assets/oneofus_1024.png',
                       height: 32,
-                      errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 32, color: Color(0xFF00897B)),
+                      errorBuilder: (context, _, __) =>
+                          const Icon(Icons.shield_rounded, size: 32, color: Color(0xFF00897B)),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'ONE-OF-US.NET',
-                      style: AppTypography.header,
-                    ),
+                    const Text('ONE-OF-US.NET', style: AppTypography.header),
                   ],
                 ),
               ),
             ),
           ),
-          
+
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 48),
@@ -74,24 +68,34 @@ class WelcomeScreen extends StatelessWidget {
                   ElevatedButton(
                     onPressed: () async {
                       if (firestore == null) return;
-                  
+
                       bool proceed = true;
                       if (await keys.load()) {
                         if (!context.mounted) return;
-                        proceed = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Already Signed In'),
-                            content: const Text('You already have an identity. Creating a new one will destroy your current keys and data. Are you sure?'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: Text('OVERWRITE', style: AppTypography.body.copyWith(color: Colors.red))
+                        proceed =
+                            await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Already Signed In'),
+                                content: const Text(
+                                  'You already have an identity. Creating a new one will destroy your current keys and data. Are you sure?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('CANCEL'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: Text(
+                                      'OVERWRITE',
+                                      style: AppTypography.body.copyWith(color: Colors.red),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          )
-                        ) ?? false;
+                            ) ??
+                            false;
                       }
 
                       if (!proceed) return;
@@ -107,7 +111,7 @@ class WelcomeScreen extends StatelessWidget {
                       elevation: 4,
                     ),
                     child: Text(
-                      'CREATE NEW IDENTITY KEY', 
+                      'CREATE NEW IDENTITY KEY',
                       textAlign: TextAlign.center,
                       style: AppTypography.label.copyWith(color: Colors.white),
                     ),
@@ -121,7 +125,7 @@ class WelcomeScreen extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: Text(
-                      'IMPORT KEYS FROM A BACKED UP EXPORT', 
+                      'IMPORT KEYS FROM A BACKED UP EXPORT',
                       textAlign: TextAlign.center,
                       style: AppTypography.label,
                     ),
@@ -132,7 +136,10 @@ class WelcomeScreen extends StatelessWidget {
                       if (firestore != null) {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => ReplaceFlow(firestore: firestore!)),
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                ReplaceFlow(firestore: firestore!, claimMode: true),
+                          ),
                         );
                       }
                     },
@@ -142,7 +149,7 @@ class WelcomeScreen extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: Text(
-                      'CLAIM (REPLACE) IDENTITY KEY', 
+                      'CLAIM (REPLACE) IDENTITY KEY',
                       textAlign: TextAlign.center,
                       style: AppTypography.label,
                     ),
@@ -176,10 +183,7 @@ class WelcomeScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'PASTE KEYS JSON', 
-                  style: AppTypography.labelSmall,
-                ),
+                Text('PASTE KEYS JSON', style: AppTypography.labelSmall),
                 TextButton.icon(
                   onPressed: () async {
                     final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
