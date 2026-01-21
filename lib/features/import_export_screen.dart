@@ -248,7 +248,7 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'These keys are secrets. Only export for backup or to port them to another trusted service device.',
+                    'These keys are secrets. Only export for backup or to port them to another trusted service or device.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
