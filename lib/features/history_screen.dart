@@ -25,7 +25,8 @@ class HistoryScreen extends StatelessWidget {
             .toList();
 
         return StatementListView(
-          title: 'IDENTITY HISTORY',
+          title: 'MANAGE IDENTITY HISTORY',
+          description: 'Past keys that you have rotated away from but linked to your current identity.',
           headerPadding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
           emptyTitle: 'No previous identity keys',
           emptySubtitle: '',

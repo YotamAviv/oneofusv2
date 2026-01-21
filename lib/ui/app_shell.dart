@@ -26,11 +26,14 @@ import '../core/sign_in_service.dart';
 import '../demotest/tester.dart';
 import '../ui/interpreter.dart';
 import '../features/about_screen.dart';
+import '../features/intro_screen.dart';
+
 import '../features/advanced_screen.dart';
 import '../features/dev_screen.dart';
 import '../features/card_screen.dart';
 import '../features/import_export_screen.dart';
 import '../features/welcome_screen.dart';
+import '../features/congratulations_screen.dart';
 import '../features/delegates_screen.dart';
 import '../features/history_screen.dart';
 import '../features/blocks_screen.dart';
@@ -69,6 +72,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   
   int _currentPageIndex = 0;
   bool _isLoading = true;
+  bool _showCongrats = false;
   bool _hasKey = false;
   bool _hasAlerts = true;
   // Initialize Dev Mode based on environment; secret tap (AboutScreen) allows override.
@@ -600,7 +604,18 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     }
     
     final myToken = _keys.identityToken;
-    if (!_hasKey || myToken == null) return WelcomeScreen(firestore: _firestore);
+    if (!_hasKey || myToken == null) {
+      return WelcomeScreen(
+        firestore: _firestore,
+        onIdentityCreated: () => setState(() => _showCongrats = true),
+      );
+    }
+
+    if (_showCongrats) {
+      return CongratulationsScreen(
+        onContinue: () => setState(() => _showCongrats = false),
+      );
+    }
 
     final pages = [
       CardScreen(
@@ -613,6 +628,18 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
         onShowBlocks: () => _showBlocksModal(context),
         onShowEquivalents: () => _showEquivalentsModal(context),
         onReplaceKey: () => _showReplaceKeyDialog(context),
+      ),
+      IntroScreen(
+        onShowWelcome: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CongratulationsScreen(
+                onContinue: () => Navigator.pop(context),
+              ),
+            ),
+          );
+        },
       ),
       AboutScreen(onDevClick: _handleDevClick),
       if (_isDevMode) DevScreen(onRefresh: _loadAllData),
@@ -839,26 +866,25 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       backgroundColor: Colors.white,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
-      builder: (modalContext) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return DraggableScrollableSheet(
-            initialChildSize: 1.0,
-            minChildSize: 0.9,
-            maxChildSize: 1.0,
-            expand: false,
-            builder: (context, scrollController) => Column(
-              children: [
-                const SizedBox(height: 12),
-                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
-                Expanded(
-                  child: BlocksScreen(
-                    scrollController: scrollController,
-                  ),
-                ),
-              ],
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 1.0,
+        minChildSize: 0.9,
+        maxChildSize: 1.0,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
             ),
-          );
-        }
+            Expanded(
+              child: BlocksScreen(scrollController: scrollController),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -930,8 +956,9 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
             _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
             _HubTile(icon: Icons.vpn_key_outlined, title: 'IMPORT / EXPORT', onTap: () => _pageController.jumpToPage(3)),
             _HubTile(icon: Icons.settings_accessibility_rounded, title: 'ADVANCED', onTap: () => _pageController.jumpToPage(4)),
-            _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => _pageController.jumpToPage(5)),
-            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => _pageController.jumpToPage(6)),
+            _HubTile(icon: Icons.menu_book_rounded, title: 'INTRO', onTap: () => _pageController.jumpToPage(5)),
+            _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => _pageController.jumpToPage(6)),
+            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => _pageController.jumpToPage(7)),
           ],
         ),
       ),

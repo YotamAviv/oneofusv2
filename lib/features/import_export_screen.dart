@@ -147,18 +147,32 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
     return SafeArea(
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'IMPORT / EXPORT',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 4,
+                        color: Color(0xFF37474F),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  'IMPORT / EXPORT',
+                  'Backup your identity keys or transfer them to another device.',
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
-                    color: Color(0xFF37474F),
+                    fontSize: 13,
+                    color: Colors.blueGrey.shade600,
+                    height: 1.4,
                   ),
                 ),
               ],

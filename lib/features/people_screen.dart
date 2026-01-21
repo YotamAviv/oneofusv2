@@ -30,6 +30,7 @@ class _PeopleScreenState extends State<PeopleScreen> {
             return SafeArea(
               child: StatementListView(
                 title: 'PEOPLE',
+                description: 'People whose identity you have explicitly trusted.',
                 headerPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
                 emptyTitle: 'No Trusted People',
                 emptySubtitle: 'People you trust by scanning their QR code will appear here.',

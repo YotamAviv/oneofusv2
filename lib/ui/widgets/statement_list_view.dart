@@ -12,6 +12,7 @@ class StatementListView extends StatelessWidget {
   final EdgeInsetsGeometry? headerPadding;
   final VoidCallback? onAdd;
   final String? addLabel;
+  final String? description;
 
   const StatementListView({
     super.key,
@@ -26,6 +27,7 @@ class StatementListView extends StatelessWidget {
     this.headerPadding,
     this.onAdd,
     this.addLabel,
+    this.description,
   });
 
   @override
@@ -34,18 +36,34 @@ class StatementListView extends StatelessWidget {
       children: [
         Padding(
           padding: headerPadding ?? const EdgeInsets.fromLTRB(24, 24, 24, 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                title.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
-                  color: Color(0xFF37474F),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
+                      color: Color(0xFF37474F),
+                    ),
+                  ),
+                ],
               ),
+              if (description != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  description!,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.blueGrey.shade600,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

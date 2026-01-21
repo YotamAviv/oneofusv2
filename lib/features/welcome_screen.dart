@@ -6,11 +6,15 @@ import '../ui/error_dialog.dart';
 import 'replace/replace_flow.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  final FirebaseFirestore firestore;
+  final FirebaseFirestore? firestore;
+  final VoidCallback? onIdentityCreated;
 
-  const WelcomeScreen({super.key, required this.firestore});
+  const WelcomeScreen({
+    super.key, 
+    required this.firestore, 
+    this.onIdentityCreated,
+  });
 
-  // It's been a struggle to get the top junk aligned...
   static const double heightKludge = 20;
 
   @override
@@ -28,11 +32,20 @@ class WelcomeScreen extends StatelessWidget {
             right: 0,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, heightKludge, 24, 8),
+                padding: const EdgeInsets.fromLTRB(8, heightKludge, 24, 8),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    if (Navigator.of(context).canPop())
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFF37474F)),
+                        onPressed: () => Navigator.of(context).pop(),
+                        tooltip: 'Close',
+                      )
+                    else 
+                      const SizedBox(width: 16),
+                    
                     Image.asset(
                       'assets/oneofus_1024.png',
                       height: 32,
@@ -65,7 +78,31 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 40),
                   ElevatedButton(
                     onPressed: () async {
+                      if (firestore == null) return;
+                  
+                      bool proceed = true;
+                      if (await keys.load()) {
+                        if (!context.mounted) return;
+                        proceed = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Already Signed In'),
+                            content: const Text('You already have an identity. Creating a new one will destroy your current keys and data. Are you sure?'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('OVERWRITE', style: TextStyle(color: Colors.red))
+                              ),
+                            ],
+                          )
+                        ) ?? false;
+                      }
+
+                      if (!proceed) return;
+
                       await keys.newIdentity();
+                      onIdentityCreated?.call();
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -97,10 +134,12 @@ class WelcomeScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   OutlinedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => ReplaceFlow(firestore: firestore)),
-                      );
+                      if (firestore != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => ReplaceFlow(firestore: firestore!)),
+                        );
+                      }
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -191,6 +230,7 @@ class WelcomeScreen extends StatelessWidget {
                 await keys.importKeys(controller.text);
                 if (context.mounted) {
                   Navigator.pop(context);
+                  onIdentityCreated?.call();
                 }
               } catch (e, stackTrace) {
                 if (context.mounted) {

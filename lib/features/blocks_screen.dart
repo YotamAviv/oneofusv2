@@ -23,7 +23,8 @@ class BlocksScreen extends StatelessWidget {
             .toList();
 
         return StatementListView(
-          title: 'MY BLOCKS',
+          title: 'BLOCKED KEYS',
+          description: 'Keys you have explicitly blocked from interacting with you.',
           headerPadding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
           emptyTitle: 'No outstanding blocks',
           emptySubtitle: '',
