@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import '../app_typography.dart';
 
 /// The ClearStatementDialog handles the 'nullification' of a previous stance.
 /// In a singular disposition model, pushing a "clear" statement effectively
@@ -64,11 +65,11 @@ class _ClearStatementDialogState extends State<ClearStatementDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.body, style: const TextStyle(fontSize: 14)),
+          Text(widget.body, style: AppTypography.body),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'This effectively wipes the slate clean, as if you had never stated anything about them at all.',
-            style: TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold),
+            style: AppTypography.labelSmall.copyWith(color: Colors.orange),
           ),
         ],
       ),
@@ -77,10 +78,9 @@ class _ClearStatementDialogState extends State<ClearStatementDialog> {
           onPressed: () => Navigator.pop(context),
           child: Text(
             'CANCEL',
-            style: TextStyle(
+            style: AppTypography.label.copyWith(
               color: Colors.grey.shade600,
               letterSpacing: 1.2,
-              fontWeight: FontWeight.bold,
             ),
           ),
         ),
@@ -114,9 +114,9 @@ class _ClearStatementDialogState extends State<ClearStatementDialog> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-              : const Text(
+              : Text(
                   'CLEAR',
-                  style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                  style: AppTypography.label,
                 ),
         ),
       ],

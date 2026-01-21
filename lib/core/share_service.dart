@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -8,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'keys.dart';
+import '../ui/app_typography.dart';
 
 class ShareService {
   static const String homeUrl = 'https://one-of-us.net';
@@ -57,7 +57,7 @@ class ShareService {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        title: Text(title, style: AppTypography.label),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../ui/app_typography.dart';
 
 class AdvancedScreen extends StatelessWidget {
   final VoidCallback onShowBlocks;
@@ -22,21 +23,11 @@ class AdvancedScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'ADVANCED',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
-                  color: Color(0xFF37474F),
-                ),
+                style: AppTypography.header,
               ),
               const SizedBox(height: 16),
-              Text(
-                'A gateway to functionality that is necessary for completeness but that is rarely used.',
-                style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade600),
-              ),
-              const SizedBox(height: 32),
 
               _buildSection(
                 context,
@@ -93,17 +84,12 @@ class AdvancedScreen extends StatelessWidget {
       children: [
         Text(
           title.toUpperCase(),
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade600,
-            letterSpacing: 1.2,
-          ),
+          style: AppTypography.labelSmall,
         ),
         const SizedBox(height: 8),
         Text(
           content,
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
+          style: AppTypography.body,
         ),
         const SizedBox(height: 12),
         ElevatedButton.icon(

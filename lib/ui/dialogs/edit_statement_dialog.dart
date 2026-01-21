@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
 
+import '../../ui/app_typography.dart';
 import '../../core/keys.dart';
 import '../widgets/editors.dart';
 import '../widgets/verb_conflict_warning.dart';
@@ -214,7 +215,7 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
       actions: _isSaving ? null : [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600)),
+          child: Text('CANCEL', style: AppTypography.labelSmall),
         ),
         FilledButton(
           onPressed: canSubmit ? _submit : null,

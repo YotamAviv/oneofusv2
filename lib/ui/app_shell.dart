@@ -25,6 +25,7 @@ import '../core/share_service.dart';
 import '../core/sign_in_service.dart';
 import '../demotest/tester.dart';
 import '../ui/interpreter.dart';
+import 'app_typography.dart';
 import '../features/about_screen.dart';
 import '../features/intro_screen.dart';
 
@@ -544,7 +545,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
             onPressed: () => Navigator.pop(context, true),
             child: Text(
               isRevoking ? 'REVOKE & DELETE' : 'CLEAR & DELETE',
-              style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              style: AppTypography.label.copyWith(color: Colors.red),
             ),
           ),
         ],
@@ -683,13 +684,11 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
                                   errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 32, color: Color(0xFF00897B)),
                                 ),
                                 const SizedBox(width: 12),
-                                const Text(
+                                Text(
                                   'ONE-OF-US.NET',
-                                  style: TextStyle(
+                                  style: AppTypography.header.copyWith(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
-                                    letterSpacing: 3.0,
-                                    color: Color(0xFF37474F),
                                     fontFamily: 'serif',
                                   ),
                                 ),
@@ -806,12 +805,12 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('SHARE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
+              const Text('SHARE', style: AppTypography.header),
               const SizedBox(height: 12),
               
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('MY IDENTITY KEY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.5)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text('MY IDENTITY KEY', style: AppTypography.labelSmall),
               ),
               ListTile(
                 leading: const Icon(Icons.qr_code_2_rounded),
@@ -832,9 +831,9 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
               
               const Divider(indent: 24, endIndent: 24),
               
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('ONE-OF-US.NET LINK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.5)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text('ONE-OF-US.NET LINK', style: AppTypography.labelSmall),
               ),
               ListTile(
                 leading: const Icon(Icons.qr_code_rounded),
@@ -976,7 +975,7 @@ class _HubTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF00897B), size: 28),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 2)),
+      title: Text(title, style: AppTypography.header),
       onTap: () {
         Navigator.pop(context);
         onTap();

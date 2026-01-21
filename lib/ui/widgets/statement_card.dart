@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app_typography.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
 
@@ -138,11 +139,7 @@ class StatementCard extends StatelessWidget {
                                 Flexible(
                                   child: Text(
                                     statement.moniker ?? (statement.domain ?? 'Unknown'),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF37474F),
-                                    ),
+                                    style: AppTypography.itemTitle,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -175,16 +172,12 @@ class StatementCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      // ignore: dead_code
                       if (showShortId) ...[
                         const SizedBox(height: 4),
                         Text(
                           shortId,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blueGrey.shade400,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'monospace',
-                          ),
+                          style: AppTypography.mono,
                         ),
                       ],
                       if (statement.comment != null &&
@@ -201,11 +194,7 @@ class StatementCard extends StatelessWidget {
                           ),
                           child: Text(
                             statement.comment!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey.shade600,
-                              fontStyle: FontStyle.italic,
-                            ),
+                            style: AppTypography.caption,
                           ),
                         ),
                       ],
@@ -302,11 +291,8 @@ class _ActionButtonWidget extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 action.label!,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+                style: AppTypography.labelSmall.copyWith(
                   color: activeColor,
-                  letterSpacing: 1,
                 ),
               ),
             ],

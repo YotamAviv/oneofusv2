@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../ui/app_typography.dart';
 
 class CongratulationsScreen extends StatelessWidget {
   final VoidCallback onContinue;
@@ -16,28 +17,19 @@ class CongratulationsScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
+              Text(
                 'CONGRATULATIONS!',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2,
-                  color: Color(0xFF00695C),
-                ),
+                style: AppTypography.display,
               ),
               const SizedBox(height: 24),
-              const Text(
+              Text(
                 'You possess a public/private cryptographic key pair!',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF37474F),
-                ),
+                style: AppTypography.header,
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 '''The public key is your Identity Key. Your private key is stored securely on this device (it's yours, see Import / Export).
                 
 Your Identity is displayed on the main screen. Other folks with the app can scan that to vouch for your humanity and identity.
@@ -46,11 +38,7 @@ Use the QR icon (bottom center) to:
 - scan other folks' keys to vouch for their identities. Doing so will use your private key to sign and publish a statement which will grow your (and our) identity network.
 - sign in to a service using a delegate key.''',
                 // textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: Color(0xFF546E7A),
-                ),
+                style: AppTypography.body,
               ),
               const Spacer(),
               ElevatedButton(
@@ -62,9 +50,9 @@ Use the QR icon (bottom center) to:
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 4,
                 ),
-                child: const Text(
+                child: Text(
                   'Okay',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                  style: AppTypography.label,
                 ),
               ),
               const SizedBox(height: 20),

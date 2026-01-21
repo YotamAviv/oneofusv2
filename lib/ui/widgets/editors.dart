@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../ui/app_typography.dart';
 import '../qr_scanner.dart';
 
 abstract class FieldEditor extends StatefulWidget {
@@ -72,12 +73,7 @@ class _TextFieldEditorState extends FieldEditorState<TextFieldEditor, String> {
       children: [
         Text(
           widget.label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade600,
-            letterSpacing: 1.2,
-          ),
+          style: AppTypography.labelSmall,
         ),
         const SizedBox(height: 8),
         TextField(
@@ -115,9 +111,9 @@ class TextBoxEditor extends FieldEditor {
     required this.label,
     this.initialValue,
     this.hint,
-    this.maxLines = 3,
+    maxLines = 3,
     super.onChanged,
-  });
+  }) : maxLines = maxLines;
 
   @override
   // ignore: library_private_types_in_public_api
@@ -153,12 +149,7 @@ class _TextBoxEditorState extends FieldEditorState<TextBoxEditor, String> {
       children: [
         Text(
           widget.label.toUpperCase(),
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade600,
-            letterSpacing: 1.2,
-          ),
+          style: AppTypography.labelSmall,
         ),
         const SizedBox(height: 8),
         TextField(
@@ -242,12 +233,7 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
       children: [
         Text(
           'STATUS',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade600,
-            letterSpacing: 1.2,
-          ),
+          style: AppTypography.labelSmall,
         ),
         const SizedBox(height: 8),
         Row(
@@ -281,7 +267,7 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
         SizedBox(
           width: double.infinity,
           child: _StatusChip(
-            label: 'REVOKED AT LAST VALID STATEMENT',
+            label: 'REVOKED AT STATEMENT TOKEN',
             isSelected: isPartiallyRevoked,
             onSelected: () {
               if (!isPartiallyRevoked) {
@@ -306,11 +292,8 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('REVOKE AT STATEMENT TOKEN',
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade600,
-                            letterSpacing: 1.2)),
+                        style: AppTypography.labelSmall.copyWith(
+                            color: Colors.grey.shade600)),
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -321,9 +304,8 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
                       ),
                       child: SelectableText(
                         (currentRevokeAt == null || currentRevokeAt!.isEmpty) ? "(Scan Statement or Token)" : currentRevokeAt!,
-                        style: TextStyle(
+                        style: AppTypography.mono.copyWith(
                             fontSize: 10, 
-                            fontFamily: 'monospace',
                             color: (currentRevokeAt == null || currentRevokeAt!.isEmpty) ? Colors.grey : Colors.black87),
                         maxLines: 1,
                       ),
@@ -385,10 +367,8 @@ class _StatusChip extends StatelessWidget {
         child: Center(
           child: Text(
             label,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
+            style: AppTypography.label.copyWith(
               color: isSelected ? selectedColor : Colors.grey.shade600,
-              fontSize: 12,
             ),
           ),
         ),
@@ -420,18 +400,14 @@ class ReplaceRevokeAt extends StatelessWidget {
               children: [
                 Text(
                   'PERMANENT REPLACEMENT',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                  style: AppTypography.labelSmall.copyWith(
                     color: Colors.orange.shade900,
-                    letterSpacing: 1.0,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Old key revoked <since always>',
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: AppTypography.label.copyWith(
                     color: Colors.orange.shade800,
                   ),
                 ),

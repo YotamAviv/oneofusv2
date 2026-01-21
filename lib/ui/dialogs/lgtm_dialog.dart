@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import '../app_typography.dart';
 import '../widgets/json_display.dart';
 
 class LgtmDialog extends StatefulWidget {
@@ -26,9 +27,9 @@ class _LgtmDialogState extends State<LgtmDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'FYI: The exact data that will be cryptographically signed and published.',
-              style: TextStyle(fontSize: 12, color: Colors.black87),
+              style: AppTypography.caption.copyWith(color: Colors.black87),
             ),
             const SizedBox(height: 16),
             Container(

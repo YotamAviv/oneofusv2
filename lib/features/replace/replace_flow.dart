@@ -10,6 +10,7 @@ import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/direct_firestore_writer.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
 import 'package:oneofus_common/oou_verifier.dart';
+import '../../ui/app_typography.dart';
 import '../../core/config.dart';
 import '../../core/keys.dart';
 import '../../ui/error_dialog.dart';
@@ -78,7 +79,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F0EF),
       appBar: AppBar(
-        title: Text(widget.claimMode ? 'CLAIM OLD IDENTITY' : 'REPLACE IDENTITY', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 4)),
+        title: Text(widget.claimMode ? 'CLAIM OLD IDENTITY' : 'REPLACE IDENTITY', style: AppTypography.header),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: const Color(0xFF37474F),
@@ -103,9 +104,9 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
+            Text(
               'The process of claiming an old key to merge its history into your current identity has these steps:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+              style: AppTypography.body,
             ),
             const SizedBox(height: 24),
             _buildStepItem(1, 'Identify Old Key', 'Scan or verify the key you want to claim.'),
@@ -121,7 +122,9 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('I UNDERSTAND, PROCEED', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              child: Text('I UNDERSTAND, PROCEED', style: AppTypography.label.copyWith(
+                color: Colors.white,
+              )),
             ),
           ],
         ),
@@ -133,9 +136,9 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             'The process of claiming (replacing) your old key and starting to use a new one will go like this:',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+            style: AppTypography.body,
           ),
           const SizedBox(height: 24),
           _buildStepItem(1, 'Generate Identity Key', 'Create a new key to serve as your new primary identity.'),
@@ -152,7 +155,9 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('I UNDERSTAND, PROCEED', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            child: Text('I UNDERSTAND, PROCEED', style: AppTypography.label.copyWith(
+              color: Colors.white,
+            )),
           ),
         ],
       ),
@@ -168,16 +173,16 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           CircleAvatar(
             radius: 14,
             backgroundColor: const Color(0xFF00897B),
-            child: Text('$num', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+            child: Text('$num', style: AppTypography.body.copyWith(color: Colors.white)),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF37474F))),
+                Text(title, style: AppTypography.itemTitle),
                 const SizedBox(height: 4),
-                Text(description, style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade700, height: 1.4)),
+                Text(description, style: AppTypography.body),
               ],
             ),
           ),
@@ -198,7 +203,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           Text(
             widget.claimMode ? 'Identify the key you want to claim.' : 'Identify your old identity.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+            style: AppTypography.header,
           ),
           const SizedBox(height: 12),
           Text(
@@ -206,7 +211,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               ? 'Scan the QR code of the identity you want to merge into this one.'
               : 'Scan the QR code of your old identity from another device or a backup.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade600),
+            style: AppTypography.caption,
           ),
           const SizedBox(height: 48),
           ElevatedButton.icon(
@@ -227,7 +232,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.green),
                 const SizedBox(width: 8),
-                Text('Identified: ${token6(_oldIdentityToken!)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('Identified: ${token6(_oldIdentityToken!)}', style: AppTypography.body),
               ],
             ),
             const SizedBox(height: 24),
@@ -239,7 +244,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('FOUND IT, PROCEED', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('FOUND IT, PROCEED', style: AppTypography.label.copyWith(color: Colors.white)),
             ),
           ],
         ],
@@ -386,7 +391,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               ? 'No history found for this identity. You can proceed to purely rotate your key.'
               : 'Select your last valid statement. \nAny statements made after this (e.g., by a compromise) will be ignored.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade700),
+            style: AppTypography.caption,
           ),
         ),
         if (_allStatements != null && _allStatements!.isNotEmpty)
@@ -413,9 +418,8 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
                   leading: _buildStatementIcon(s, isInvalid, isNotDistinct),
                   title: Text(
                     _getStatementLabel(s),
-                    style: TextStyle(
+                    style: AppTypography.body.copyWith(
                       color: textColor,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       decoration: isInvalid ? TextDecoration.lineThrough : null,
                     ),
                   ),
@@ -424,14 +428,18 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
                     children: [
                       Text(
                         '${s.time} • ${token6(s.token)}',
-                        style: TextStyle(color: textColor.withValues(alpha: 0.7), fontSize: 11),
+                        style: AppTypography.labelSmall.copyWith(
+                          color: textColor.withValues(alpha: 0.7)
+                        ),
                       ),
                       if (s.jsonish['comment'] != null)
                         Text(
                           s.jsonish['comment'],
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: textColor.withValues(alpha: 0.6), fontSize: 11, fontStyle: FontStyle.italic),
+                          style: AppTypography.labelSmall.copyWith(
+                            color: textColor.withValues(alpha: 0.6),
+                          ),
                         ),
                     ],
                   ),
@@ -454,7 +462,10 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               minimumSize: const Size(double.infinity, 50),
             ),
-            child: const Text('START RECOVERY', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            child: Text('START RECOVERY', style: AppTypography.label.copyWith(
+              color: Colors.white,
+
+            )),
           ),
         ),
       ],
@@ -662,13 +673,13 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           Text(
             _processingStatus,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: AppTypography.body,
           ),
           const SizedBox(height: 12),
           Text(
             'Keep the app open until the process is complete.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.blueGrey.shade600),
+            style: AppTypography.caption,
           ),
         ],
       ),
@@ -685,7 +696,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           const SizedBox(height: 32),
           Text(
             widget.claimMode ? 'Key Claimed!' : 'Identity Recovered!',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF37474F)),
+            style: AppTypography.hero,
           ),
           const SizedBox(height: 16),
           Text(
@@ -693,7 +704,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               ? 'The old key history has been merged into your current identity.\n\nAll valid statements have been re-issued by you and the network will now recognize the old key as an equivalent to your current key.'
               : 'Your new key is now active. \n\nIMPORTANT: Since this is a new key, you MUST contact your trusted network and ask them to vouch for you again.',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64)),
+            style: AppTypography.body,
           ),
           const SizedBox(height: 48),
           ElevatedButton(
@@ -704,7 +715,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('GO TO HOME', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            child: Text('GO TO HOME', style: AppTypography.label),
           ),
         ],
       ),

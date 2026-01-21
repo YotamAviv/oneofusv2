@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../ui/app_typography.dart';
 import '../core/keys.dart';
 import '../ui/error_dialog.dart';
 import 'replace/replace_flow.dart';
@@ -54,13 +55,7 @@ class WelcomeScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     const Text(
                       'ONE-OF-US.NET',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 3.0,
-                        color: Color(0xFF37474F),
-                        fontFamily: 'serif',
-                      ),
+                      style: AppTypography.header,
                     ),
                   ],
                 ),
@@ -92,7 +87,7 @@ class WelcomeScreen extends StatelessWidget {
                               TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
-                                child: const Text('OVERWRITE', style: TextStyle(color: Colors.red))
+                                child: Text('OVERWRITE', style: AppTypography.body.copyWith(color: Colors.red))
                               ),
                             ],
                           )
@@ -111,10 +106,10 @@ class WelcomeScreen extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 4,
                     ),
-                    child: const Text(
+                    child: Text(
                       'CREATE NEW IDENTITY KEY', 
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2)
+                      style: AppTypography.label.copyWith(color: Colors.white),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -125,10 +120,10 @@ class WelcomeScreen extends StatelessWidget {
                       side: const BorderSide(color: Color(0xFF37474F), width: 1.5),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text(
+                    child: Text(
                       'IMPORT KEYS FROM A BACKED UP EXPORT', 
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)
+                      style: AppTypography.label,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -146,10 +141,10 @@ class WelcomeScreen extends StatelessWidget {
                       side: const BorderSide(color: Color(0xFF37474F), width: 1.5),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text(
+                    child: Text(
                       'CLAIM (REPLACE) IDENTITY KEY', 
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF37474F), letterSpacing: 1.2)
+                      style: AppTypography.label,
                     ),
                   ),
                 ],
@@ -175,15 +170,15 @@ class WelcomeScreen extends StatelessWidget {
           children: [
             const Text(
               'Paste your backed up keys JSON below to restore your identity on this installation.',
-              style: TextStyle(fontSize: 13, color: Color(0xFF546E7A)),
+              style: AppTypography.caption,
             ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'PASTE KEYS JSON', 
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.2)
+                  style: AppTypography.labelSmall,
                 ),
                 TextButton.icon(
                   onPressed: () async {
@@ -193,7 +188,7 @@ class WelcomeScreen extends StatelessWidget {
                     }
                   },
                   icon: const Icon(Icons.content_paste_rounded, size: 16),
-                  label: const Text('PASTE', style: TextStyle(fontSize: 10)),
+                  label: const Text('PASTE', style: AppTypography.labelSmall),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
@@ -210,19 +205,19 @@ class WelcomeScreen extends StatelessWidget {
               autofocus: true,
               decoration: InputDecoration(
                 hintText: '{"identity": ...}',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                hintStyle: AppTypography.caption,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
                 fillColor: Colors.grey.shade50,
               ),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFF37474F)),
+              style: AppTypography.mono,
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+            child: Text('CANCEL', style: AppTypography.labelSmall),
           ),
           ElevatedButton(
             onPressed: () async {

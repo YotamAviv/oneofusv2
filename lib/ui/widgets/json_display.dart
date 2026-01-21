@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-
+import '../app_typography.dart';
 import 'json_highlighter.dart';
 
 abstract class Interpreter {
@@ -44,11 +44,7 @@ class _State extends State<JsonDisplay> {
       display = interpreted.toString();
     }
 
-    TextStyle baseStyle = const TextStyle(
-      fontFamily: 'monospace',
-      fontWeight: FontWeight.w500,
-      fontSize: 12,
-    ).copyWith(
+    TextStyle baseStyle = AppTypography.mono.copyWith(
       decoration: widget.strikethrough ? TextDecoration.lineThrough : null,
       color: widget.interpret.value ? Colors.green[900] : null,
     );

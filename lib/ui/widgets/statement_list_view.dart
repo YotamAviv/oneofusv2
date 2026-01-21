@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app_typography.dart';
 
 class StatementListView extends StatelessWidget {
   final String title;
@@ -46,12 +47,7 @@ class StatementListView extends StatelessWidget {
                 children: [
                   Text(
                     title.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 4,
-                      color: Color(0xFF37474F),
-                    ),
+                    style: AppTypography.header,
                   ),
                 ],
               ),
@@ -59,11 +55,7 @@ class StatementListView extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   description!,
-                  style: TextStyle(
-                    fontSize: 14,
-                    // color: Colors.blueGrey.shade600,
-                    height: 1.4,
-                  ),
+                  style: AppTypography.caption,
                 ),
               ],
             ],
@@ -84,12 +76,7 @@ class StatementListView extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
             child: Text(
               bottomDescription!,
-              style: TextStyle(
-                fontSize: 14,
-                // color: Colors.blueGrey.shade400,
-                height: 1.4,
-              ),
-              // textAlign: TextAlign.center,
+              style: AppTypography.caption,
             ),
           ),
         if (onAdd != null)
@@ -100,7 +87,7 @@ class StatementListView extends StatelessWidget {
               icon: const Icon(Icons.qr_code_scanner_rounded, size: 24),
               label: Text(
                 addLabel ?? 'SCAN',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: AppTypography.label,
               ),
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF00897B),
@@ -122,11 +109,7 @@ class StatementListView extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             emptyTitle,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.blueGrey.shade400,
-            ),
+            style: AppTypography.itemTitle,
           ),
           const SizedBox(height: 8),
           Padding(
@@ -134,10 +117,7 @@ class StatementListView extends StatelessWidget {
             child: Text(
               emptySubtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.blueGrey.shade300,
-              ),
+              style: AppTypography.caption,
             ),
           ),
         ],

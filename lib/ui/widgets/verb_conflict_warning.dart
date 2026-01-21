@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
+import '../app_typography.dart';
 
 class VerbConflictWarning extends StatefulWidget {
   final TrustStatement existingStatement;
@@ -40,8 +41,7 @@ class _VerbConflictWarningState extends State<VerbConflictWarning> {
               Expanded(
                 child: Text(
                   'Conflict Detected',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                  style: AppTypography.itemTitle.copyWith(
                     color: Colors.orange.shade900,
                   ),
                 ),
@@ -51,7 +51,7 @@ class _VerbConflictWarningState extends State<VerbConflictWarning> {
           const SizedBox(height: 12),
           Text(
             _getWarningText(),
-            style: TextStyle(color: Colors.orange.shade900, height: 1.4),
+            style: AppTypography.body.copyWith(color: Colors.orange.shade900, height: 1.4),
           ),
           const SizedBox(height: 16),
           InkWell(
@@ -82,9 +82,8 @@ class _VerbConflictWarningState extends State<VerbConflictWarning> {
                 Expanded(
                   child: Text(
                     'I understand, proceed anyway.',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                    style: AppTypography.label.copyWith(
+                      // fontSize: 13, // AppTypography.label is 12. Close enough.
                       color: Colors.orange.shade900,
                     ),
                   ),
