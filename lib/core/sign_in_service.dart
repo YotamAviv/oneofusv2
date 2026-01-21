@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/crypto.dart';
 import 'package:oneofus_common/crypto25519.dart';
@@ -130,11 +133,37 @@ class SignInService {
 
       // 3. Prepare Payload
       final identityPubKeyJson = await (await keys.identity!.publicKey).json;
+
+      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      String deviceName = 'Unknown';
+      String osVersion = 'Unknown';
+
+      if (Platform.isAndroid) {
+        final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        deviceName = '${androidInfo.manufacturer} ${androidInfo.model}';
+        osVersion = 'Android ${androidInfo.version.release} (SDK ${androidInfo.version.sdkInt})';
+      } else if (Platform.isIOS) {
+        final IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+        deviceName = iosInfo.name;
+        osVersion = '${iosInfo.systemName} ${iosInfo.systemVersion}';
+      }
+
       final Map<String, dynamic> send = {
-        'date': clock.nowIso,
         'identity': identityPubKeyJson,
         'session': session,
         'endpoint': Config.exportUrlForServer,
+        'appInfo': {
+          'appName': packageInfo.appName,
+          'packageName': packageInfo.packageName,
+          'version': packageInfo.version,
+          'buildNumber': packageInfo.buildNumber,
+        },
+        'deviceInfo': {
+          'device': deviceName,
+          'os': osVersion,
+          'platform': Platform.operatingSystem,
+        },
       };
 
       if (delegateKeyPair != null) {
@@ -158,15 +187,18 @@ class SignInService {
           postUri = postUri.replace(host: '10.0.2.2');
         }
 
-        if (onSending != null) onSending();
-
         final response = await http.post(postUri, headers: _headers, body: jsonEncode(send));
 
+        if (onSending != null) onSending();
+
       if (context.mounted) {
+        String message = delegateKeyPair != null
+            ? 'Sent identity public key and delegate public/private key pair to $domain'
+            : 'Sent identity public key to $domain';
         if (response.statusCode >= 200 && response.statusCode < 300) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text('Successfully signed in to $domain')));
+          ).showSnackBar(SnackBar(content: Text(message)));
           return true;
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

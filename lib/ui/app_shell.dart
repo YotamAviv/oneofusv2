@@ -20,15 +20,21 @@ import 'package:oneofus_common/util.dart';
 
 import '../core/config.dart';
 import '../core/keys.dart';
+import '../core/labeler.dart';
 import '../core/share_service.dart';
 import '../core/sign_in_service.dart';
 import '../demotest/tester.dart';
+import '../ui/interpreter.dart';
+import 'app_typography.dart';
 import '../features/about_screen.dart';
+import '../features/intro_screen.dart';
+
 import '../features/advanced_screen.dart';
 import '../features/dev_screen.dart';
 import '../features/card_screen.dart';
 import '../features/import_export_screen.dart';
 import '../features/welcome_screen.dart';
+import '../features/congratulations_screen.dart';
 import '../features/delegates_screen.dart';
 import '../features/history_screen.dart';
 import '../features/blocks_screen.dart';
@@ -36,6 +42,7 @@ import '../features/people_screen.dart';
 import '../features/replace/replace_flow.dart';
 import 'dialogs/edit_statement_dialog.dart';
 import 'dialogs/clear_statement_dialog.dart';
+import 'dialogs/lgtm_dialog.dart';
 import 'error_dialog.dart';
 import 'qr_scanner.dart';
 import 'identity_card_surface.dart';
@@ -45,14 +52,19 @@ class AppShell extends StatefulWidget {
   final FirebaseFirestore? firestore;
   const AppShell({super.key, this.isTesting = false, this.firestore});
 
+  static AppShellState get instance => AppShellState.instance;
+
   @override
-  State<AppShell> createState() => _AppShellState();
+  State<AppShell> createState() => AppShellState();
 }
 
-// It's been a struggle to get the top junk aligned...
-const double heightKludge = 20;
+// Padding to ensure the top content clears the status bar/notch nicely.
+const double _topSafeAreaPadding = 20;
 
-class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
+class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
+  static AppShellState? _instance;
+  static AppShellState get instance => _instance!;
+
   final PageController _pageController = PageController();
   final GlobalKey<IdentityCardSurfaceState> _cardKey = GlobalKey();
   final Keys _keys = Keys();
@@ -61,14 +73,23 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   
   int _currentPageIndex = 0;
   bool _isLoading = true;
+  bool _showCongrats = false;
   bool _hasKey = false;
   bool _hasAlerts = true;
   // Initialize Dev Mode based on environment; secret tap (AboutScreen) allows override.
   late bool _isDevMode = Config.fireChoice != FireChoice.prod;
+  bool _showLgtm = false;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedStatementSource<TrustStatement> _source;
-  Map<String, List<TrustStatement>> _statementsByIssuer = {};
+  
+  // Data State
+  final ValueNotifier<List<TrustStatement>> myStatements = ValueNotifier([]);
+  final ValueNotifier<Map<String, List<TrustStatement>>> peersStatements = ValueNotifier({});
+  
+  // Legacy getters (can refactor later or keep for internal use)
+  List<TrustStatement> get _myStatements => myStatements.value;
+  Map<String, List<TrustStatement>> get _peersStatements => peersStatements.value;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -76,6 +97,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
+    _instance = this;
     TrustStatement.init();
 
     // Initialize the statement source based on the environment
@@ -147,7 +169,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       }
 
       if (found) {
-        await _loadAllData();
+        await loadAllData();
       }
     } catch (e, stackTrace) {
       if (mounted) {
@@ -159,7 +181,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
 
   bool _isRefreshing = false;
 
-  Future<void> _loadAllData() async {
+  Future<void> loadAllData() async {
     final String? myToken = _keys.identityToken;
     if (myToken == null) return;
     
@@ -167,7 +189,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     
     // Only show the full-screen loader if we have absolutely no data yet.
     // If we're already displaying things, just set _isRefreshing.
-    final bool showFullLoader = _statementsByIssuer.isEmpty && !_isRefreshing;
+    final bool showFullLoader = _myStatements.isEmpty && !_isRefreshing;
     if (showFullLoader) {
       setState(() => _isLoading = true);
     } else {
@@ -177,40 +199,41 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     _source.clear();
     
     try {
-      // 1. Fetch statements from Me
-      final Map<String, List<TrustStatement>> results1 = await _source.fetch({myToken: null});
-      final List<TrustStatement> myStatements = results1[myToken] ?? [];
+      // Fetch statements authored by the current user
+      final Map<String, List<TrustStatement>> myStatementsMap = await _source.fetch({myToken: null});
+      final List<TrustStatement> newMyStatements = myStatementsMap[myToken] ?? [];
       
-      myStatements.removeWhere((s) => s.verb == TrustVerb.clear);
+      newMyStatements.removeWhere((s) => s.verb == TrustVerb.clear);
 
-      // 2. Extract everyone I trust (direct contacts)
-      final Set<String> directContacts = myStatements
+      // Identify direct contacts (identities trusted by the user)
+      final Set<String> directContacts = newMyStatements
           .where((s) => s.verb == TrustVerb.trust)
           .map((s) => s.subjectToken)
           .toSet();
       
       directContacts.remove(myToken);
       
-      Map<String, List<TrustStatement>> results2 = {};
+      Map<String, List<TrustStatement>> newPeersStatements = {};
       if (directContacts.isNotEmpty) {
-        // 3. Fetch statements from direct contacts
+        // Fetch statements from all direct contacts
         final Map<String, String?> keysToFetch = {
           for (final String token in directContacts) token: null
         };
-        results2 = await _source.fetch(keysToFetch);
-        for (final list in results2.values) {
+        newPeersStatements = await _source.fetch(keysToFetch);
+        for (final list in newPeersStatements.values) {
           list.removeWhere((s) => s.verb == TrustVerb.clear);
         }
       }
       
       if (mounted) {
         setState(() {
-          _statementsByIssuer = {
-            ...results1,
-            ...results2,
-          };
+          // Update internal and public state
+          myStatements.value = newMyStatements;
+          peersStatements.value = newPeersStatements;
+
           assert(() {
-            for (final list in _statementsByIssuer.values) {
+            Statement.validateOrderTypes(_myStatements);
+            for (final list in _peersStatements.values) {
               Statement.validateOrderTypes(list);
             }
             return true;
@@ -229,6 +252,31 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     }
   }
 
+  Future<void> editStatement(TrustStatement s, {TrustVerb? lockedVerb}) async {
+    await _showEditStatementDialog(
+      context: context,
+      statement: s,
+      existingStatement: s,
+      publicKeyJson: s.subject,
+      lockedVerb: lockedVerb,
+    );
+    loadAllData();
+  }
+
+  Future<void> clearStatement(TrustStatement s) async {
+    await _showClearStatementDialog(
+      context: context,
+      statement: s,
+      publicKeyJson: s.subject,
+    );
+    loadAllData();
+  }
+
+  Future<void> scan(TrustVerb targetVerb) async {
+    await _onScanPressed(targetVerb: targetVerb);
+    loadAllData();
+  }
+
   void _initDeepLinks() {
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       _handleIncomingLink(uri);
@@ -239,6 +287,28 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         _handleIncomingLink(uri);
       }
     });
+  }
+
+  Future<void> _executeSignIn(String data) async {
+    try {
+      final success = await SignInService.signIn(
+        data, 
+        context, 
+        firestore: _firestore, 
+        myStatements: _myStatements,
+        onSending: () => _cardKey.currentState?.throwQr(),
+      );
+      if (success && mounted) {
+        loadAllData();
+        _pageController.animateToPage(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    } catch (e) {
+      // Logic might catch errors during sign-in
+    }
   }
 
   void _handleIncomingLink(Uri uri) async {
@@ -255,46 +325,18 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       if (dataBase64 != null) {
         try {
           final data = utf8.decode(base64Url.decode(dataBase64));
-          final success = await SignInService.signIn(
-            data, 
-            context, 
-            firestore: _firestore, 
-            myStatements: _statementsByIssuer[_keys.identityToken],
-            onSending: () => _cardKey.currentState?.throwQr(),
-          );
-          if (success && mounted) {
-            _loadAllData();
-            _pageController.animateToPage(
-              0,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-          }
+          await _executeSignIn(data);
         } catch (e) {}
       }
     } else if (uri.path.contains('sign-in')) {
       final data = uri.queryParameters['data'];
       if (data != null) {
-        final success = await SignInService.signIn(
-          data, 
-          context, 
-          firestore: _firestore, 
-          myStatements: _statementsByIssuer[_keys.identityToken],
-          onSending: () => _cardKey.currentState?.throwQr(),
-        );
-        if (success && mounted) {
-          _loadAllData();
-          _pageController.animateToPage(
-            0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        }
+        await _executeSignIn(data);
       }
     }
   }
 
-  void _onScanPressed() async {
+  Future<void> _onScanPressed({TrustVerb targetVerb = TrustVerb.trust}) async {
     final scanned = await QrScanner.scan(
       context,
       title: 'Scan Sign-in or Personal Key',
@@ -315,23 +357,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         final Map<String, dynamic> json = jsonDecode(scanned);
         
         if (await SignInService.validateSignIn(scanned)) {
-          final success = await SignInService.signIn(
-            scanned, 
-            context, 
-            firestore: _firestore, 
-            myStatements: _statementsByIssuer[_keys.identityToken],
-            onSending: () => _cardKey.currentState?.throwQr(),
-          );
-          if (success && mounted) {
-            _loadAllData();
-            _pageController.animateToPage(
-              0,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-          }
+          await _executeSignIn(scanned);
         } else if (isPubKey(json)) {
-          _handlePersonalKeyScan(json);
+          await _handlePublicKeyScan(json, targetVerb: targetVerb);
         }
       } catch (e) {
         if (mounted) {
@@ -343,7 +371,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     }
   }
 
-  void _handlePersonalKeyScan(Map<String, dynamic> publicKeyJson) async {
+  Future<void> _handlePublicKeyScan(Map<String, dynamic> publicKeyJson, {TrustVerb targetVerb = TrustVerb.trust}) async {
     try {
       final String subjectToken = getToken(publicKeyJson);
       
@@ -354,113 +382,40 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           context: context,
           builder: (context) => AlertDialog(
             title: const Text("That's you"),
-            content: const Text("Don't trust yourself."),
+            content: const Text("Don't statement yourself."),
             actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
           ),
         );
         return;
       }
 
-      if (_keys.isDelegateToken(subjectToken)) {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("That's you"),
-            content: const Text("That's one of your delegate keys. Don't trust your own delegate key."),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
-          ),
-        );
-        return;
-      }
+      // Check if I have already issued a statement for this subject
+      final TrustStatement? existing = _myStatements
+          .where((s) => s.subjectToken == subjectToken)
+          .firstOrNull;
 
-      final statementMap = _statementsByIssuer;
-      final String myToken = _keys.identityToken!;
-      final Set<String> myIdentityKeys = {myToken};
-      bool changed = true;
-      while (changed) {
-        changed = false;
-        for (final list in statementMap.values) {
-          for (final s in list) {
-            if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.replace) {
-              if (myIdentityKeys.add(s.subjectToken)) changed = true;
-            }
-          }
-        }
-      }
-
-      if (myIdentityKeys.contains(subjectToken)) {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("This is you"),
-            content: const Text("This is one of your equivalent (former) identity keys.\n\nYou should manage your identity history in settings."),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
-          ),
-        );
-        return;
-      }
-
-      final Set<String> myStatedDelegates = {};
-      for (final list in statementMap.values) {
-        for (final s in list) {
-          if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.delegate) {
-            myStatedDelegates.add(s.subjectToken);
-          }
-        }
-      }
-
-      if (myStatedDelegates.contains(subjectToken)) {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("That's you"),
-            content: const Text("This is one of your delegate keys.\n\nManage your delegates in the services section."),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
-          ),
-        );
-        return;
-      }
-
-      bool isDelegateOfOther = false;
-      for (final list in statementMap.values) {
-        if (list.any((s) => s.subjectToken == subjectToken && s.verb == TrustVerb.delegate)) {
-          isDelegateOfOther = true;
-          break;
-        }
-      }
-
-      if (isDelegateOfOther) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cannot vouch for or block delegate keys directly. Vouch for the primary identity instead.')),
-        );
-        return;
-      }
-
-      final List<TrustStatement> existingStatement = [];
-      for (final list in statementMap.values) {
-        existingStatement.addAll(list.where((s) => myIdentityKeys.contains(s.iToken) && s.subjectToken == subjectToken));
-      }
-      existingStatement.sort((a, b) => b.time.compareTo(a.time));
-      
-      final TrustStatement? latest = existingStatement.firstOrNull;
-      
-      final TrustStatement finalStatement;
-      if (latest != null) {
-        finalStatement = latest;
+      final TrustStatement template;
+      if (existing != null && existing.verb == targetVerb) {
+        template = existing;
       } else {
         final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
         final json = TrustStatement.make(
           myPubKeyJson!,
           publicKeyJson,
-          TrustVerb.trust,
+          targetVerb,
         );
-        finalStatement = TrustStatement(Jsonish(json));
+        template = TrustStatement(Jsonish(json));
       }
 
-      await _showTrustBlockDialog(
+      await _showEditStatementDialog(
         context: context,
-        statement: finalStatement,
+        statement: template,
+        existingStatement: existing,
         publicKeyJson: publicKeyJson,
+        isNewScan: true,
+        // If we are initiating a Block or Delegate scan, we lock the verb.
+        // If Trust, EditStatementDialog logic permits switch to Block if no conflict.
+        lockedVerb: targetVerb == TrustVerb.trust ? null : targetVerb,
       );
     } catch (e) {
       if (mounted) {
@@ -475,23 +430,17 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required BuildContext context,
     required TrustStatement statement,
     required Map<String, dynamic> publicKeyJson,
-    TrustVerb? initialVerb,
+    TrustStatement? existingStatement,
+    bool isNewScan = false,
+    TrustVerb? lockedVerb,
   }) async {
     await showDialog(
       context: context,
       builder: (context) => EditStatementDialog(
-        statement: statement,
-        initialVerb: initialVerb,
-        onSubmit: ({required verb, comment, domain, moniker, revokeAt}) async {
-          await _pushTrustStatement(
-            publicKeyJson: publicKeyJson,
-            verb: verb,
-            moniker: moniker,
-            comment: comment,
-            domain: domain,
-            revokeAt: revokeAt,
-          );
-        },
+        proposedStatement: statement,
+        existingStatement: existingStatement,
+        isNewScan: isNewScan,
+        onSubmit: _pushTrustStatement,
       ),
     );
   }
@@ -501,383 +450,69 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required TrustStatement statement,
     required Map<String, dynamic> publicKeyJson,
   }) async {
+    final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
+    if (!mounted) return;
+    
     await showDialog(
       context: context,
       builder: (context) => ClearStatementDialog(
         statement: statement,
         onSubmit: () async {
-          await _pushTrustStatement(
-            publicKeyJson: publicKeyJson,
-            verb: TrustVerb.clear,
+          final json = TrustStatement.make(
+            myPubKeyJson!,
+            publicKeyJson,
+            TrustVerb.clear,
             domain: statement.domain,
           );
+          
+          await _pushTrustStatement(TrustStatement(Jsonish(json)));
         },
       ),
     );
   }
 
-  Future<void> _showTrustBlockDialog({
-    required BuildContext context,
-    required TrustStatement statement,
-    required Map<String, dynamic> publicKeyJson,
-    TrustVerb? lockedVerb,
-  }) async {
-    if (lockedVerb == TrustVerb.clear) {
-      return _showClearStatementDialog(
+  Future<void> _pushTrustStatement(TrustStatement statement) async {
+    bool confirmed = true;
+
+    if (_showLgtm) {
+      // Build interpreter for LGTM dialog
+      final Map<String, List<TrustStatement>> combined = {
+        _keys.identityToken!: _myStatements,
+      };
+      combined.addAll(_peersStatements);
+      final labeler = Labeler(combined, _keys.identityToken!);
+      final interpreter = OneOfUsInterpreter(labeler);
+      // Show LGTM confirmation
+      final result = await showDialog<bool>(
         context: context,
-        statement: statement,
-        publicKeyJson: publicKeyJson,
-      );
-    }
-
-    return _showEditStatementDialog(
-      context: context,
-      statement: statement,
-      publicKeyJson: publicKeyJson,
-      initialVerb: lockedVerb,
-    );
-  }
-
-  Future<void> _showDelegateDialog({
-    required BuildContext context,
-    required String subjectToken,
-    required Map<String, dynamic> publicKeyJson,
-    required String? domain,
-    String? initialRevokeAt,
-    DateTime? existingTime,
-  }) async {
-    String? currentRevokeAt = initialRevokeAt;
-
-    await showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final isActive = currentRevokeAt == null;
-          final isFullyRevoked = currentRevokeAt == kSinceAlways;
-          final isPartiallyRevoked = !isActive && !isFullyRevoked;
-
-          return AlertDialog(
-            title: const Text('Delegate Authorization'),
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('DOMAIN',
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade600,
-                          letterSpacing: 1.2)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(domain ?? 'Unknown',
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
-                      ),
-                      if (existingTime != null)
-                        Tooltip(
-                          message: 'Latest statement: ${formatUiDatetime(existingTime)}',
-                          child: Icon(Icons.info_outline, size: 16, color: Colors.grey.shade400),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text('STATUS',
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade600,
-                          letterSpacing: 1.2)),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Center(child: Text('ACTIVE')),
-                          selected: isActive,
-                          onSelected: (val) {
-                            if (val) {
-                              setDialogState(() {
-                                currentRevokeAt = null;
-                              });
-                            }
-                          },
-                          selectedColor: const Color(0xFF0288D1).withOpacity(0.2),
-                          labelStyle: TextStyle(
-                            color: isActive
-                                ? const Color(0xFF0288D1)
-                                : Colors.grey,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Center(child: Text('FULLY REVOKED')),
-                          selected: isFullyRevoked,
-                          onSelected: (val) {
-                            if (val) {
-                              setDialogState(() {
-                                currentRevokeAt = kSinceAlways;
-                              });
-                            }
-                          },
-                          selectedColor: Colors.blueGrey.withOpacity(0.2),
-                          labelStyle: TextStyle(
-                            color: isFullyRevoked ? Colors.blueGrey : Colors.grey,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ChoiceChip(
-                      label: const Center(child: Text('REVOKED AT LAST VALID STATEMENT')),
-                      selected: isPartiallyRevoked,
-                      onSelected: (val) {
-                        if (val) {
-                          setDialogState(() {
-                            if (!isPartiallyRevoked) {
-                              currentRevokeAt = (initialRevokeAt != null && initialRevokeAt != kSinceAlways) 
-                                ? initialRevokeAt 
-                                : "";
-                            }
-                          });
-                        }
-                      },
-                      selectedColor: Colors.orange.withOpacity(0.2),
-                      labelStyle: TextStyle(
-                        color: isPartiallyRevoked ? Colors.orange : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  if (isPartiallyRevoked) ...[
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('REVOKE AT STATEMENT TOKEN',
-                                  style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey.shade600,
-                                      letterSpacing: 1.2)),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: SelectableText(
-                                  currentRevokeAt!.isEmpty ? "(Scan Statement or Token)" : currentRevokeAt!,
-                                  style: TextStyle(
-                                      fontSize: 10, 
-                                      fontFamily: 'monospace',
-                                      color: currentRevokeAt!.isEmpty ? Colors.grey : Colors.black87),
-                                  maxLines: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.qr_code_scanner, size: 20),
-                          onPressed: () async {
-                              final scanned = await QrScanner.scan(
-                                context, 
-                                title: "Scan Statement or Token", 
-                                validator: (s) async {
-                                  if (s.isEmpty) return false;
-                                  try {
-                                    final json = jsonDecode(s);
-                                    if (json is Map<String, dynamic>) return true;
-                                  } catch (_) {}
-                                  return RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(s);
-                                }
-                              );
-                              if (scanned != null) {
-                                String token = scanned;
-                                try {
-                                  final json = jsonDecode(scanned);
-                                  if (json is Map<String, dynamic>) {
-                                    token = getToken(json);
-                                  }
-                                } catch (_) {}
-                                
-                                setDialogState(() {
-                                  currentRevokeAt = token;
-                                });
-                              }
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('CANCEL',
-                    style: TextStyle(
-                        color: Colors.grey.shade600,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.bold)),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final hasChanged = currentRevokeAt != initialRevokeAt;
-                  final isRevokeAtValid = !isPartiallyRevoked || 
-                      (currentRevokeAt != null && RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(currentRevokeAt!));
-
-                  if (!hasChanged || !isRevokeAtValid) return null;
-
-                  return () async {
-                    Navigator.pop(context);
-                    await _pushTrustStatement(
-                      publicKeyJson: publicKeyJson,
-                      verb: TrustVerb.delegate,
-                      domain: domain,
-                      revokeAt: currentRevokeAt,
-                    );
-                  };
-                }(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isFullyRevoked ? Colors.blueGrey : (isActive ? const Color(0xFF0288D1) : Colors.orange),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                child: Text(isActive ? 'UPDATE' : 'REVOKE',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-              ),
-            ],
-          );
+        builder: (context) {
+          return LgtmDialog(statement: statement, interpreter: interpreter);
         },
-      ),
-    );
-  }
-
-  Future<void> _pushTrustStatement({
-    required Map<String, dynamic> publicKeyJson,
-    required TrustVerb verb,
-    String? moniker,
-    String? comment,
-    String? domain,
-    String? revokeAt,
-  }) async {
-    final identity = _keys.identity;
-    if (identity == null) {
-      throw StateError("Cannot push statement without an identity key.");
+      );
+      confirmed = result == true;
     }
 
-    // Check if we need to warn about deleting a local delegate key
+    if (!confirmed) {
+      throw Exception('UserCancelled');
+    }
+
+    final publicKeyJson = statement[statement.verb.label];
     final token = getToken(publicKeyJson);
     final isMyDelegate = _keys.isDelegateToken(token);
-    final isRevoking = (verb == TrustVerb.delegate && revokeAt != null);
-    final isClearing = (verb == TrustVerb.clear);
+    final isRevoking = (statement.verb == TrustVerb.delegate && statement.revokeAt != null);
+    final isClearing = (statement.verb == TrustVerb.clear);
     
     if (isMyDelegate && (isRevoking || isClearing)) {
-      final bool? proceed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Remove Local Key?'),
-          content: Text(
-            'You are ${isRevoking ? "revoking" : "clearing"} a delegate authorization '
-            'for which you have the private key stored on this device.\n\n'
-            'If you proceed, this key will be PERMANENTLY deleted from your local keyring after the network statement is published.'
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('CANCEL'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(
-                isRevoking ? 'REVOKE & DELETE' : 'CLEAR & DELETE',
-                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-      );
-      
-      if (proceed != true) return;
+      final bool proceed = await _confirmDeleteDelegate(isRevoking);
+      if (!proceed) return;
     }
 
     try {
-      final myPubKeyJson = await (await identity.publicKey).json;
-      
-      final statementJson = TrustStatement.make(
-        myPubKeyJson,
-        publicKeyJson,
-        verb,
-        moniker: moniker,
-        comment: comment,
-        domain: domain,
-        revokeAt: revokeAt,
-      );
-      
-      final writer = DirectFirestoreWriter(_firestore);
-      final signer = await OouSigner.make(identity);
-      
-      await writer.push(statementJson, signer);
-
-      if (isMyDelegate && (isRevoking || isClearing)) {
-        await _keys.removeDelegateByToken(token);
-      }
+      await _executePush(statement, isMyDelegate, isRevoking, isClearing, token);
       
       if (mounted) {
-        String action = 'Updated';
-        Color bgColor = const Color(0xFF00897B);
-        
-        if (verb == TrustVerb.trust) {
-          action = 'Trusted';
-        } else if (verb == TrustVerb.block) {
-          action = 'Blocked';
-          bgColor = Colors.red;
-        } else if (verb == TrustVerb.clear) {
-          action = 'Cleared';
-          bgColor = Colors.orange;
-        } else if (verb == TrustVerb.replace) {
-          action = 'Updated ID History';
-          bgColor = Colors.green;
-        } else if (verb == TrustVerb.delegate) {
-          action = revokeAt == null ? 'Delegated' : 'Revoked';
-          bgColor = revokeAt == null ? const Color(0xFF0288D1) : Colors.blueGrey;
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$action: Success'),
-            backgroundColor: bgColor
-          ),
-        );
-        await _loadAllData();
+        _showSuccessSnackBar(statement);
+        await loadAllData();
       }
     } catch (e) {
       if (mounted) {
@@ -886,6 +521,63 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         );
       }
     }
+  }
+
+  Future<bool> _confirmDeleteDelegate(bool isRevoking) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Local Key?'),
+        content: Text(
+          'You are ${isRevoking ? "revoking" : "clearing"} a delegate authorization '
+          'for which you have the private key stored on this device.\n\n'
+          'If you proceed, this key will be PERMANENTLY deleted from your local keyring after the network statement is published.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              isRevoking ? 'REVOKE & DELETE' : 'CLEAR & DELETE',
+              style: AppTypography.label.copyWith(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  Future<void> _executePush(TrustStatement statement, bool isMyDelegate, bool isRevoking, bool isClearing, String token) async {
+    final writer = DirectFirestoreWriter(_firestore);
+    final identity = _keys.identity!; // Checked in caller
+    final signer = await OouSigner.make(identity);
+    
+    final mutableJson = Map<String, dynamic>.from(statement.json);
+    await writer.push(mutableJson, signer);
+
+    if (isMyDelegate && (isRevoking || isClearing)) {
+      await _keys.removeDelegateByToken(token);
+    }
+  }
+
+  void _showSuccessSnackBar(TrustStatement statement) {
+    // Determine label and color
+    final (String label, Color color) = switch (statement.verb) {
+      TrustVerb.trust    => ('Trusted', const Color(0xFF00897B)),
+      TrustVerb.block    => ('Blocked', Colors.red),
+      TrustVerb.clear    => ('Cleared', Colors.orange),
+      TrustVerb.replace  => ('Updated ID History', Colors.green),
+      TrustVerb.delegate => statement.revokeAt == null 
+          ? ('Delegated', const Color(0xFF0288D1)) 
+          : ('Revoked', Colors.blueGrey),
+    };
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$label: Success'), backgroundColor: color),
+    );
   }
 
   void _handleDevClick() {
@@ -910,81 +602,50 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     }
     
     final myToken = _keys.identityToken;
-    if (!_hasKey || myToken == null) return WelcomeScreen(firestore: _firestore);
+    if (!_hasKey || myToken == null) {
+      return WelcomeScreen(
+        firestore: _firestore,
+        onIdentityCreated: () => setState(() => _showCongrats = true),
+      );
+    }
 
-    final Map<String, List<TrustStatement>> statementMap = _statementsByIssuer;
+    if (_showCongrats) {
+      return CongratulationsScreen(
+        onContinue: () => setState(() => _showCongrats = false),
+      );
+    }
 
     final pages = [
       CardScreen(
-        statementsByIssuer: statementMap, 
-        myKeyToken: myToken,
         cardKey: _cardKey,
       ),
-      PeopleScreen(
-        statementsByIssuer: statementMap,
-        myKeyToken: myToken,
-        onRefresh: _loadAllData,
-        onEdit: (statement) async {
-          await _showTrustBlockDialog(
-            context: context,
-            statement: statement,
-            publicKeyJson: statement.subject,
-            lockedVerb: TrustVerb.trust,
-          );
-          if (mounted) setState(() {});
-        },
-        onBlock: (statement) async {
-          await _showTrustBlockDialog(
-            context: context,
-            statement: statement,
-            publicKeyJson: statement.subject,
-            lockedVerb: TrustVerb.block,
-          );
-          if (mounted) setState(() {});
-        },
-        onClear: (statement) async {
-          await _showTrustBlockDialog(
-            context: context,
-            statement: statement,
-            publicKeyJson: statement.subject,
-            lockedVerb: TrustVerb.clear,
-          );
-          if (mounted) setState(() {});
-        },
-      ),
-      DelegatesScreen(
-        statementsByIssuer: statementMap,
-        myKeyToken: myToken,
-        onRefresh: _loadAllData,
-        onEdit: (statement) async {
-          await _showDelegateDialog(
-            context: context,
-            subjectToken: statement.subjectToken,
-            publicKeyJson: statement.subject,
-            domain: statement.domain,
-            initialRevokeAt: statement.revokeAt,
-            existingTime: statement.time,
-          );
-          if (mounted) setState(() {});
-        },
-        onClear: (statement) async {
-          await _showTrustBlockDialog(
-            context: context,
-            statement: statement,
-            publicKeyJson: statement.subject,
-            lockedVerb: TrustVerb.clear,
-          );
-          if (mounted) setState(() {});
-        },
-      ),
+      const PeopleScreen(),
+      const DelegatesScreen(),
       const ImportExportScreen(),
       AdvancedScreen(
         onShowBlocks: () => _showBlocksModal(context),
         onShowEquivalents: () => _showEquivalentsModal(context),
         onReplaceKey: () => _showReplaceKeyDialog(context),
       ),
+      IntroScreen(
+        onShowWelcome: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CongratulationsScreen(
+                onContinue: () => Navigator.pop(context),
+              ),
+            ),
+          );
+        },
+      ),
       AboutScreen(onDevClick: _handleDevClick),
-      if (_isDevMode) DevScreen(onRefresh: _loadAllData),
+      if (_isDevMode)
+        DevScreen(
+          onRefresh: loadAllData,
+          showLgtm: _showLgtm,
+          onLgtmChanged: (v) => setState(() => _showLgtm = v),
+        ),
     ];
 
     return Scaffold(
@@ -1009,7 +670,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, heightKludge, 24, 8),
+                    padding: const EdgeInsets.fromLTRB(24, _topSafeAreaPadding, 24, 8),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1025,13 +686,11 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                                   errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 32, color: Color(0xFF00897B)),
                                 ),
                                 const SizedBox(width: 12),
-                                const Text(
+                                Text(
                                   'ONE-OF-US.NET',
-                                  style: TextStyle(
+                                  style: AppTypography.header.copyWith(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
-                                    letterSpacing: 3.0,
-                                    color: Color(0xFF37474F),
                                     fontFamily: 'serif',
                                   ),
                                 ),
@@ -1055,7 +714,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                               const SizedBox(width: 6),
                             ],
                             GestureDetector(
-                              onTap: _loadAllData,
+                              onTap: loadAllData,
                               child: const SizedBox(
                                 width: 24,
                                 height: 24,
@@ -1148,12 +807,12 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('SHARE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
+              const Text('SHARE', style: AppTypography.header),
               const SizedBox(height: 12),
               
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('MY IDENTITY KEY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.5)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text('MY IDENTITY KEY', style: AppTypography.labelSmall),
               ),
               ListTile(
                 leading: const Icon(Icons.qr_code_2_rounded),
@@ -1174,9 +833,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
               
               const Divider(indent: 24, endIndent: 24),
               
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('ONE-OF-US.NET LINK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1.5)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Text('ONE-OF-US.NET LINK', style: AppTypography.labelSmall),
               ),
               ListTile(
                 leading: const Icon(Icons.qr_code_rounded),
@@ -1208,46 +867,25 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       backgroundColor: Colors.white,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
-      builder: (modalContext) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return DraggableScrollableSheet(
-            initialChildSize: 1.0,
-            minChildSize: 0.9,
-            maxChildSize: 1.0,
-            expand: false,
-            builder: (context, scrollController) => Column(
-              children: [
-                const SizedBox(height: 12),
-                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
-                Expanded(
-                  child: BlocksScreen(
-                    statementsByIssuer: _statementsByIssuer,
-                    myKeyToken: _keys.identityToken!,
-                    scrollController: scrollController,
-                    onEdit: (s) async {
-                      await _showTrustBlockDialog(
-                        context: context,
-                        statement: s,
-                        publicKeyJson: s.subject,
-                        lockedVerb: TrustVerb.block,
-                      );
-                      setModalState(() {});
-                    },
-                    onClear: (s) async {
-                      await _showTrustBlockDialog(
-                        context: context,
-                        statement: s,
-                        publicKeyJson: s.subject,
-                        lockedVerb: TrustVerb.clear,
-                      );
-                      setModalState(() {});
-                    },
-                  ),
-                ),
-              ],
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 1.0,
+        minChildSize: 0.9,
+        maxChildSize: 1.0,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
             ),
-          );
-        }
+            Expanded(
+              child: BlocksScreen(scrollController: scrollController),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1272,26 +910,10 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                 Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
                 Expanded(
                   child: HistoryScreen(
-                    statementsByIssuer: _statementsByIssuer,
-                    myKeyToken: _keys.identityToken!,
                     scrollController: scrollController,
-                    onEdit: (s) async {
-                      await _showTrustBlockDialog(
-                        context: context,
-                        statement: s,
-                        publicKeyJson: s.subject,
-                        lockedVerb: TrustVerb.replace,
-                      );
-                      setModalState(() {});
-                    },
-                    onClear: (s) async {
-                      await _showTrustBlockDialog(
-                        context: context,
-                        statement: s,
-                        publicKeyJson: s.subject,
-                        lockedVerb: TrustVerb.clear,
-                      );
-                      setModalState(() {});
+                    onClaimKey: () {
+                      Navigator.pop(context); // Close modal
+                      _showReplaceKeyDialog(context, claimMode: true);
                     },
                   ),
                 ),
@@ -1303,17 +925,18 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     );
   }
 
-  void _showReplaceKeyDialog(BuildContext context) {
+  void _showReplaceKeyDialog(BuildContext context, {bool claimMode = false}) {
     final identityToken = _keys.identityToken;
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ReplaceFlow(
           firestore: _firestore,
-          initialOldIdentityToken: identityToken,
+          initialOldIdentityToken: claimMode ? null : identityToken,
+          claimMode: claimMode,
         ),
       ),
-    ).then((_) => _loadAllData()); // Refresh after flow completes
+    ).then((_) => loadAllData()); // Refresh after flow completes
   }
 
   void _showManagementHub(BuildContext context) {
@@ -1334,8 +957,9 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
             _HubTile(icon: Icons.vpn_key_outlined, title: 'IMPORT / EXPORT', onTap: () => _pageController.jumpToPage(3)),
             _HubTile(icon: Icons.settings_accessibility_rounded, title: 'ADVANCED', onTap: () => _pageController.jumpToPage(4)),
-            _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => _pageController.jumpToPage(5)),
-            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => _pageController.jumpToPage(6)),
+            _HubTile(icon: Icons.menu_book_rounded, title: 'INTRO', onTap: () => _pageController.jumpToPage(5)),
+            _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => _pageController.jumpToPage(6)),
+            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => _pageController.jumpToPage(7)),
           ],
         ),
       ),
@@ -1353,7 +977,7 @@ class _HubTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF00897B), size: 28),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 2)),
+      title: Text(title, style: AppTypography.header),
       onTap: () {
         Navigator.pop(context);
         onTap();

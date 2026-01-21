@@ -2,7 +2,7 @@ name: oneofus
 description: "The ONE-OF-US.NET phone app (V2)."
 publish_to: 'none'
 
-version: 2.0.0+84
+version: 2.0.1+87
 
 environment:
   sdk: ^3.8.1
@@ -30,6 +30,8 @@ dependencies:
   share_plus: ^12.0.1
   path_provider: ^2.1.5
   url_launcher: ^6.3.2
+  package_info_plus: ^9.0.0
+  device_info_plus: ^12.3.0
 
 dev_dependencies:
   flutter_test:

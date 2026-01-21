@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'card_config.dart';
+import 'app_typography.dart';
 
 class IdentityCardSurface extends StatefulWidget {
   final bool isLandscape;
@@ -158,7 +159,7 @@ class IdentityCardSurfaceState extends State<IdentityCardSurface> with SingleTic
                               child: Text(
                                 widget.moniker,
                                 textAlign: TextAlign.right,
-                                style: TextStyle(
+                                style: AppTypography.display.copyWith(
                                   // Use a large ceiling so FittedBox handles the shrink
                                   fontSize: cardH * 0.22, 
                                   fontWeight: FontWeight.w900,
@@ -179,7 +180,7 @@ class IdentityCardSurfaceState extends State<IdentityCardSurface> with SingleTic
                           child: Text(
                             'Human, capable, acting in good faith',
                             textAlign: TextAlign.right,
-                            style: TextStyle(
+                            style: AppTypography.display.copyWith(
                               fontSize: cardH * 0.06,
                               fontWeight: FontWeight.w800,
                               fontStyle: FontStyle.italic,

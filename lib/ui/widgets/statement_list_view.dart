@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../app_typography.dart';
 
 class StatementListView extends StatelessWidget {
   final String title;
@@ -10,6 +11,10 @@ class StatementListView extends StatelessWidget {
   final ScrollController? scrollController;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry? headerPadding;
+  final VoidCallback? onAdd;
+  final String? addLabel;
+  final String? description;
+  final String? bottomDescription;
 
   const StatementListView({
     super.key,
@@ -22,6 +27,10 @@ class StatementListView extends StatelessWidget {
     this.scrollController,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.headerPadding,
+    this.onAdd,
+    this.addLabel,
+    this.description,
+    this.bottomDescription,
   });
 
   @override
@@ -30,18 +39,25 @@ class StatementListView extends StatelessWidget {
       children: [
         Padding(
           padding: headerPadding ?? const EdgeInsets.fromLTRB(24, 24, 24, 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                title.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
-                  color: Color(0xFF37474F),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title.toUpperCase(),
+                    style: AppTypography.header,
+                  ),
+                ],
               ),
+              if (description != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  description!,
+                  style: AppTypography.caption,
+                ),
+              ],
             ],
           ),
         ),
@@ -55,6 +71,31 @@ class StatementListView extends StatelessWidget {
                   itemBuilder: itemBuilder,
                 ),
         ),
+        if (bottomDescription != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+            child: Text(
+              bottomDescription!,
+              style: AppTypography.caption,
+            ),
+          ),
+        if (onAdd != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: TextButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.qr_code_scanner_rounded, size: 24),
+              label: Text(
+                addLabel ?? 'SCAN',
+                style: AppTypography.label,
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF00897B),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                visualDensity: VisualDensity.comfortable,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -68,11 +109,7 @@ class StatementListView extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             emptyTitle,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.blueGrey.shade400,
-            ),
+            style: AppTypography.itemTitle,
           ),
           const SizedBox(height: 8),
           Padding(
@@ -80,10 +117,7 @@ class StatementListView extends StatelessWidget {
             child: Text(
               emptySubtitle,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.blueGrey.shade300,
-              ),
+              style: AppTypography.caption,
             ),
           ),
         ],

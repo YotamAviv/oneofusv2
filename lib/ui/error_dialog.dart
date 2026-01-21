@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_typography.dart';
 
 class ErrorDialog {
   static void show(BuildContext context, String title, Object error, [StackTrace? stackTrace]) {
@@ -13,12 +14,12 @@ class ErrorDialog {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Error: $error', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              Text('Error: $error', style: AppTypography.labelSmall),
               if (stackTrace != null) ...[
                 const SizedBox(height: 16),
-                const Text('STACK TRACE:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                Text('STACK TRACE:', style: AppTypography.labelSmall),
                 const Divider(),
-                Text(stackTrace.toString(), style: const TextStyle(fontFamily: 'monospace', fontSize: 10)),
+                Text(stackTrace.toString(), style: AppTypography.mono),
               ],
             ],
           ),

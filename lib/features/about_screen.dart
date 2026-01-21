@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../ui/app_typography.dart';
 
 class AboutScreen extends StatelessWidget {
   final VoidCallback onDevClick;
@@ -17,12 +18,7 @@ class AboutScreen extends StatelessWidget {
               children: [
                 Text(
                   'ONE-OF-US.NET',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
-                    color: Color(0xFF37474F),
-                  ),
+                  style: AppTypography.header,
                 ),
               ],
             ),
@@ -76,22 +72,22 @@ class AboutScreen extends StatelessWidget {
                 const SizedBox(height: 60),
                 GestureDetector(
                   onTap: onDevClick,
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       children: [
                         Text(
                           'With ♡ from Clacker;)',
-                          style: TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 0.5),
+                          style: AppTypography.caption,
                         ),
-                        SizedBox(height: 8),
-                        Text('V2.0.0 • BUILD 80', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+                        const SizedBox(height: 8),
+                        Text('V2.0.0 • BUILD 80', textAlign: TextAlign.center, style: AppTypography.labelSmall),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
+        ],
+      ),
+    ),
         ],
       ),
     );
@@ -108,12 +104,7 @@ class _InfoCategory extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Text(
         title,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: Colors.blueGrey.shade300,
-          letterSpacing: 2.0,
-        ),
+        style: AppTypography.label,
       ),
     );
   }
@@ -136,8 +127,8 @@ class _InfoLinkTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF00897B)),
-      title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF37474F))),
-      subtitle: subtitle != null ? Text(subtitle!, style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade600)) : null,
+      title: Text(title, style: AppTypography.body),
+      subtitle: subtitle != null ? Text(subtitle!, style: AppTypography.caption) : null,
       trailing: const Icon(Icons.open_in_new_rounded, size: 16, color: Colors.grey),
       onTap: () => launchUrl(Uri.parse(url)),
     );

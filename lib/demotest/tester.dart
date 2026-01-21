@@ -6,6 +6,7 @@ import 'package:oneofus_common/io.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'package:oneofus_common/util.dart';
 import '../core/keys.dart';
 
 final crypto = CryptoFactoryEd25519();
@@ -44,12 +45,12 @@ class Tester {
     await doDelegate(jock, await TestKey.create(), domain: 'nerdster.org');
 
     await doBlock(poser, await TestKey.create(), comment: 'spam');
-    await doReplace(poser, await TestKey.create(), comment: 'lost');
+    await doReplace(poser, await TestKey.create(), revokeAt: kSinceAlways, comment: 'lost');
 
     // --- Overrides and Compromise Simulation ---
     // 1. Overwrites: poser updates previous trusts
     await doTrust(poser, hipster, moniker: 'Hipster (updated)');
-    await doTrust(poser, jock, moniker: 'Jock (Last Valid)');
+    await doTrust(poser, jock, moniker: 'Jock', comment: '(Last Valid)');
 
     // 2. Fraudulent statements (Simulated compromise)
     await doBlock(poser, hipster, comment: 'Fraudulent block from compromise');
@@ -129,12 +130,13 @@ class Tester {
     return TrustStatement(Jsonish(s));
   }
 
-  static Future<TrustStatement> doReplace(TestKey i, TestKey subject, {String? comment}) async {
+  static Future<TrustStatement> doReplace(TestKey i, TestKey subject, {String? comment, String? revokeAt}) async {
     Json s = TrustStatement.make(
       i.publicKeyJson,
       subject.publicKeyJson,
       TrustVerb.replace,
       comment: comment,
+      revokeAt: revokeAt,
     );
     OouSigner signer = await OouSigner.make(i.keyPair);
     await writer!.push(s, signer);

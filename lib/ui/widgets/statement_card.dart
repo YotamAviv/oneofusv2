@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:oneofus_common/util.dart';
+import '../app_typography.dart';
+import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/trust_statement.dart';
+
+import 'json_display.dart';
+import 'key_widget.dart';
+import '../interpreter.dart';
+import '../../core/labeler.dart';
+import '../../core/keys.dart';
+import '../app_shell.dart';
 
 class CardAction {
   final IconData icon;
@@ -15,37 +24,83 @@ class CardAction {
   });
 }
 
-class StatementCardConfig {
-  final Color themeColor;
-  final IconData statusIcon;
-  final String statusTooltip;
-  final String title;
-  final String? subtitle;
-  final String? comment;
-  final DateTime timestamp;
-  final Widget? trailingIcon;
-  final List<CardAction> actions;
-
-  const StatementCardConfig({
-    required this.themeColor,
-    required this.statusIcon,
-    required this.statusTooltip,
-    required this.title,
-    this.subtitle,
-    this.comment,
-    required this.timestamp,
-    this.trailingIcon,
-    required this.actions,
-  });
-}
-
 class StatementCard extends StatelessWidget {
-  final StatementCardConfig config;
+  final TrustStatement statement;
 
-  const StatementCard({super.key, required this.config});
+  const StatementCard({
+    super.key,
+    required this.statement,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final subjectToken = statement.subjectToken;
+    final verb = statement.verb;
+    final myKeyToken = Keys().identityToken!;
+    
+    // Access global state
+    final peersStatements = AppShell.instance.peersStatements.value;
+
+    // 1. Determine Color
+    Color themeColor;
+    switch (verb) {
+      case TrustVerb.delegate:
+        themeColor = Colors.blue.shade700;
+        break;
+      case TrustVerb.trust:
+        themeColor = const Color(0xFF00897B); // Teal/Green for Identity
+        break;
+      case TrustVerb.block:
+        themeColor = Colors.red.shade700;
+        break;
+      case TrustVerb.replace:
+        themeColor = const Color(0xFF00897B); // Green (Identity)
+        break;
+      default:
+        themeColor = Colors.grey;
+    }
+
+    // 2. Determine "Verified" Badge (Only for Trust)
+    Widget? trailingIcon;
+    if (verb == TrustVerb.trust) {
+      final TrustStatement? peerStatement = peersStatements[subjectToken]?.where((s) =>
+              s.subjectToken == myKeyToken && s.verb == TrustVerb.trust).firstOrNull;
+      final bool vouchesBack = peerStatement != null;
+      final name = statement.moniker!;
+
+      trailingIcon = Tooltip(
+        message: vouchesBack
+            ? '$name has vouched for you as ${peerStatement.moniker}'
+            : '$name has yet to vouch for your identity, humanity, and integrity',
+        child: InkWell(
+          onTap: peerStatement != null ? () => _showJson(context, peerStatement.jsonish.json) : null,
+          borderRadius: BorderRadius.circular(20),
+          child: Icon(
+            vouchesBack ? Icons.check_circle : Icons.check_circle_outline_rounded,
+            size: 20,
+            color: vouchesBack ? themeColor : Colors.grey.shade300,
+          ),
+        ),
+      );
+    }
+
+    // 3. Common Metadata
+    final bool showShortId = false; // DO NOT REMVE MY CODE (I AM THE HUMAN)
+    final String shortId = '#${subjectToken.substring(subjectToken.length - 6)}';
+
+    final actions = [
+      CardAction(
+        icon: Icons.edit_outlined,
+        onTap: () => AppShell.instance.editStatement(statement),
+      ),
+      CardAction(
+        icon: Icons.backspace_outlined,
+        label: 'CLEAR',
+        color: Colors.orange.shade400,
+        onTap: () => AppShell.instance.clearStatement(statement),
+      ),
+    ];
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -67,7 +122,7 @@ class StatementCard extends StatelessWidget {
             children: [
               Container(
                 width: 6,
-                color: config.themeColor,
+                color: themeColor,
               ),
               Expanded(
                 child: Padding(
@@ -76,94 +131,82 @@ class StatementCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
-                            child: Text(
-                              config.title,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF37474F),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (config.trailingIcon != null) ...[
-                            config.trailingIcon!,
-                            const SizedBox(width: 8),
-                          ],
-                          Tooltip(
-                            message: config.statusTooltip,
-                            child: Icon(
-                              config.statusIcon,
-                              size: 20,
-                              color: config.themeColor,
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    statement.moniker ?? (statement.domain ?? 'Unknown'),
+                                    style: AppTypography.itemTitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () => _showJson(context, statement.subject),
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: KeyWidget(statement: statement, color: themeColor),
+                                ),
+                                if (trailingIcon != null) ...[
+                                  const SizedBox(width: 8),
+                                  trailingIcon,
+                                ],
+                              ],
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Tooltip(
-                            message: 'Latest statement: ${formatUiDatetime(config.timestamp)}',
-                            child: Icon(
-                              Icons.info_outline,
-                              size: 16,
-                              color: Colors.grey.shade400,
+                          InkWell(
+                            onTap: () => _showJson(context, statement.jsonish.json),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Icon(
+                                Icons.shield_outlined,
+                                size: 20,
+                                color: Colors.blueGrey,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      if (config.subtitle != null) ...[
+                      // ignore: dead_code
+                      if (showShortId) ...[
                         const SizedBox(height: 4),
                         Text(
-                          config.subtitle!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.blueGrey.shade400,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'monospace',
-                          ),
+                          shortId,
+                          style: AppTypography.mono,
                         ),
                       ],
-                      if (config.comment != null && config.comment!.isNotEmpty) ...[
+                      if (statement.comment != null &&
+                          statement.comment!.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade50,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.grey.shade200),
                           ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: Icon(Icons.comment_outlined, size: 12, color: Colors.grey.shade400),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  config.comment!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            statement.comment!,
+                            style: AppTypography.caption,
                           ),
                         ),
                       ],
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
-                        children: config.actions.map((action) {
-                          final isLast = config.actions.last == action;
+                        children: actions.map((action) {
+                          final isLast = actions.last == action;
                           return Padding(
                             padding: EdgeInsets.only(right: isLast ? 0 : 8),
-                            child: _ActionButtonWidget(action: action, themeColor: config.themeColor),
+                            child: _ActionButtonWidget(
+                                action: action, themeColor: themeColor),
                           );
                         }).toList(),
                       ),
@@ -175,6 +218,49 @@ class StatementCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showJson(BuildContext context, Map<String, dynamic> json) {
+    // Construct a context map for the Labeler.
+    final Map<String, List<TrustStatement>> combined = {};
+    
+    if (AppShell.instance.peersStatements.value.isNotEmpty) {
+      combined.addAll(AppShell.instance.peersStatements.value);
+    }
+
+    // Add my statements so the Labeler can resolve names I've assigned
+    final myToken = Keys().identityToken;
+    if (myToken != null && AppShell.instance.myStatements.value.isNotEmpty) {
+      combined[myToken] = AppShell.instance.myStatements.value;
+    }
+    
+    final labeler = Labeler(combined, myToken!);
+    final interpreter = OneOfUsInterpreter(labeler);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            height: 400, // Fixed height for scrolling
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: JsonDisplay(
+                    json,
+                    instanceInterpreter: interpreter,
+                    fit: StackFit.expand,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -205,11 +291,8 @@ class _ActionButtonWidget extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 action.label!,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+                style: AppTypography.labelSmall.copyWith(
                   color: activeColor,
-                  letterSpacing: 1,
                 ),
               ),
             ],

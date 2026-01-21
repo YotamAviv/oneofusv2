@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'app_typography.dart';
 
 class QrScanner extends StatefulWidget {
   final String title;
@@ -103,9 +104,9 @@ class _QrScannerState extends State<QrScanner> {
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: const Text(
+                child: Text(
                   'Align QR code within frame',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+                  style: AppTypography.body.copyWith(color: Colors.white),
                 ),
               ),
             ),

@@ -1,36 +1,34 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:oneofus_common/jsonish.dart';
-import '../core/keys.dart';
+import '../../ui/app_typography.dart';
 import '../demotest/tester.dart';
 
 class DevScreen extends StatelessWidget {
   final VoidCallback onRefresh;
+  final bool showLgtm;
+  final ValueChanged<bool> onLgtmChanged;
 
-  const DevScreen({super.key, required this.onRefresh});
+  const DevScreen({
+    super.key,
+    required this.onRefresh,
+    required this.showLgtm,
+    required this.onLgtmChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final keys = Keys();
-
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        const Text('DIAGNOSTICS (DEV)', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
+        const SizedBox(height: 50),
+        Text('DIAGNOSTICS (DEV)', style: AppTypography.header),
         const Divider(),
-        const Text('PRIVATE KEYS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
-        const SizedBox(height: 12),
-        FutureBuilder<Map<String, Json>>(
-          future: keys.getAllKeyJsons(),
-          builder: (context, snapshot) {
-            return SelectableText(
-              const JsonEncoder.withIndent('  ').convert(snapshot.data ?? {}), 
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 10)
-            );
-          },
+        CheckboxListTile(
+          title: Text('LGTM', style: AppTypography.label),
+          value: showLgtm,
+          onChanged: (v) => onLgtmChanged(v ?? false),
         ),
-        const Divider(),
-        const Text('DEMO DATA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
+        const SizedBox(height: 12),
+        Text('DEMO DATA', style: AppTypography.labelSmall.copyWith(color: Colors.blue)),
         const SizedBox(height: 12),
         ...Tester.tests.entries.map((entry) => Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -57,7 +55,7 @@ class DevScreen extends StatelessWidget {
         )).toList(),
         if (Tester.name2key.isNotEmpty) ...[
           const Divider(),
-          const Text('SWITCH KEYS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green)),
+          Text('SWITCH KEYS', style: AppTypography.labelSmall.copyWith(color: Colors.green)),
           const SizedBox(height: 12),
           ...Tester.name2key.keys.map((name) => Padding(
             padding: const EdgeInsets.only(bottom: 12),

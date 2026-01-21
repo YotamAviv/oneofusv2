@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import '../../ui/app_typography.dart';
 import '../core/keys.dart';
 
 
@@ -147,19 +148,24 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
     return SafeArea(
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'IMPORT / EXPORT',
+                      style: AppTypography.header,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  'IMPORT / EXPORT',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
-                    color: Color(0xFF37474F),
-                  ),
+                  'Do back up your identity puyblic/private key pairs as they cannot be recovered if lost.',
+                  style: AppTypography.caption,
                 ),
               ],
             ),
@@ -190,14 +196,12 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
                           readOnly: false,
                           maxLines: null,
                           expands: true,
-                          style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF37474F)),
+                          style: AppTypography.mono,
                           decoration: InputDecoration(
                             hintText: 'Keys JSON will appear here...',
-                            hintStyle: TextStyle(color: Colors.grey.shade400, fontFamily: 'sans-serif'),
+                            hintStyle: AppTypography.caption,
                             contentPadding: const EdgeInsets.all(16),
                             border: InputBorder.none,
-                            fillColor: Colors.white,
-                            filled: true,
                           ),
                         ),
                       ),
@@ -248,15 +252,10 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'These keys are secrets. Only export for backup or to port them to another trusted service device.',
+                    'These keys are secrets. Only export for backup or to port them to another trusted service or device.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.blueGrey.shade300,
-                      height: 1.4,
-                    ),
+                    style: AppTypography.caption,
                   ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -318,11 +317,7 @@ class _ManagementButton extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     label,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12,
-                      letterSpacing: 1.2,
-                    ),
+                    style: AppTypography.label,
                   ),
                 ],
               ),

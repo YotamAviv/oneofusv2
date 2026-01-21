@@ -8,13 +8,23 @@ flutter emulators --launch Pixel_3a_API_35
 adb shell pm clear net.oneofus.app
 flutter run -d emulator-5554
 
+## required for launch
+
+### Nerdster side
+- keys received, just a text snackbar
 
 ## Bugs:
+claim key from welcome screen broken.
+restore key from welcome screen congratulates me, which it shouldn't.
 
 ## Not required for launch:
 - settings
 - showCrypto
 - display delegate keys we have locally (private key) differently from ones we know about but don't have
+
+## magic sign in improve
+switch to card, show animation (might be working already)
+
 
 ## Notifications:
   - key you trust [block, replace] you (or equivalent)
