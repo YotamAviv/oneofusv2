@@ -26,7 +26,7 @@ class DelegatesScreenState extends State<DelegatesScreen> {
         return SafeArea(
           child: StatementListView(
             title: 'SERVICES',
-            description: 'Services (websites, apps) you have authorized to verify your identity.',
+            description: 'Services (websites, apps) you have authorized to state stuff as your identity.',
             headerPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
             emptyTitle: 'No Authorized Delegates',
             emptySubtitle: 'Services you authorize will appear here.',

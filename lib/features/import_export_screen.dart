@@ -168,7 +168,7 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Backup your identity keys or transfer them to another device.',
+                  'Do back up your identity puyblic/private key pairs as they cannot be recovered if lost.',
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.blueGrey.shade600,

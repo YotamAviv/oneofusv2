@@ -7,6 +7,14 @@ class IntroScreen extends StatelessWidget {
 
   const IntroScreen({super.key, this.onShowWelcome});
 
+  static const _textStyle = TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64));
+  static const _linkStyle = TextStyle(
+    fontSize: 16,
+    height: 1.5,
+    color: Color(0xFF00897B),
+    decoration: TextDecoration.underline,
+  );
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -38,70 +46,50 @@ class IntroScreen extends StatelessWidget {
 
 — I am not a robot
 You reading this now are either one of us or one of them.''',
-            style: TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64)),
+            style: _textStyle,
           ),
           const SizedBox(height: 40),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '''We're building our own network by cryptographically signing each other's public keys, creating a web of trust. Share the app and vouch for us humans.''',
-                style: TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64)),
-              ),
-              const SizedBox(height: 10),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(
-                      text:
-                          "That network (our network) can be leveraged anywhere. Try signing in to the Nerdster (",
-                      style: TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64)),
-                    ),
-                    TextSpan(
-                      text: "https://nerdster.org",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        height: 1.5,
-                        color: Color(0xFF00897B),
-                        decoration: TextDecoration.underline,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          launchUrl(Uri.parse("https://nerdster.org"));
-                        },
-                    ),
-                    const TextSpan(
-                      text: ") and see.",
-                      style: TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64)),
-                    ),
-                  ],
+          const Text(
+            '''We're building our own network by cryptographically signing each other's public keys, creating a web of trust. Share the app and vouch for us humans.''',
+            style: _textStyle,
+          ),
+          const SizedBox(height: 12),
+          Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(
+                  text: "That network (our network) can be leveraged anywhere. Try signing in to the Nerdster (",
+                  style: _textStyle,
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text.rich(
                 TextSpan(
-                  children: [
-                    const TextSpan(
-                      text: "Read more at ",
-                      style: TextStyle(fontSize: 16, height: 1.5, color: Color(0xFF455A64)),
-                    ),
-                    TextSpan(
-                      text: "https://one-of-us.net",
-                      style: const TextStyle(
-                        fontSize: 16,
-                        height: 1.5,
-                        color: Color(0xFF00897B),
-                        decoration: TextDecoration.underline,
-                      ),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          launchUrl(Uri.parse("https://one-of-us.net"));
-                        },
-                    ),
-                  ],
+                  text: "https://nerdster.org",
+                  style: _linkStyle,
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => launchUrl(Uri.parse("https://nerdster.org")),
                 ),
-              ),
-            ],
+                const TextSpan(
+                  text: ") and see.",
+                  style: _textStyle,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(
+                  text: "Read more at ",
+                  style: _textStyle,
+                ),
+                TextSpan(
+                  text: "https://one-of-us.net",
+                  style: _linkStyle,
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => launchUrl(Uri.parse("https://one-of-us.net")),
+                ),
+              ],
+            ),
           ),
           if (onShowWelcome != null) ...[
             const SizedBox(height: 40),
