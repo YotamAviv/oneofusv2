@@ -270,18 +270,6 @@ class StatementCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Statement Data',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const Divider(),
                 Expanded(
                   child: JsonDisplay(
                     statement.jsonish.json,
