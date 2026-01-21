@@ -18,7 +18,7 @@ run all tests, unti and integration tests included.
 
 read AI.md
 run git status
-run git diff on every change
+run git diff on every change between this branch and the main branch
 read those changes
 Let me know if you notice anything that might be problematic.
 If not, suggest a commit message based only on the GIT diffs, not based on your memory

@@ -78,6 +78,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   bool _hasAlerts = true;
   // Initialize Dev Mode based on environment; secret tap (AboutScreen) allows override.
   late bool _isDevMode = Config.fireChoice != FireChoice.prod;
+  bool _showLgtm = false;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedStatementSource<TrustStatement> _source;
@@ -471,23 +472,27 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   }
 
   Future<void> _pushTrustStatement(TrustStatement statement) async {
-    // Build interpreter for LGTM dialog
-    final Map<String, List<TrustStatement>> combined = {_keys.identityToken!: _myStatements};
-    combined.addAll(_peersStatements);
-    final labeler = Labeler(combined, _keys.identityToken!);
-    final interpreter = OneOfUsInterpreter(labeler);
-    // Show LGTM confirmation
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return LgtmDialog(
-          statement: statement,
-          interpreter: interpreter,
-        );
-      },
-    );
+    bool confirmed = true;
 
-    if (confirmed != true) {
+    if (_showLgtm) {
+      // Build interpreter for LGTM dialog
+      final Map<String, List<TrustStatement>> combined = {
+        _keys.identityToken!: _myStatements,
+      };
+      combined.addAll(_peersStatements);
+      final labeler = Labeler(combined, _keys.identityToken!);
+      final interpreter = OneOfUsInterpreter(labeler);
+      // Show LGTM confirmation
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (context) {
+          return LgtmDialog(statement: statement, interpreter: interpreter);
+        },
+      );
+      confirmed = result == true;
+    }
+
+    if (!confirmed) {
       throw Exception('UserCancelled');
     }
 
@@ -635,7 +640,12 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
         },
       ),
       AboutScreen(onDevClick: _handleDevClick),
-      if (_isDevMode) DevScreen(onRefresh: _loadAllData),
+      if (_isDevMode)
+        DevScreen(
+          onRefresh: _loadAllData,
+          showLgtm: _showLgtm,
+          onLgtmChanged: (v) => setState(() => _showLgtm = v),
+        ),
     ];
 
     return Scaffold(

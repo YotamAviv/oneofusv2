@@ -4,16 +4,30 @@ import '../demotest/tester.dart';
 
 class DevScreen extends StatelessWidget {
   final VoidCallback onRefresh;
+  final bool showLgtm;
+  final ValueChanged<bool> onLgtmChanged;
 
-  const DevScreen({super.key, required this.onRefresh});
+  const DevScreen({
+    super.key,
+    required this.onRefresh,
+    required this.showLgtm,
+    required this.onLgtmChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        const SizedBox(height: 50),
         Text('DIAGNOSTICS (DEV)', style: AppTypography.header),
         const Divider(),
+        CheckboxListTile(
+          title: Text('LGTM', style: AppTypography.label),
+          value: showLgtm,
+          onChanged: (v) => onLgtmChanged(v ?? false),
+        ),
+        const SizedBox(height: 12),
         Text('DEMO DATA', style: AppTypography.labelSmall.copyWith(color: Colors.blue)),
         const SizedBox(height: 12),
         ...Tester.tests.entries.map((entry) => Padding(
