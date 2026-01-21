@@ -69,10 +69,10 @@ class StatementCard extends StatelessWidget {
 
       trailingIcon = Tooltip(
         message: vouchesBack
-            ? 'Verified: They trust you back'
+            ? '$name has vouched for you as ${peerStatement.moniker}'
             : '$name has yet to vouch for your identity, humanity, and integrity',
         child: InkWell(
-          onTap: peerStatement != null ? () => _showJson(context, peerStatement) : null,
+          onTap: peerStatement != null ? () => _showJson(context, peerStatement.jsonish.json) : null,
           borderRadius: BorderRadius.circular(20),
           child: Icon(
             vouchesBack ? Icons.check_circle : Icons.check_circle_outline_rounded,
@@ -84,9 +84,8 @@ class StatementCard extends StatelessWidget {
     }
 
     // 3. Common Metadata
-    final shortId = subjectToken.length >= 6
-        ? '#${subjectToken.substring(subjectToken.length - 6)}'
-        : '';
+    final bool showShortId = false; // DO NOT REMVE MY CODE (I AM THE HUMAN)
+    final String shortId = '#${subjectToken.substring(subjectToken.length - 6)}';
 
     final actions = [
       CardAction(
@@ -149,7 +148,11 @@ class StatementCard extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                KeyWidget(statement: statement, color: themeColor),
+                                InkWell(
+                                  onTap: () => _showJson(context, statement.subject),
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: KeyWidget(statement: statement, color: themeColor),
+                                ),
                                 if (trailingIcon != null) ...[
                                   const SizedBox(width: 8),
                                   trailingIcon,
@@ -159,7 +162,7 @@ class StatementCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           InkWell(
-                            onTap: () => _showJson(context, statement),
+                            onTap: () => _showJson(context, statement.jsonish.json),
                             borderRadius: BorderRadius.circular(20),
                             child: Padding(
                               padding: const EdgeInsets.all(4.0),
@@ -172,7 +175,7 @@ class StatementCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (shortId.isNotEmpty) ...[
+                      if (showShortId) ...[
                         const SizedBox(height: 4),
                         Text(
                           shortId,
@@ -242,7 +245,7 @@ class StatementCard extends StatelessWidget {
     );
   }
 
-  void _showJson(BuildContext context, TrustStatement statement) {
+  void _showJson(BuildContext context, Map<String, dynamic> json) {
     // Construct a context map for the Labeler.
     final Map<String, List<TrustStatement>> combined = {};
     
@@ -272,8 +275,9 @@ class StatementCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: JsonDisplay(
-                    statement.jsonish.json,
+                    json,
                     instanceInterpreter: interpreter,
+                    fit: StackFit.expand,
                   ),
                 ),
               ],

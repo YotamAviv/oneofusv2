@@ -17,45 +17,20 @@ class LgtmDialog extends StatefulWidget {
 }
 
 class _LgtmDialogState extends State<LgtmDialog> {
-  late ValueNotifier<bool> _interpret;
-
-  @override
-  void initState() {
-    super.initState();
-    _interpret = ValueNotifier<bool>(true);
-  }
-
-  @override
-  void dispose() {
-    _interpret.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Review Statement'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Please review the exact data that will be cryptographically signed and published.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              'FYI: The exact data that will be cryptographically signed and published.',
+              style: TextStyle(fontSize: 12, color: Colors.black87),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-               const Text("Translate tokens", style: TextStyle(fontWeight: FontWeight.bold)),
-               const Spacer(),
-               Switch(
-                 value: _interpret.value,
-                 onChanged: (v) => setState(() => _interpret.value = v),
-               ),
-              ],
-            ),
-            const Divider(),
             Container(
               decoration: BoxDecoration(
                   color: Colors.grey.shade50,
@@ -66,7 +41,6 @@ class _LgtmDialogState extends State<LgtmDialog> {
               child: JsonDisplay(
                 widget.statement.jsonish.json,
                 instanceInterpreter: widget.interpreter,
-                interpret: _interpret,
               ),
             ),
           ],

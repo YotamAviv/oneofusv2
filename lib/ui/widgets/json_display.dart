@@ -15,9 +15,10 @@ class JsonDisplay extends StatefulWidget {
   final ValueNotifier<bool> interpret;
   final bool strikethrough;
   final Interpreter? instanceInterpreter;
+  final StackFit fit;
 
   JsonDisplay(this.subject,
-      {ValueNotifier<bool>? interpret, this.strikethrough = false, this.instanceInterpreter, super.key})
+      {ValueNotifier<bool>? interpret, this.strikethrough = false, this.instanceInterpreter, this.fit = StackFit.loose, super.key})
       : interpret = interpret ?? ValueNotifier<bool>(true);
 
   @override
@@ -45,7 +46,7 @@ class _State extends State<JsonDisplay> {
 
     TextStyle baseStyle = const TextStyle(
       fontFamily: 'monospace',
-      fontWeight: FontWeight.w700,
+      fontWeight: FontWeight.w500,
       fontSize: 12,
     ).copyWith(
       decoration: widget.strikethrough ? TextDecoration.lineThrough : null,
@@ -56,6 +57,7 @@ class _State extends State<JsonDisplay> {
         keysToHighlight: JsonDisplay.highlightKeys);
 
     return Stack(
+      fit: widget.fit,
       children: [
         SelectionArea(
           child: SingleChildScrollView(
