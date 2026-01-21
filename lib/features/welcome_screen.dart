@@ -132,15 +132,18 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   OutlinedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (firestore != null) {
-                        Navigator.push(
+                        final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 ReplaceFlow(firestore: firestore!, claimMode: true),
                           ),
                         );
+                        if (result == true) {
+                          onIdentityCreated?.call();
+                        }
                       }
                     },
                     style: OutlinedButton.styleFrom(

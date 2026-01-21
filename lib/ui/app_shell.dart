@@ -169,7 +169,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       }
 
       if (found) {
-        await _loadAllData();
+        await loadAllData();
       }
     } catch (e, stackTrace) {
       if (mounted) {
@@ -181,7 +181,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
 
   bool _isRefreshing = false;
 
-  Future<void> _loadAllData() async {
+  Future<void> loadAllData() async {
     final String? myToken = _keys.identityToken;
     if (myToken == null) return;
     
@@ -260,7 +260,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       publicKeyJson: s.subject,
       lockedVerb: lockedVerb,
     );
-    _loadAllData();
+    loadAllData();
   }
 
   Future<void> clearStatement(TrustStatement s) async {
@@ -269,12 +269,12 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       statement: s,
       publicKeyJson: s.subject,
     );
-    _loadAllData();
+    loadAllData();
   }
 
   Future<void> scan(TrustVerb targetVerb) async {
     await _onScanPressed(targetVerb: targetVerb);
-    _loadAllData();
+    loadAllData();
   }
 
   void _initDeepLinks() {
@@ -299,7 +299,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
         onSending: () => _cardKey.currentState?.throwQr(),
       );
       if (success && mounted) {
-        _loadAllData();
+        loadAllData();
         _pageController.animateToPage(
           0,
           duration: const Duration(milliseconds: 300),
@@ -512,7 +512,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       
       if (mounted) {
         _showSuccessSnackBar(statement);
-        await _loadAllData();
+        await loadAllData();
       }
     } catch (e) {
       if (mounted) {
@@ -642,7 +642,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       AboutScreen(onDevClick: _handleDevClick),
       if (_isDevMode)
         DevScreen(
-          onRefresh: _loadAllData,
+          onRefresh: loadAllData,
           showLgtm: _showLgtm,
           onLgtmChanged: (v) => setState(() => _showLgtm = v),
         ),
@@ -714,7 +714,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
                               const SizedBox(width: 6),
                             ],
                             GestureDetector(
-                              onTap: _loadAllData,
+                              onTap: loadAllData,
                               child: const SizedBox(
                                 width: 24,
                                 height: 24,
@@ -936,7 +936,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
           claimMode: claimMode,
         ),
       ),
-    ).then((_) => _loadAllData()); // Refresh after flow completes
+    ).then((_) => loadAllData()); // Refresh after flow completes
   }
 
   void _showManagementHub(BuildContext context) {

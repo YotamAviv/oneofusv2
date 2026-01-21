@@ -9,7 +9,7 @@ adb shell pm clear net.oneofus.app
 flutter run -d emulator-5554
 
 ## required for launch
-- magic sign in, s/keys sent.. / not successfully signed in
+claim key from welcome screen broken.
 
 ### Nerdster side
 - keys received, just a text snackbar
@@ -20,6 +20,10 @@ flutter run -d emulator-5554
 - settings
 - showCrypto
 - display delegate keys we have locally (private key) differently from ones we know about but don't have
+
+## magic sign in improve
+switch to card, show animation (might be working already)
+
 
 ## Notifications:
   - key you trust [block, replace] you (or equivalent)

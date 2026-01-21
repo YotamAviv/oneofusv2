@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:oneofus/ui/app_shell.dart';
 import 'package:oneofus_common/util.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
@@ -15,6 +16,13 @@ import '../../core/config.dart';
 import '../../core/keys.dart';
 import '../../ui/error_dialog.dart';
 import '../../ui/qr_scanner.dart';
+
+/// CONSIDER: Clean up the KLUDGEY stuff.
+/// There are actuall 3 modes, not 2 (claimMode true/false)
+/// 1. Claiming old identity into current one. (Clacker impl)
+/// 2. Replacing current identity with a new one. (Clacker impl)
+/// 3. Welcome screen. Create a new identity and claim the old one. (I (human) kludged it to
+///    work and make AppShell.loadAllData public)
 
 class ReplaceFlow extends StatefulWidget {
   final FirebaseFirestore firestore;
@@ -535,7 +543,14 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
 
     try {
       final keys = Keys();
-      final oldIdentity = _oldIdentityToken == keys.identityToken ? keys.identity : null;
+      if (keys.identity == null) {
+        // KLUDGEY: This helps on the Welcome screen.
+        await keys.newIdentity();
+      }
+
+      final OouKeyPair? oldIdentity = (_oldIdentityToken == keys.identityToken)
+          ? keys.identity
+          : null;
 
       final OouSigner signer;
       final Json newPubKeyJson;
@@ -631,6 +646,8 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         setState(() => _isProcessing = false);
         _nextPage(); // Move to success screen
       }
+
+      await AppShell.instance.loadAllData();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -751,7 +768,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           ),
           const SizedBox(height: 48),
           ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
               backgroundColor: const Color(0xFF37474F),
