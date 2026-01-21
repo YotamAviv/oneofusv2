@@ -19,6 +19,9 @@ import '../../ui/qr_scanner.dart';
 class ReplaceFlow extends StatefulWidget {
   final FirebaseFirestore firestore;
   final String? initialOldIdentityToken;
+
+  // true: claiming an old identity into the current one.
+  // false: replacing current identity with a new one.
   final bool claimMode;
 
   const ReplaceFlow({
@@ -34,7 +37,7 @@ class ReplaceFlow extends StatefulWidget {
 
 class _ReplaceFlowState extends State<ReplaceFlow> {
   final PageController _pageController = PageController();
-  
+
   String token6(String token) => token.length > 6 ? token.substring(0, 6) : token;
 
   String? _oldIdentityToken;
@@ -52,10 +55,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
   }
 
   void _nextPage() {
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
   }
 
   // ignore: unused_element
@@ -70,7 +70,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
   Widget build(BuildContext context) {
     final List<Widget> steps = [
       _buildIntroScreen(),
-      _buildIdentifyScreen(),
+      if (widget.claimMode) _buildIdentifyScreen(),
       _buildReviewScreen(),
       _buildProcessingScreen(),
       _buildSuccessScreen(),
@@ -79,7 +79,10 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
     return Scaffold(
       backgroundColor: const Color(0xFFF2F0EF),
       appBar: AppBar(
-        title: Text(widget.claimMode ? 'CLAIM OLD IDENTITY' : 'REPLACE IDENTITY', style: AppTypography.header),
+        title: Text(
+          widget.claimMode ? 'CLAIM OLD IDENTITY' : 'REPLACE IDENTITY',
+          style: AppTypography.header,
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: const Color(0xFF37474F),
@@ -99,7 +102,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
 
   Widget _buildIntroScreen() {
     if (widget.claimMode) {
-       return SingleChildScrollView(
+      return SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -110,9 +113,26 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
             ),
             const SizedBox(height: 24),
             _buildStepItem(1, 'Identify Old Key', 'Scan or verify the key you want to claim.'),
-            _buildStepItem(2, 'Re-sign Content', 'Your current key will re-publish all active trusts, blocks, and delegate assignments issued by the old key.'),
-            _buildStepItem(3, 'Claim & Replace', 'Your current key will sign and publish a replace statement, formally claiming and revoking the old key.'),
-            _buildStepItem(4, 'Equivalence', 'The network will recognize the old key as equivalent to your current key.'),
+            _buildStepItem(
+              2,
+              'Re-sign Content',
+              'Your current key will re-publish all active trusts, blocks, and delegate assignments issued by the old key.',
+            ),
+            _buildStepItem(
+              3,
+              'Claim & Revoke',
+              'Your current key will sign and publish a replace statement, formally claiming and revoking the old key.',
+            ),
+            _buildStepItem(
+              4,
+              'Web-of-Trust Verification',
+              'At this point, your new key is unknown, and so you\'ll have to ask those who\'ve vouched for you in the past to vouch for you again, this time referencing your new key.',
+            ),
+            _buildStepItem(
+              5,
+              'Equivalence',
+              'The network should now recognize this new key as you. Your old key will be recognized as an equivalent and will be visible in your Equivalent Keys section of the Advanced Screen.',
+            ),
             const SizedBox(height: 40),
             ElevatedButton(
               onPressed: _nextPage,
@@ -122,46 +142,68 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text('I UNDERSTAND, PROCEED', style: AppTypography.label.copyWith(
-                color: Colors.white,
-              )),
+              child: Text(
+                'I UNDERSTAND, PROCEED',
+                style: AppTypography.label.copyWith(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'The process of claiming (replacing) your old key and starting to use a new one will go like this:',
+              style: AppTypography.body,
+            ),
+            const SizedBox(height: 24),
+            _buildStepItem(
+              1,
+              'Generate Identity Key',
+              'Create a new key to serve as your new primary identity.',
+            ),
+            _buildStepItem(
+              2,
+              'Re-sign Content',
+              'Use your new key to re-publish all active trusts, blocks, and delegate assignments issued by the old key.\n\n- In case your old key was compromised: you\'ll be able to re-publish only what\'s valid.',
+            ),
+            _buildStepItem(
+              3,
+              'Claim & Revoke',
+              'Your current key will sign and publish a replace statement, formally claiming and revoking the old key.',
+            ),
+            _buildStepItem(
+              4,
+              'Web-of-Trust Verification',
+              'At this point, your new key is unknown, and so you\'ll have to ask those who\'ve vouched for you in the past to vouch for you again, this time referencing your new key.',
+            ),
+            _buildStepItem(
+              5,
+              'Equivalence',
+              'The network should now recognize this new key as you. Your old key will be recognized as an equivalent and will be visible in your Equivalent Keys section of the Advanced Screen.',
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: _nextPage,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                backgroundColor: const Color(0xFF37474F),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(
+                'I UNDERSTAND, PROCEED',
+                style: AppTypography.label.copyWith(color: Colors.white),
+              ),
             ),
           ],
         ),
       );
     }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'The process of claiming (replacing) your old key and starting to use a new one will go like this:',
-            style: AppTypography.body,
-          ),
-          const SizedBox(height: 24),
-          _buildStepItem(1, 'Generate Identity Key', 'Create a new key to serve as your new primary identity.'),
-          _buildStepItem(2, 'Re-sign Content', 'Use your new key to re-publish all active trusts, blocks, and delegate assignments issued by the old key.\n\n- In case your old key was compromised: you\'ll be able to re-publish only what\'s valid.'),
-          _buildStepItem(3, 'Replace & Revoke', 'Use your new key to publish a Replace and Revoke statement referencing your old key.'),
-          _buildStepItem(4, 'Web-of-Trust Verification', 'At this point, your new key is unknown, and so you\'ll have to ask those who\'ve vouched for you in the past to vouch for you again, this time referencing your new key.'),
-          _buildStepItem(5, 'Equivalence', 'The network should now recognize this new key as you. Your old key will be recognized as an equivalent and will be visible in your Equivalent Keys section of the Advanced Screen.'),
-          const SizedBox(height: 40),
-          ElevatedButton(
-            onPressed: _nextPage,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              backgroundColor: const Color(0xFF37474F),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text('I UNDERSTAND, PROCEED', style: AppTypography.label.copyWith(
-              color: Colors.white,
-            )),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildStepItem(int num, String title, String description) {
@@ -201,15 +243,17 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           const Icon(Icons.qr_code_scanner_rounded, size: 80, color: Color(0xFF00897B)),
           const SizedBox(height: 32),
           Text(
-            widget.claimMode ? 'Identify the key you want to claim.' : 'Identify your old identity.',
+            widget.claimMode
+                ? 'Identify the key you want to claim.'
+                : 'Identify your old identity.',
             textAlign: TextAlign.center,
             style: AppTypography.header,
           ),
           const SizedBox(height: 12),
           Text(
-            widget.claimMode 
-              ? 'Scan the QR code of the identity you want to merge into this one.'
-              : 'Scan the QR code of your old identity from another device or a backup.',
+            widget.claimMode
+                ? 'Scan the QR code of the identity you want to merge into this one.'
+                : 'Scan the QR code of your old identity from another device or a backup.',
             textAlign: TextAlign.center,
             style: AppTypography.caption,
           ),
@@ -244,7 +288,10 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: Text('FOUND IT, PROCEED', style: AppTypography.label.copyWith(color: Colors.white)),
+              child: Text(
+                'FOUND IT, PROCEED',
+                style: AppTypography.label.copyWith(color: Colors.white),
+              ),
             ),
           ],
         ],
@@ -269,7 +316,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
     if (result != null) {
       try {
         final json = jsonDecode(result);
-        
+
         if (json is Map<String, dynamic> && isPubKey(json)) {
           final token = getToken(json);
           final exists = await _verifyIdentityExists(token);
@@ -281,7 +328,9 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           } else {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Identity found, but it has no history on the network.')),
+                const SnackBar(
+                  content: Text('Identity found, but it has no history on the network.'),
+                ),
               );
             }
           }
@@ -301,11 +350,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         baseUrl: Config.exportUrl,
         verifier: OouVerifier(),
         // We only need to know if at least one exists
-        paramsOverride: {
-          "distinct": "true",
-          "includeId": "false",
-          "checkPrevious": "false",
-        },
+        paramsOverride: {"distinct": "true", "includeId": "false", "checkPrevious": "false"},
       );
       final results = await source.fetch({token: null});
       final exists = results[token]?.isNotEmpty ?? false;
@@ -326,7 +371,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
       debugPrint('[ReplaceFlow] _fetchHistory: _oldIdentityToken is null');
       return;
     }
-    
+
     setState(() {
       _isLoadingHistory = true;
       _allStatements = null;
@@ -343,16 +388,18 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           "omit": [], // Don't omit anything so we can see full records in logs
         },
       );
-      
-      debugPrint('[ReplaceFlow] Executing HTTP fetch via CloudFunctionsSource for $_oldIdentityToken');
+
+      debugPrint(
+        '[ReplaceFlow] Executing HTTP fetch via CloudFunctionsSource for $_oldIdentityToken',
+      );
       final results = await source.fetch({_oldIdentityToken!: null});
       final List<TrustStatement> statements = results[_oldIdentityToken!] ?? [];
-      
+
       debugPrint('[ReplaceFlow] _fetchHistory: statements=${statements.length}');
-      
+
       // Sort manually to ensure descending order by time
       statements.sort((a, b) => b.time.compareTo(a.time));
-      
+
       if (mounted) {
         setState(() {
           _allStatements = statements;
@@ -388,8 +435,8 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           padding: const EdgeInsets.all(16),
           child: Text(
             (_allStatements?.isEmpty ?? true)
-              ? 'No history found for this identity. You can proceed to purely rotate your key.'
-              : 'Select your last valid statement. \nAny statements made after this (e.g., by a compromise) will be ignored.',
+                ? 'No history found for this identity. You can proceed to purely rotate your key.'
+                : 'Select your last valid statement. \nAny statements made after this (e.g., by a compromise) will be ignored.',
             textAlign: TextAlign.center,
             style: AppTypography.caption,
           ),
@@ -400,7 +447,8 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               itemCount: _allStatements!.length,
               itemBuilder: (context, index) {
                 final s = _allStatements![index];
-                final bool isInvalid = _selectedLastValid != null && s.time.compareTo(_selectedLastValid!.time) > 0;
+                final bool isInvalid =
+                    _selectedLastValid != null && s.time.compareTo(_selectedLastValid!.time) > 0;
                 final bool isNotDistinct = !isInvalid && !distinctTokens.contains(s.token);
                 final bool isSelected = s == _selectedLastValid;
 
@@ -429,7 +477,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
                       Text(
                         '${s.time} • ${token6(s.token)}',
                         style: AppTypography.labelSmall.copyWith(
-                          color: textColor.withValues(alpha: 0.7)
+                          color: textColor.withValues(alpha: 0.7),
                         ),
                       ),
                       if (s.jsonish['comment'] != null)
@@ -449,8 +497,10 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
             ),
           )
         else
-          const Expanded(child: Center(child: Icon(Icons.history_toggle_off, size: 64, color: Colors.grey))),
-        
+          const Expanded(
+            child: Center(child: Icon(Icons.history_toggle_off, size: 64, color: Colors.grey)),
+          ),
+
         Padding(
           padding: const EdgeInsets.all(24),
           child: ElevatedButton(
@@ -462,10 +512,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               minimumSize: const Size(double.infinity, 50),
             ),
-            child: Text('START RECOVERY', style: AppTypography.label.copyWith(
-              color: Colors.white,
-
-            )),
+            child: Text('START RECOVERY', style: AppTypography.label.copyWith(color: Colors.white)),
           ),
         ),
       ],
@@ -478,7 +525,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
 
   Future<void> _startRecovery() async {
     if (_allStatements == null) return;
-    
+
     _nextPage(); // Move to processing screen
     setState(() {
       _isProcessing = true;
@@ -489,7 +536,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
     try {
       final keys = Keys();
       final oldIdentity = _oldIdentityToken == keys.identityToken ? keys.identity : null;
-      
+
       final OouSigner signer;
       final Json newPubKeyJson;
       final OouKeyPair? newKeyPair; // Only used if not claiming
@@ -511,17 +558,19 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
       }
 
       final writer = DirectFirestoreWriter(widget.firestore);
-      
+
       // 2. Filter valid statements and re-publish
       final validStatements = _allStatements!
-          .where((s) => _selectedLastValid == null || s.time.compareTo(_selectedLastValid!.time) <= 0)
+          .where(
+            (s) => _selectedLastValid == null || s.time.compareTo(_selectedLastValid!.time) <= 0,
+          )
           .toList()
           .reversed // Oldest first
           .toList();
 
       final distinctTokens = _getDistinctStatementTokens();
       final toPublish = validStatements.where((s) => distinctTokens.contains(s.token)).toList();
-      
+
       for (int i = 0; i < toPublish.length; i++) {
         final s = toPublish[i];
         setState(() {
@@ -534,9 +583,9 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         oldJson.remove('signature');
         oldJson.remove('previous');
         oldJson['time'] = clock.nowIso; // Set fresh timestamp for re-published content
-        
+
         await writer.push(oldJson, signer);
-        
+
         await Future.delayed(const Duration(milliseconds: 100));
       }
 
@@ -546,11 +595,11 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         _processingProgress = 0.9;
       });
 
-      final oldPubKeyJson = oldIdentity != null 
+      final oldPubKeyJson = oldIdentity != null
           ? await (await oldIdentity.publicKey).json
-          : (_allStatements!.isNotEmpty 
-              ? validStatements.last.jsonish['I'] 
-              : _oldIdentityPubKeyJson);
+          : (_allStatements!.isNotEmpty
+                ? validStatements.last.jsonish['I']
+                : _oldIdentityPubKeyJson);
 
       if (oldPubKeyJson == null) {
         throw Exception('Could not determine the public key of the identity being replaced.');
@@ -561,11 +610,9 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         oldPubKeyJson,
         TrustVerb.replace,
         revokeAt: kSinceAlways,
-        comment: widget.claimMode 
-             ? 'Identity claim.' 
-             : 'Identity recovery/rotation.',
+        comment: widget.claimMode ? 'Identity claim.' : 'Identity recovery/rotation.',
       );
-      
+
       await writer.push(replaceJson, signer);
 
       // 4. Switch local storage (Only if replacing with NEW key)
@@ -574,7 +621,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           _processingStatus = 'Finalizing...';
           _processingProgress = 1.0;
         });
-        
+
         final allKeyJsons = await keys.getAllKeyJsons();
         allKeyJsons[kOneofusDomain] = await newKeyPair.json;
         await keys.importKeys(jsonEncode(allKeyJsons));
@@ -597,7 +644,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
 
   Set<String> _getDistinctStatementTokens() {
     if (_allStatements == null) return {};
-    
+
     final distincts = <String, TrustStatement>{};
     // Work chronologically from start of time up to selection
     final chronList = _allStatements!
@@ -670,11 +717,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
             ),
           ),
           const SizedBox(height: 48),
-          Text(
-            _processingStatus,
-            textAlign: TextAlign.center,
-            style: AppTypography.body,
-          ),
+          Text(_processingStatus, textAlign: TextAlign.center, style: AppTypography.body),
           const SizedBox(height: 12),
           Text(
             'Keep the app open until the process is complete.',
@@ -700,9 +743,9 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           ),
           const SizedBox(height: 16),
           Text(
-            widget.claimMode 
-              ? 'The old key history has been merged into your current identity.\n\nAll valid statements have been re-issued by you and the network will now recognize the old key as an equivalent to your current key.'
-              : 'Your new key is now active. \n\nIMPORTANT: Since this is a new key, you MUST contact your trusted network and ask them to vouch for you again.',
+            widget.claimMode
+                ? 'The old key history has been merged into your current identity.\n\nAll valid statements have been re-issued by you and the network will now recognize the old key as an equivalent to your current key.'
+                : 'Your new key is now active. \n\nIMPORTANT: Since this is a new key, you MUST contact your trusted network and ask them to vouch for you again.',
             textAlign: TextAlign.center,
             style: AppTypography.body,
           ),
@@ -715,7 +758,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: Text('GO TO HOME', style: AppTypography.label),
+            child: Text('DONE', style: AppTypography.label.copyWith(color: Colors.white)),
           ),
         ],
       ),

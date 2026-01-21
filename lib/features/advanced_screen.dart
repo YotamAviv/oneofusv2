@@ -61,7 +61,6 @@ class AdvancedScreen extends StatelessWidget {
                       'Avoid it if you can.',
                   buttonLabel: 'ROTATE IDENTITY KEY',
                   icon: Icons.published_with_changes_rounded,
-                  color: Colors.red.shade700,
                   onTap: onReplaceKey,
                 ),
               ],
