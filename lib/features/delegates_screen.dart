@@ -10,6 +10,7 @@ class DelegatesScreen extends StatefulWidget {
   final Future<void> Function()? onRefresh;
   final Function(TrustStatement) onEdit;
   final Function(TrustStatement) onClear;
+  final VoidCallback onScan;
 
   const DelegatesScreen({
     super.key,
@@ -18,6 +19,7 @@ class DelegatesScreen extends StatefulWidget {
     this.onRefresh,
     required this.onEdit,
     required this.onClear,
+    required this.onScan,
   });
 
   @override
@@ -41,6 +43,8 @@ class DelegatesScreenState extends State<DelegatesScreen> {
         emptySubtitle: 'Services you authorize will appear here.',
         emptyIcon: Icons.shield_moon_outlined,
         itemCount: delegates.length,
+        onAdd: widget.onScan,
+        addLabel: 'CLAIM DELEGATE',
         itemBuilder: (context, index) {
           return _buildServiceCard(delegates[index]);
         },

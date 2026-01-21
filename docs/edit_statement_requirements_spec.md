@@ -8,7 +8,7 @@ Edit Statement / Establish New Statement
 
 - display keys
 ### Key Display
-  - green / blue / red (identity / delegate / blocked)
+  - green / blue / red (identity key (trusted or replaced) / delegate key / blocked key)
   - crossed out (revoked)
   - solid / outline (have private key / don't)
 
@@ -25,9 +25,11 @@ That statement's verb can define one aspect of what kind of key the subject is:
 Something like JsonDisplay with an "interpret" like the Nerdster has.
 We'll have to build or re-use that widget.
 We'll have to build our own Interpreter implementation that knows and can label:
-- our delegate keys (Poser@nerdster.org, Poser@nerdster.org (2), etcc)
-- our trusted associates (Hipster, Jock, ...)
-- <unknown key>
+Assuming our own name on the Card screen is show as "Poser", then:
+- our delegate keys ("Poser@nerdster.org", "Poser@nerdster.org (2)", etc)
+- our own equivalent keys ("Poser (2)", "Poser (3)", ...)
+- our trusted associates (by moniker our own trust statements have asssigned them) ("Hipster", "Jock", ...)
+- "<unknown key>" otherwise (blocked keys only, I think)
 
 # Requirements
 
@@ -43,7 +45,8 @@ We'll have to build our own Interpreter implementation that knows and can label:
 ## Help the user Stay out of trouble
 - don't encourage trusting delegates, blocking friends, etc..
 - keep private keys in secure storage in sync with delegate association
-- don't allow typing in domains for delegation
+- don't allow typing in domains for delegation. Oops: We do let users claim delegate keys, and so they do need to type in the domain.
+
 
 ## Advanced maintenance
 - block bad keys
@@ -119,6 +122,15 @@ Challenges:
 - displays a different warning for every combination [old verb, new verb], has text locations for moniker, domain, time, comment
   - future: warn about stating stuff about subjects of your trusted people.
 - requires a checkbox to confirm that you get it
+
+# Refactor possibility
+I think we have 4 screens which show all of the a user's [trust, delegate, block, replace] statements.
+Each of those shows StatementCards for those statements and offers to edit that statement.
+I didn't check the current implementation, but I recall that there are 4 different implementations.
+Furthermore, I recall the "edit" action is onBlock, onReplace, etc..
+I think that this could all be significantly factored.
+Take a look and report back.
+DO NOT EDIT
 
 
 # UI Spec

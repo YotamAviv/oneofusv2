@@ -10,6 +10,8 @@ class StatementListView extends StatelessWidget {
   final ScrollController? scrollController;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry? headerPadding;
+  final VoidCallback? onAdd;
+  final String? addLabel;
 
   const StatementListView({
     super.key,
@@ -22,6 +24,8 @@ class StatementListView extends StatelessWidget {
     this.scrollController,
     this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     this.headerPadding,
+    this.onAdd,
+    this.addLabel,
   });
 
   @override
@@ -42,6 +46,20 @@ class StatementListView extends StatelessWidget {
                   color: Color(0xFF37474F),
                 ),
               ),
+              if (onAdd != null)
+                TextButton.icon(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                  label: Text(
+                    addLabel ?? 'SCAN',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF00897B),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
             ],
           ),
         ),

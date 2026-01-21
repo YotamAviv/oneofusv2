@@ -10,6 +10,7 @@ class BlocksScreen extends StatelessWidget {
   final ScrollController? scrollController;
   final Function(TrustStatement) onEdit;
   final Function(TrustStatement) onClear;
+  final VoidCallback onScan;
 
   const BlocksScreen({
     super.key,
@@ -18,6 +19,7 @@ class BlocksScreen extends StatelessWidget {
     this.scrollController,
     required this.onEdit,
     required this.onClear,
+    required this.onScan,
   });
 
   @override
@@ -34,6 +36,8 @@ class BlocksScreen extends StatelessWidget {
       emptyIcon: Icons.block_flipped,
       itemCount: blocks.length,
       scrollController: scrollController,
+      onAdd: onScan,
+      addLabel: 'BLOCK KEY',
       itemBuilder: (context, index) {
         final s = blocks[index];
         return _buildBlockCard(s);

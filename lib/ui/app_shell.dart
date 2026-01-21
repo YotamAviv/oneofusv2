@@ -294,7 +294,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     }
   }
 
-  void _onScanPressed() async {
+  Future<void> _onScanPressed({TrustVerb targetVerb = TrustVerb.trust}) async {
     final scanned = await QrScanner.scan(
       context,
       title: 'Scan Sign-in or Personal Key',
@@ -331,7 +331,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
             );
           }
         } else if (isPubKey(json)) {
-          _handlePersonalKeyScan(json);
+          await _handleScanResult(json, targetVerb: targetVerb);
         }
       } catch (e) {
         if (mounted) {
@@ -343,7 +343,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     }
   }
 
-  void _handlePersonalKeyScan(Map<String, dynamic> publicKeyJson) async {
+  Future<void> _handleScanResult(Map<String, dynamic> publicKeyJson, {TrustVerb targetVerb = TrustVerb.trust}) async {
     try {
       final String subjectToken = getToken(publicKeyJson);
       
@@ -354,114 +354,38 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           context: context,
           builder: (context) => AlertDialog(
             title: const Text("That's you"),
-            content: const Text("Don't trust yourself."),
+            content: const Text("Don't statement yourself."),
             actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
           ),
         );
         return;
       }
 
-      if (_keys.isDelegateToken(subjectToken)) {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("That's you"),
-            content: const Text("That's one of your delegate keys. Don't trust your own delegate key."),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
-          ),
-        );
-        return;
-      }
-
-      final statementMap = _statementsByIssuer;
-      final String myToken = _keys.identityToken!;
-      final Set<String> myIdentityKeys = {myToken};
-      bool changed = true;
-      while (changed) {
-        changed = false;
-        for (final list in statementMap.values) {
-          for (final s in list) {
-            if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.replace) {
-              if (myIdentityKeys.add(s.subjectToken)) changed = true;
-            }
-          }
-        }
-      }
-
-      if (myIdentityKeys.contains(subjectToken)) {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("This is you"),
-            content: const Text("This is one of your equivalent (former) identity keys.\n\nYou should manage your identity history in settings."),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
-          ),
-        );
-        return;
-      }
-
-      final Set<String> myStatedDelegates = {};
-      for (final list in statementMap.values) {
-        for (final s in list) {
-          if (myIdentityKeys.contains(s.iToken) && s.verb == TrustVerb.delegate) {
-            myStatedDelegates.add(s.subjectToken);
-          }
-        }
-      }
-
-      if (myStatedDelegates.contains(subjectToken)) {
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("That's you"),
-            content: const Text("This is one of your delegate keys.\n\nManage your delegates in the services section."),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
-          ),
-        );
-        return;
-      }
-
-      bool isDelegateOfOther = false;
-      for (final list in statementMap.values) {
-        if (list.any((s) => s.subjectToken == subjectToken && s.verb == TrustVerb.delegate)) {
-          isDelegateOfOther = true;
-          break;
-        }
-      }
-
-      if (isDelegateOfOther) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cannot vouch for or block delegate keys directly. Vouch for the primary identity instead.')),
-        );
-        return;
-      }
-
-      final List<TrustStatement> existingStatement = [];
-      for (final list in statementMap.values) {
-        existingStatement.addAll(list.where((s) => myIdentityKeys.contains(s.iToken) && s.subjectToken == subjectToken));
-      }
-      existingStatement.sort((a, b) => b.time.compareTo(a.time));
       
-      final TrustStatement? latest = existingStatement.firstOrNull;
-      
-      final TrustStatement statement;
-      if (latest != null) {
-        statement = latest;
+      final TrustStatement? latest = _statementsByIssuer[_keys.identityToken]?.firstOrNull;
+
+      final TrustStatement template;
+      if (latest != null && latest.verb == targetVerb) {
+        template = latest;
       } else {
         final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
         final json = TrustStatement.make(
           myPubKeyJson!,
           publicKeyJson,
-          TrustVerb.trust,
+          targetVerb,
         );
-        statement = TrustStatement(Jsonish(json));
+        template = TrustStatement(Jsonish(json));
       }
 
       await _showTrustBlockDialog(
         context: context,
-        statement: statement,
+        statement: template,
+        existingStatement: latest,
         publicKeyJson: publicKeyJson,
-        isNewScan: latest == null,
+        isNewScan: true,
+        // If we are initiating a Block or Delegate scan, we lock the verb.
+        // If Trust, EditStatementDialog logic permits switch to Block if no conflict.
+        lockedVerb: targetVerb == TrustVerb.trust ? null : targetVerb,
       );
     } catch (e) {
       if (mounted) {
@@ -476,6 +400,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required BuildContext context,
     required TrustStatement statement,
     required Map<String, dynamic> publicKeyJson,
+    TrustStatement? existingStatement,
     bool isNewScan = false,
     TrustVerb? initialVerb,
   }) async {
@@ -483,6 +408,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
       context: context,
       builder: (context) => EditStatementDialog(
         statement: statement,
+        existingStatement: existingStatement,
         initialVerb: initialVerb,
         isNewScan: isNewScan,
         onSubmit: ({required verb, comment, domain, moniker, revokeAt}) async {
@@ -523,6 +449,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     required BuildContext context,
     required TrustStatement statement,
     required Map<String, dynamic> publicKeyJson,
+    TrustStatement? existingStatement,
     bool isNewScan = false,
     TrustVerb? lockedVerb,
   }) async {
@@ -537,252 +464,10 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
     return _showEditStatementDialog(
       context: context,
       statement: statement,
+      existingStatement: existingStatement,
       publicKeyJson: publicKeyJson,
       initialVerb: lockedVerb,
       isNewScan: isNewScan,
-    );
-  }
-
-  Future<void> _showDelegateDialog({
-    required BuildContext context,
-    required String subjectToken,
-    required Map<String, dynamic> publicKeyJson,
-    required String? domain,
-    String? initialRevokeAt,
-    DateTime? existingTime,
-  }) async {
-    String? currentRevokeAt = initialRevokeAt;
-
-    await showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final isActive = currentRevokeAt == null;
-          final isFullyRevoked = currentRevokeAt == kSinceAlways;
-          final isPartiallyRevoked = !isActive && !isFullyRevoked;
-
-          return AlertDialog(
-            title: const Text('Delegate Authorization'),
-            backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('DOMAIN',
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade600,
-                          letterSpacing: 1.2)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(domain ?? 'Unknown',
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
-                      ),
-                      if (existingTime != null)
-                        Tooltip(
-                          message: 'Latest statement: ${formatUiDatetime(existingTime)}',
-                          child: Icon(Icons.info_outline, size: 16, color: Colors.grey.shade400),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text('STATUS',
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade600,
-                          letterSpacing: 1.2)),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Center(child: Text('ACTIVE')),
-                          selected: isActive,
-                          onSelected: (val) {
-                            if (val) {
-                              setDialogState(() {
-                                currentRevokeAt = null;
-                              });
-                            }
-                          },
-                          selectedColor: const Color(0xFF0288D1).withOpacity(0.2),
-                          labelStyle: TextStyle(
-                            color: isActive
-                                ? const Color(0xFF0288D1)
-                                : Colors.grey,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ChoiceChip(
-                          label: const Center(child: Text('FULLY REVOKED')),
-                          selected: isFullyRevoked,
-                          onSelected: (val) {
-                            if (val) {
-                              setDialogState(() {
-                                currentRevokeAt = kSinceAlways;
-                              });
-                            }
-                          },
-                          selectedColor: Colors.blueGrey.withOpacity(0.2),
-                          labelStyle: TextStyle(
-                            color: isFullyRevoked ? Colors.blueGrey : Colors.grey,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ChoiceChip(
-                      label: const Center(child: Text('REVOKED AT LAST VALID STATEMENT')),
-                      selected: isPartiallyRevoked,
-                      onSelected: (val) {
-                        if (val) {
-                          setDialogState(() {
-                            if (!isPartiallyRevoked) {
-                              currentRevokeAt = (initialRevokeAt != null && initialRevokeAt != kSinceAlways) 
-                                ? initialRevokeAt 
-                                : "";
-                            }
-                          });
-                        }
-                      },
-                      selectedColor: Colors.orange.withOpacity(0.2),
-                      labelStyle: TextStyle(
-                        color: isPartiallyRevoked ? Colors.orange : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  if (isPartiallyRevoked) ...[
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('REVOKE AT STATEMENT TOKEN',
-                                  style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey.shade600,
-                                      letterSpacing: 1.2)),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.grey.shade300),
-                                ),
-                                child: SelectableText(
-                                  currentRevokeAt!.isEmpty ? "(Scan Statement or Token)" : currentRevokeAt!,
-                                  style: TextStyle(
-                                      fontSize: 10, 
-                                      fontFamily: 'monospace',
-                                      color: currentRevokeAt!.isEmpty ? Colors.grey : Colors.black87),
-                                  maxLines: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.qr_code_scanner, size: 20),
-                          onPressed: () async {
-                              final scanned = await QrScanner.scan(
-                                context, 
-                                title: "Scan Statement or Token", 
-                                validator: (s) async {
-                                  if (s.isEmpty) return false;
-                                  try {
-                                    final json = jsonDecode(s);
-                                    if (json is Map<String, dynamic>) return true;
-                                  } catch (_) {}
-                                  return RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(s);
-                                }
-                              );
-                              if (scanned != null) {
-                                String token = scanned;
-                                try {
-                                  final json = jsonDecode(scanned);
-                                  if (json is Map<String, dynamic>) {
-                                    token = getToken(json);
-                                  }
-                                } catch (_) {}
-                                
-                                setDialogState(() {
-                                  currentRevokeAt = token;
-                                });
-                              }
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('CANCEL',
-                    style: TextStyle(
-                        color: Colors.grey.shade600,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.bold)),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final hasChanged = currentRevokeAt != initialRevokeAt;
-                  final isRevokeAtValid = !isPartiallyRevoked || 
-                      (currentRevokeAt != null && RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(currentRevokeAt!));
-
-                  if (!hasChanged || !isRevokeAtValid) return null;
-
-                  return () async {
-                    Navigator.pop(context);
-                    await _pushTrustStatement(
-                      publicKeyJson: publicKeyJson,
-                      verb: TrustVerb.delegate,
-                      domain: domain,
-                      revokeAt: currentRevokeAt,
-                    );
-                  };
-                }(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isFullyRevoked ? Colors.blueGrey : (isActive ? const Color(0xFF0288D1) : Colors.orange),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-                child: Text(isActive ? 'UPDATE' : 'REVOKE',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-              ),
-            ],
-          );
-        },
-      ),
     );
   }
 
@@ -933,6 +618,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           await _showTrustBlockDialog(
             context: context,
             statement: statement,
+            existingStatement: statement,
             publicKeyJson: statement.subject,
             lockedVerb: TrustVerb.trust,
           );
@@ -942,6 +628,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           await _showTrustBlockDialog(
             context: context,
             statement: statement,
+            existingStatement: statement,
             publicKeyJson: statement.subject,
             lockedVerb: TrustVerb.clear,
           );
@@ -953,13 +640,12 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
         myKeyToken: myToken,
         onRefresh: _loadAllData,
         onEdit: (statement) async {
-          await _showDelegateDialog(
+          await _showTrustBlockDialog(
             context: context,
-            subjectToken: statement.subjectToken,
+            statement: statement,
+            existingStatement: statement,
             publicKeyJson: statement.subject,
-            domain: statement.domain,
-            initialRevokeAt: statement.revokeAt,
-            existingTime: statement.time,
+            lockedVerb: TrustVerb.delegate,
           );
           if (mounted) setState(() {});
         },
@@ -967,11 +653,13 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
           await _showTrustBlockDialog(
             context: context,
             statement: statement,
+            existingStatement: statement,
             publicKeyJson: statement.subject,
             lockedVerb: TrustVerb.clear,
           );
           if (mounted) setState(() {});
         },
+        onScan: () => _onScanPressed(targetVerb: TrustVerb.delegate),
       ),
       const ImportExportScreen(),
       AdvancedScreen(
@@ -1220,10 +908,15 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                     statementsByIssuer: _statementsByIssuer,
                     myKeyToken: _keys.identityToken!,
                     scrollController: scrollController,
+                    onScan: () async {
+                      await _onScanPressed(targetVerb: TrustVerb.block);
+                      setModalState(() {});
+                    },
                     onEdit: (s) async {
                       await _showTrustBlockDialog(
                         context: context,
                         statement: s,
+                        existingStatement: s,
                         publicKeyJson: s.subject,
                         lockedVerb: TrustVerb.block,
                       );
@@ -1233,6 +926,7 @@ class _AppShellState extends State<AppShell> with SingleTickerProviderStateMixin
                       await _showTrustBlockDialog(
                         context: context,
                         statement: s,
+                        existingStatement: s,
                         publicKeyJson: s.subject,
                         lockedVerb: TrustVerb.clear,
                       );

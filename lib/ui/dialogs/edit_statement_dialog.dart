@@ -2,68 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
 
-/// The EditStatementDialog handles the refinement or transformation of an existing
-/// statement. In our singular disposition model, we don't 'edit' data in-place;
-/// we restate our stance towards a subject.
+import '../widgets/editors.dart';
+import '../widgets/verb_conflict_warning.dart';
+import '../qr_scanner.dart';
 
-
-/// New direction:
-/// - Don't allow blocking from PEOPLE screen.
-///   This makes things simpler as, sematically, we vouch for "people" but block "keys".
-/// - This class could be used for editing statements with verbs [trust, block, replace].
-/// 
-/// - Scanning a key is different from strict editing:
-/// We should allow both [TRUST, BLOCK] and not be predispositioned to either.
-/// We want to show:
-///     'Trust: "human, capable of acting in good faith"',
-///     'Block: "Bots, spammers, bad actors, careless, confused.."',
-/// 
-/// We don't want to show that text the same exact way for editing an existing trust or block. 
-/// We probably want to 
-/// just show half of it, or possibly show half of it greyed out.
-/// 
-/// If this special case is too complex, we don't have to force it.
-/// Also, if using this dialog for the verb [replace] is too complex, we don't have to force it.
-/// 
-/// This is a good time to use better language and have clearer text for confused users.
-/// 
-/// So:
-/// This upcoming "new direction" change will change
-/// - this class
-/// - the PEOPLE screen
-/// 
-/// When scanning a key that we've said something about before, that is we've found a statement
-/// signed by our key about the scanned key, we should open the appropriate dialog for  editing
-/// that statement, be it trust, block, replace, or delegate.
-/// 
-/// 
-/// 
-
-///
-/// Business Rules:
-/// - Verbs [delegate, replace, block] are 'locked': once you've taken this stance,
-///   you can only update the metadata (like comments or specific flags) but you
-///   cannot change the verb using this interface (use Clear followed by a new Scan instead).
-/// - The [trust] verb is 'fluid': it is the only verb that allows upgrading directly
-///   to a [block].
-/// - [revokeAt] logic is specific to authority stances (delegates/replacements).
 class EditStatementDialog extends StatefulWidget {
   final TrustStatement statement;
-  final TrustVerb? initialVerb; // Optional override for the starting state
+  final TrustStatement? existingStatement;
+  final TrustVerb? initialVerb;
   final bool isNewScan;
 
-  /// Callback to push the final statement to the storage layer
   final Future<void> Function({
     required TrustVerb verb,
     String? moniker,
     String? comment,
+    String? domain,
     String? revokeAt,
-  })
-  onSubmit;
+  }) onSubmit;
 
   const EditStatementDialog({
     super.key,
     required this.statement,
+    this.existingStatement,
     this.initialVerb,
     this.isNewScan = false,
     required this.onSubmit,
@@ -71,310 +31,339 @@ class EditStatementDialog extends StatefulWidget {
 
   @override
   State<EditStatementDialog> createState() => _EditStatementDialogState();
-
-  String get title {
-    TrustVerb verb = statement.verb;
-    switch (statement.verb) {
-      case TrustVerb.trust:
-        return "Edit Vouch";
-      case TrustVerb.block:
-        return "Edit Block";
-      case TrustVerb.replace:
-        return "Edit Key Replacement";
-      default:
-        throw StateError('Unexpected verb for clear dialog: $verb');
-    }
-  }
 }
 
 class _EditStatementDialogState extends State<EditStatementDialog> {
-  late TextEditingController _monikerController;
-  late TextEditingController _commentController;
   TrustVerb? _selectedVerb;
-  final String kSinceAlways = '<since always>';
   bool _isSaving = false;
-  bool _lastCanSubmit = false;
+  bool _warningConfirmed = false;
+  bool _hasConflict = false;
+  
+  // Field Editor Keys
+  late GlobalKey<FieldEditorState> _monikerKey;
+  late GlobalKey<FieldEditorState> _commentKey;
+  late GlobalKey<FieldEditorState> _domainKey;
+  late GlobalKey<FieldEditorState> _revokeAtKey;
+
+  // Validation State
+  bool _monikerValid = false;
+  bool _delegateValid = true; 
+  bool _domainValid = false;
+  bool _hasChanges = false;
 
   @override
   void initState() {
     super.initState();
-    _monikerController = TextEditingController(text: widget.statement.moniker);
-    _commentController = TextEditingController(text: widget.statement.comment);
+    _selectedVerb = widget.initialVerb ?? widget.statement.verb;
     
-    if (widget.isNewScan) {
-      _selectedVerb = null;
+    // Initialize Keys
+    _monikerKey = GlobalKey<FieldEditorState>();
+    _commentKey = GlobalKey<FieldEditorState>();
+    _domainKey = GlobalKey<FieldEditorState>();
+    _revokeAtKey = GlobalKey<FieldEditorState>();
+
+    // Initial validation state based on existing data
+    _monikerValid = widget.statement.moniker?.isNotEmpty ?? false;
+    _domainValid = widget.statement.domain?.isNotEmpty ?? false;
+    
+    // Determine initial "has changes" state:
+    // 1. If no existing statement, we are creating new -> Changed
+    // 2. If verb mismatch, we are changing disposition -> Changed
+    // 3. Otherwise (same verb, existing statement), we start with NO changes (pre-filled)
+    if (widget.existingStatement == null) {
+      _hasChanges = true;
     } else {
-      _selectedVerb = widget.initialVerb ?? widget.statement.verb;
+      _hasChanges = widget.existingStatement!.verb != _selectedVerb;
     }
 
-    _lastCanSubmit = _canSubmit();
-
-    _monikerController.addListener(_onFieldChanged);
-    _commentController.addListener(_onFieldChanged);
-  }
-
-  void _onFieldChanged() {
-    final curCanSubmit = _canSubmit();
-    if (curCanSubmit != _lastCanSubmit) {
-      setState(() {
-        _lastCanSubmit = curCanSubmit;
-      });
+    if (widget.isNewScan && widget.existingStatement != null) {
+      if (widget.existingStatement!.verb != _selectedVerb) {
+        _hasConflict = true;
+      }
     }
   }
 
   @override
   void dispose() {
-    _monikerController.removeListener(_onFieldChanged);
-    _commentController.removeListener(_onFieldChanged);
-    _monikerController.dispose();
-    _commentController.dispose();
+    // Keys don't need disposal, controllers are owned by children
     super.dispose();
   }
 
-  bool get _isTrust => _selectedVerb == TrustVerb.trust;
-  bool get _isBlock => _selectedVerb == TrustVerb.block;
-  bool get _isReplace => _selectedVerb == TrustVerb.replace;
-
-  bool get _verbIsFluid => widget.statement.verb == TrustVerb.trust || widget.isNewScan;
-
-  String get _submitButtonLabel {
-    if (_isBlock) return 'BLOCK';
-    return 'UPDATE';
+  String get _title {
+    if (widget.isNewScan) return 'New Statement';
+    switch (_selectedVerb) {
+      case TrustVerb.trust: return 'Edit Vouch';
+      case TrustVerb.block: return 'Edit Block';
+      case TrustVerb.replace: return 'Key Replacement';
+      case TrustVerb.delegate: return 'Delegate Access';
+      default: return 'Edit Statement';
+    }
+  }
+  
+  bool get _isFormValid {
+    switch (_selectedVerb) {
+      case TrustVerb.trust:
+        return _monikerValid;
+      case TrustVerb.block:
+        return true; 
+      case TrustVerb.delegate:
+        return _domainValid && _delegateValid;
+      case TrustVerb.replace:
+        return true; // Moniker is inherited/fixed
+      default:
+        return true;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    
-    TextStyle trustStyle = const TextStyle(fontSize: 12, fontStyle: FontStyle.italic);
-    TextStyle blockStyle = const TextStyle(fontSize: 12, fontStyle: FontStyle.italic);
-
-    if (_isTrust) {
-      blockStyle = blockStyle.copyWith(color: Colors.grey.shade300);
-    } else if (_isBlock) {
-      trustStyle = trustStyle.copyWith(color: Colors.grey.shade300);
+    bool canSubmit = !_isSaving && _isFormValid && _hasChanges;
+    if (_hasConflict && !_warningConfirmed) {
+      canSubmit = false;
     }
-
     return AlertDialog(
-      title: Text(widget.isNewScan ? "Set Disposition" : widget.title),
+      title: Text(_title),
       backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Trust: "human, capable of acting in good faith"',
-              style: trustStyle,
-            ),
-            Text(
-              'Block: "Bots, spammers, bad actors, careless, confused.."',
-              style: blockStyle,
-            ),
-            const SizedBox(height: 16),
-
-            // Verb Transformation (Only allowed for 'trust')
-            if (_verbIsFluid) ...[
-              Text(
-                'STANCE',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade600,
-                  letterSpacing: 1.2,
-                ),
+            if (_hasConflict) ...[
+              VerbConflictWarning(
+                existingStatement: widget.existingStatement!,
+                targetVerb: _selectedVerb!,
+                onConfirmed: (v) => setState(() => _warningConfirmed = v),
               ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Center(child: Text('TRUST')),
-                      selected: _isTrust,
-                      onSelected:
-                          (widget.initialVerb == null || widget.initialVerb == TrustVerb.trust || widget.isNewScan)
-                          ? (val) => setState(() {
-                              if (val) {
-                                _selectedVerb = TrustVerb.trust;
-                                _lastCanSubmit = _canSubmit();
-                              }
-                            })
-                          : null,
-                      selectedColor: const Color(0xFF00897B).withOpacity(0.2),
-                      labelStyle: TextStyle(
-                        color: _isTrust ? const Color(0xFF00897B) : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Center(child: Text('BLOCK')),
-                      selected: _isBlock,
-                      onSelected:
-                          (widget.initialVerb == null || widget.initialVerb == TrustVerb.block || widget.isNewScan)
-                          ? (val) => setState(() {
-                              if (val) {
-                                _selectedVerb = TrustVerb.block;
-                                _lastCanSubmit = _canSubmit();
-                              }
-                            })
-                          : null,
-                      selectedColor: Colors.red.withOpacity(0.2),
-                      labelStyle: TextStyle(
-                        color: _isBlock ? Colors.red : Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
             ],
 
-            if (_isTrust || widget.statement.moniker != null) ...[
-              Text(
-                'NAME ${_isTrust ? "(REQUIRED)" : ""}',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 4),
-              TextField(
-                controller: _monikerController,
-                enabled: _isTrust,
-                style: _isTrust
-                    ? null
-                    : const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey),
-                decoration: InputDecoration(
-                  hintText: '',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
+            // Re-introduced layout logic for "plopping in" FieldEditors
+            ..._buildFields(),
 
-            ...[
-              Text(
-                'COMMENT ("OPTIONAL")',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade600,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 4),
-              TextField(
-                controller: _commentController,
-                enabled: true,
-                style: null,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  hintText: '',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              ),
-              const SizedBox(height: 12),
+            if (_isSaving) ...[
+              const SizedBox(height: 20),
+              const Center(child: CircularProgressIndicator()),
             ],
-
-            const SizedBox(height: 12),
-            Text(
-              'LATEST STATEMENT',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade600,
-                letterSpacing: 1.2,
-              ),
-            ),
-            Text(
-              widget.statement.time.toIso8601String().substring(0, 16).replaceFirst('T', ' '),
-              style: const TextStyle(fontSize: 12),
-            ),
           ],
         ),
       ),
-      actions: [
+      actions: _isSaving ? null : [
         TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(
-            'CANCEL',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('CANCEL', style: TextStyle(color: Colors.grey.shade600)),
         ),
-        ElevatedButton(
-          onPressed: _lastCanSubmit ? _handleSave : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _isBlock
-                ? Colors.red
-                : (_isReplace ? Colors.green : const Color(0xFF00897B)),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        FilledButton(
+          onPressed: canSubmit ? _submit : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: _verbColor.withOpacity(canSubmit ? 1.0 : 0.5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: _isSaving
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : Text(
-                  _submitButtonLabel,
-                  style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
-                ),
+          child: Text(_submitLabel),
         ),
       ],
     );
   }
 
-  bool _canSubmit() {
-    if (_isSaving) return false;
-    final curMoniker = _monikerController.text.trim();
-    final curComment = _commentController.text.trim();
 
-    // Check if anything actually changed
-    final changedVerb = _selectedVerb != widget.statement.verb;
-    final changedMoniker = curMoniker != (widget.statement.moniker ?? '');
-    final changedComment = curComment != (widget.statement.comment ?? '');
-
-    bool hasChanged = changedVerb || (_isTrust && changedMoniker) || changedComment;
-
-    // Check validation
-    bool isVerbSelected = _selectedVerb != null;
-    bool isMonikerValid = _selectedVerb != TrustVerb.trust || curMoniker.isNotEmpty;
-
-    return hasChanged && isMonikerValid && isVerbSelected;
+  Color get _verbColor {
+    switch (_selectedVerb) {
+      case TrustVerb.trust: return const Color(0xFF00897B);
+      case TrustVerb.block: return Colors.red.shade700;
+      case TrustVerb.delegate: return Colors.blue.shade700;
+      case TrustVerb.replace: return Colors.orange.shade800;
+      default: return Colors.black;
+    }
   }
 
-  void _handleSave() async {
-    setState(() => _isSaving = true);
+  String get _submitLabel {
+    if (_selectedVerb == TrustVerb.block) return 'BLOCK KEY';
+    if (_selectedVerb == TrustVerb.replace) return 'REPLACE KEY';
+    return 'SAVE';
+  }
+
+  void _checkForChanges() {
+    // If no existing statement (creation) or verb changed, we consider it "changed" compared to DB.
+    if (widget.existingStatement == null || widget.existingStatement!.verb != _selectedVerb) {
+      if (!_hasChanges) setState(() => _hasChanges = true);
+      return;
+    }
+
+    // Otherwise, we compare current form values against the initial/existing statement values.
+    
+    String? currentMoniker;
+    if (_monikerKey.currentState != null) {
+      currentMoniker = (_monikerKey.currentState as dynamic).value;
+    }
+
+    String? currentComment;
+    if (_commentKey.currentState != null) {
+      currentComment = (_commentKey.currentState as dynamic).value;
+    }
+    
+    String? currentDomain;
+    if (_domainKey.currentState != null) {
+      currentDomain = (_domainKey.currentState as dynamic).value;
+    }
+    
+    String? currentRevokeAt;
+    if (_revokeAtKey.currentState != null) {
+      currentRevokeAt = (_revokeAtKey.currentState as dynamic).value;
+    }
+
+    // Normalize nulls vs empty strings for comparison
+    final initialMoniker = widget.statement.moniker ?? '';
+    final initialComment = widget.statement.comment ?? '';
+    final initialDomain = widget.statement.domain ?? '';
+    final initialRevokeAt = widget.statement.revokeAt; // can be null
+
+    final isChanged = (currentMoniker != null && currentMoniker != initialMoniker) ||
+                      (currentComment != null && currentComment != initialComment) ||
+                      (currentDomain != null && currentDomain != initialDomain) ||
+                      (currentRevokeAt != initialRevokeAt);
+
+    if (_hasChanges != isChanged) {
+      setState(() => _hasChanges = isChanged);
+    }
+  }
+
+  List<Widget> _buildFields() {
+    switch (_selectedVerb) {
+      case TrustVerb.trust:
+        return [
+          TextFieldEditor(
+            key: _monikerKey,
+            label: 'MONIKER (Required)',
+            initialValue: widget.statement.moniker,
+            hint: 'Name you know them by',
+            required: true,
+            onValidityChanged: (valid) {
+              if (_monikerValid != valid) setState(() => _monikerValid = valid);
+            },
+            onChanged: (_) => _checkForChanges(),
+          ),
+          const SizedBox(height: 16),
+          TextBoxEditor(
+            key: _commentKey,
+            label: 'COMMENT (Optional)',
+            initialValue: widget.statement.comment,
+            hint: 'E.g. "Colleague from work", "Met at conference"',
+            onChanged: (_) => _checkForChanges(),
+          ),
+        ];
+
+      case TrustVerb.block:
+        return [
+          TextBoxEditor(
+            key: _commentKey,
+            label: 'REASON (Recommended)',
+            initialValue: widget.statement.comment,
+            hint: 'Why are you blocking this key?',
+            onChanged: (_) => _checkForChanges(),
+          ),
+        ];
+
+      case TrustVerb.delegate:
+        return [
+          TextFieldEditor(
+            key: _domainKey,
+            label: 'DOMAIN',
+            initialValue: widget.statement.domain,
+            hint: 'e.g. nerdster.org',
+            enabled: widget.isNewScan, // Typically domain is set on creation
+            required: true,
+            onValidityChanged: (valid) {
+              if (_domainValid != valid) setState(() => _domainValid = valid);
+            },
+            onChanged: (_) => _checkForChanges(),
+          ),
+          const SizedBox(height: 16),
+          DelegateRevokeAtEditor(
+            key: _revokeAtKey,
+            initialRevokeAt: widget.statement.revokeAt,
+            onScan: (context) async {
+               return await QrScanner.scan(
+                 context,
+                 title: 'Scan Revocation Token',
+                 validator: (code) async => RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(code),
+               );
+            },
+            onValidityChanged: (valid) {
+              if (_delegateValid != valid) setState(() => _delegateValid = valid);
+            },
+            onChanged: (_) => _checkForChanges(),
+          ),
+        ];
+
+      case TrustVerb.replace:
+        return [
+          const ReplaceRevokeAt(),
+          const SizedBox(height: 16),
+          TextBoxEditor(
+            key: _commentKey,
+            label: 'COMMENT',
+            initialValue: widget.statement.comment,
+            hint: 'Reason for replacement',
+            onChanged: (_) => _checkForChanges(),
+          ),
+        ];
+
+      default:
+        return [];
+    }
+  }
+
+  Future<void> _submit() async {
     if (_selectedVerb == null) return;
+    
+    // Safety check, though UI should prevent this
+    if (!_isFormValid) return;
+
+    setState(() => _isSaving = true);
+    
     try {
+      // Gather data from keys
+      String? moniker;
+      if (_monikerKey.currentState != null) {
+        moniker = (_monikerKey.currentState as dynamic).value;
+      }
+
+      String? comment;
+      if (_commentKey.currentState != null) {
+        comment = (_commentKey.currentState as dynamic).value;
+      }
+      
+      String? domain;
+      if (_domainKey.currentState != null) {
+        domain = (_domainKey.currentState as dynamic).value;
+      }
+      
+      String? revokeAt;
+      if (_revokeAtKey.currentState != null) {
+        revokeAt = (_revokeAtKey.currentState as dynamic).value;
+      } else if (_selectedVerb == TrustVerb.replace) {
+        revokeAt = '<since always>';
+      } else {
+         revokeAt = widget.statement.revokeAt; // Fallback? should be in key
+      }
+
       await widget.onSubmit(
         verb: _selectedVerb!,
-        moniker: _selectedVerb == TrustVerb.trust ? _monikerController.text.trim() : null,
-        comment: _commentController.text.trim().isNotEmpty ? _commentController.text.trim() : null,
-        revokeAt: _selectedVerb == TrustVerb.replace ? kSinceAlways : null,
+        moniker: moniker,
+        comment: comment,
+        domain: domain,
+        revokeAt: revokeAt,
       );
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
       }
     }
   }

@@ -58,10 +58,10 @@ class _State extends State<JsonDisplay> {
     return Stack(
       children: [
         Positioned.fill(
-          child: SingleChildScrollView(
+          child: SelectionArea(
             child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SelectableText.rich(TextSpan(children: spans)),
+              padding: const EdgeInsets.only(bottom: 64, left: 16, right: 16),
+              child: Text.rich(TextSpan(children: spans)),
             ),
           ),
         ),
