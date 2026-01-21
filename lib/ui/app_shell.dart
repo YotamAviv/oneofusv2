@@ -495,81 +495,21 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     }
 
     final publicKeyJson = statement[statement.verb.label];
-
-    // Check if we need to warn about deleting a local delegate key
     final token = getToken(publicKeyJson);
     final isMyDelegate = _keys.isDelegateToken(token);
     final isRevoking = (statement.verb == TrustVerb.delegate && statement.revokeAt != null);
     final isClearing = (statement.verb == TrustVerb.clear);
     
     if (isMyDelegate && (isRevoking || isClearing)) {
-      final bool? proceed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Remove Local Key?'),
-          content: Text(
-            'You are ${isRevoking ? "revoking" : "clearing"} a delegate authorization '
-            'for which you have the private key stored on this device.\n\n'
-            'If you proceed, this key will be PERMANENTLY deleted from your local keyring after the network statement is published.'
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('CANCEL'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(
-                isRevoking ? 'REVOKE & DELETE' : 'CLEAR & DELETE',
-                style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        ),
-      );
-      
-      if (proceed != true) return;
+      final bool proceed = await _confirmDeleteDelegate(isRevoking);
+      if (!proceed) return;
     }
 
     try {
-      final writer = DirectFirestoreWriter(_firestore);
-      final signer = await OouSigner.make(identity);
-      
-      // Ensure the JSON is mutable for signing
-      final mutableJson = Map<String, dynamic>.from(statement.json);
-      await writer.push(mutableJson, signer);
-
-      if (isMyDelegate && (isRevoking || isClearing)) {
-        await _keys.removeDelegateByToken(token);
-      }
+      await _executePush(statement, isMyDelegate, isRevoking, isClearing, token);
       
       if (mounted) {
-        String action = 'Updated';
-        Color bgColor = const Color(0xFF00897B);
-        final verb = statement.verb;
-        
-        if (verb == TrustVerb.trust) {
-          action = 'Trusted';
-        } else if (verb == TrustVerb.block) {
-          action = 'Blocked';
-          bgColor = Colors.red;
-        } else if (verb == TrustVerb.clear) {
-          action = 'Cleared';
-          bgColor = Colors.orange;
-        } else if (verb == TrustVerb.replace) {
-          action = 'Updated ID History';
-          bgColor = Colors.green;
-        } else if (verb == TrustVerb.delegate) {
-          action = statement.revokeAt == null ? 'Delegated' : 'Revoked';
-          bgColor = statement.revokeAt == null ? const Color(0xFF0288D1) : Colors.blueGrey;
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$action: Success'),
-            backgroundColor: bgColor
-          ),
-        );
+        _showSuccessSnackBar(statement);
         await _loadAllData();
       }
     } catch (e) {
@@ -579,6 +519,63 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
         );
       }
     }
+  }
+
+  Future<bool> _confirmDeleteDelegate(bool isRevoking) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Local Key?'),
+        content: Text(
+          'You are ${isRevoking ? "revoking" : "clearing"} a delegate authorization '
+          'for which you have the private key stored on this device.\n\n'
+          'If you proceed, this key will be PERMANENTLY deleted from your local keyring after the network statement is published.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              isRevoking ? 'REVOKE & DELETE' : 'CLEAR & DELETE',
+              style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  Future<void> _executePush(TrustStatement statement, bool isMyDelegate, bool isRevoking, bool isClearing, String token) async {
+    final writer = DirectFirestoreWriter(_firestore);
+    final identity = _keys.identity!; // Checked in caller
+    final signer = await OouSigner.make(identity);
+    
+    final mutableJson = Map<String, dynamic>.from(statement.json);
+    await writer.push(mutableJson, signer);
+
+    if (isMyDelegate && (isRevoking || isClearing)) {
+      await _keys.removeDelegateByToken(token);
+    }
+  }
+
+  void _showSuccessSnackBar(TrustStatement statement) {
+    // Determine label and color
+    final (String label, Color color) = switch (statement.verb) {
+      TrustVerb.trust    => ('Trusted', const Color(0xFF00897B)),
+      TrustVerb.block    => ('Blocked', Colors.red),
+      TrustVerb.clear    => ('Cleared', Colors.orange),
+      TrustVerb.replace  => ('Updated ID History', Colors.green),
+      TrustVerb.delegate => statement.revokeAt == null 
+          ? ('Delegated', const Color(0xFF0288D1)) 
+          : ('Revoked', Colors.blueGrey),
+    };
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$label: Success'), backgroundColor: color),
+    );
   }
 
   void _handleDevClick() {
