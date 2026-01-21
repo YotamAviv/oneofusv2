@@ -131,7 +131,6 @@ class SignInService {
       // 3. Prepare Payload
       final identityPubKeyJson = await (await keys.identity!.publicKey).json;
       final Map<String, dynamic> send = {
-        'date': clock.nowIso,
         'identity': identityPubKeyJson,
         'session': session,
         'endpoint': Config.exportUrlForServer,
@@ -158,15 +157,18 @@ class SignInService {
           postUri = postUri.replace(host: '10.0.2.2');
         }
 
-        if (onSending != null) onSending();
-
         final response = await http.post(postUri, headers: _headers, body: jsonEncode(send));
 
+        if (onSending != null) onSending();
+
       if (context.mounted) {
+        String message = delegateKeyPair != null
+            ? 'Sent identity public key and delegate public/private key pair to $domain'
+            : 'Sent identity public key to $domain';
         if (response.statusCode >= 200 && response.statusCode < 300) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text('Successfully signed in to $domain')));
+          ).showSnackBar(SnackBar(content: Text(message)));
           return true;
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
