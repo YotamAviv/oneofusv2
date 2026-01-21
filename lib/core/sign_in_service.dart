@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/crypto.dart';
 import 'package:oneofus_common/crypto25519.dart';
@@ -130,10 +133,37 @@ class SignInService {
 
       // 3. Prepare Payload
       final identityPubKeyJson = await (await keys.identity!.publicKey).json;
+
+      final PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      String deviceName = 'Unknown';
+      String osVersion = 'Unknown';
+
+      if (Platform.isAndroid) {
+        final AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        deviceName = '${androidInfo.manufacturer} ${androidInfo.model}';
+        osVersion = 'Android ${androidInfo.version.release} (SDK ${androidInfo.version.sdkInt})';
+      } else if (Platform.isIOS) {
+        final IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+        deviceName = iosInfo.name;
+        osVersion = '${iosInfo.systemName} ${iosInfo.systemVersion}';
+      }
+
       final Map<String, dynamic> send = {
         'identity': identityPubKeyJson,
         'session': session,
         'endpoint': Config.exportUrlForServer,
+        'appInfo': {
+          'appName': packageInfo.appName,
+          'packageName': packageInfo.packageName,
+          'version': packageInfo.version,
+          'buildNumber': packageInfo.buildNumber,
+        },
+        'deviceInfo': {
+          'device': deviceName,
+          'os': osVersion,
+          'platform': Platform.operatingSystem,
+        },
       };
 
       if (delegateKeyPair != null) {
