@@ -41,7 +41,7 @@ class ClearStatementDialog extends StatefulWidget {
       case TrustVerb.delegate:
         return 'Are you sure you want to remove your delegation for "$domain"?';
       case TrustVerb.trust:
-        return 'Are you sure you can no longer vouch that this key represents "$moniker" and that "$moniker" is behaving responsibly?';
+        return 'Are you sure you can no longer vouch that this key represents "$moniker" and that he or she is behaving responsibly?';
       case TrustVerb.block:
         return "Are you sure you want to unblock this key?";
       case TrustVerb.replace:
@@ -69,7 +69,7 @@ class _ClearStatementDialogState extends State<ClearStatementDialog> {
           const SizedBox(height: 16),
           Text(
             'This effectively wipes the slate clean, as if you had never stated anything about them at all.',
-            style: AppTypography.labelSmall.copyWith(color: Colors.orange),
+            style: AppTypography.labelSmall,
           ),
         ],
       ),

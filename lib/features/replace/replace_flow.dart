@@ -111,7 +111,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
             const SizedBox(height: 24),
             _buildStepItem(1, 'Identify Old Key', 'Scan or verify the key you want to claim.'),
             _buildStepItem(2, 'Re-sign Content', 'Your current key will re-publish all active trusts, blocks, and delegate assignments issued by the old key.'),
-            _buildStepItem(3, 'Claim & Replace', 'Your current key will publish a Replace statement, formally claiming the old key.'),
+            _buildStepItem(3, 'Claim & Replace', 'Your current key will sign and publish a replace statement, formally claiming and revoking the old key.'),
             _buildStepItem(4, 'Equivalence', 'The network will recognize the old key as equivalent to your current key.'),
             const SizedBox(height: 40),
             ElevatedButton(

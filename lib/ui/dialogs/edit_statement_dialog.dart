@@ -165,13 +165,13 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
   }
 
   String get _title {
-    if (widget.isNewScan) return 'New Statement';
+    String newOrUpdate = widget.isNewScan ? 'New' : 'Update';
     switch (_selectedVerb) {
-      case TrustVerb.trust: return 'Edit Vouch';
-      case TrustVerb.block: return 'Edit Block';
-      case TrustVerb.replace: return 'Key Replacement';
-      case TrustVerb.delegate: return 'Delegate Access';
-      default: return 'Edit Statement';
+      case TrustVerb.trust: return '$newOrUpdate Vouch';
+      case TrustVerb.block: return '$newOrUpdate Block';
+      case TrustVerb.replace: return '$newOrUpdate Key Replacement';
+      case TrustVerb.delegate: return '$newOrUpdate Delegate';
+      default: throw StateError('Unexpected verb for title: $_selectedVerb');
     }
   }
   
