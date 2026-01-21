@@ -43,6 +43,13 @@ void main() {
     await tester.tap(find.text('CREATE NEW IDENTITY KEY'));
     await tester.pump(const Duration(seconds: 2)); // Allow time for key gen and data load
 
+    // Dismiss Congratulations Screen
+    debugPrint("TEST: Dismissing Congratulations screen.");
+    await tester.pumpAndSettle();
+    expect(find.text('CONGRATULATIONS!'), findsOneWidget);
+    await tester.tap(find.text('Okay'));
+    await tester.pumpAndSettle();
+
     // Validate: My name is "Me"
     debugPrint("TEST: Verifying name is 'Me'.");
     expect(find.text('Me'), findsOneWidget);
