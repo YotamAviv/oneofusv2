@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
-import 'package:oneofus_common/util.dart';
 
 import 'json_display.dart';
 import 'key_widget.dart';
@@ -66,11 +65,12 @@ class StatementCard extends StatelessWidget {
       final TrustStatement? peerStatement = peersStatements[subjectToken]?.where((s) =>
               s.subjectToken == myKeyToken && s.verb == TrustVerb.trust).firstOrNull;
       final bool vouchesBack = peerStatement != null;
+      final name = statement.moniker!;
 
       trailingIcon = Tooltip(
         message: vouchesBack
             ? 'Verified: They trust you back'
-            : 'They have not trusted you yet',
+            : '$name has yet to vouch for your identity, humanity, and integrity',
         child: InkWell(
           onTap: peerStatement != null ? () => _showJson(context, peerStatement) : null,
           borderRadius: BorderRadius.circular(20),
@@ -89,11 +89,6 @@ class StatementCard extends StatelessWidget {
         : '';
 
     final actions = [
-      CardAction(
-        icon: Icons.shield_outlined,
-        onTap: () => _showJson(context, statement),
-        color: Colors.blueGrey,
-      ),
       CardAction(
         icon: Icons.edit_outlined,
         onTap: () => AppShell.instance.editStatement(statement),
@@ -136,31 +131,43 @@ class StatementCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
-                            child: Text(
-                              statement.moniker ?? (statement.domain ?? 'Unknown'),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF37474F),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    statement.moniker ?? (statement.domain ?? 'Unknown'),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF37474F),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                KeyWidget(statement: statement, color: themeColor),
+                                if (trailingIcon != null) ...[
+                                  const SizedBox(width: 8),
+                                  trailingIcon,
+                                ],
+                              ],
                             ),
                           ),
-                          if (trailingIcon != null) ...[
-                            trailingIcon,
-                            const SizedBox(width: 8),
-                          ],
-                          KeyWidget(statement: statement, color: themeColor),
                           const SizedBox(width: 8),
-                          Tooltip(
-                            message: 'Latest statement: ${formatUiDatetime(statement.time)}',
-                            child: Icon(
-                              Icons.info_outline,
-                              size: 16,
-                              color: Colors.grey.shade400,
+                          InkWell(
+                            onTap: () => _showJson(context, statement),
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: Icon(
+                                Icons.shield_outlined,
+                                size: 20,
+                                color: Colors.blueGrey,
+                              ),
                             ),
                           ),
                         ],
