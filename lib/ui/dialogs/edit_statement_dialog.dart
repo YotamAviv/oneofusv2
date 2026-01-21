@@ -5,7 +5,6 @@ import 'package:oneofus_common/jsonish.dart';
 import '../../core/keys.dart';
 import '../widgets/editors.dart';
 import '../widgets/verb_conflict_warning.dart';
-import '../qr_scanner.dart';
 
 class EditStatementDialog extends StatefulWidget {
   final TrustStatement proposedStatement;
@@ -26,43 +25,126 @@ class EditStatementDialog extends StatefulWidget {
   State<EditStatementDialog> createState() => _EditStatementDialogState();
 }
 
+class _FieldDef {
+  final String name;
+  final String? Function(TrustStatement)? initialValueGetter;
+  final Widget Function({
+    required BuildContext context,
+    required GlobalKey<FieldEditorState> key,
+    String? initialValue,
+    required ValueChanged<void> onChanged,
+    bool enabled,
+  }) builder;
+  final bool required;
+  final bool immutable;
+
+  const _FieldDef(this.name, this.builder, {this.initialValueGetter, this.required = false, this.immutable = false});
+}
+
 class _EditStatementDialogState extends State<EditStatementDialog> {
   TrustVerb? _selectedVerb;
   bool _isSaving = false;
   bool _warningConfirmed = false;
   bool _hasConflict = false;
   
-  // Field Editor Keys
-  late GlobalKey<FieldEditorState> _monikerKey;
-  late GlobalKey<FieldEditorState> _commentKey;
-  late GlobalKey<FieldEditorState> _domainKey;
-  late GlobalKey<FieldEditorState> _revokeAtKey;
-
-  // Validation State
-  bool _monikerValid = false;
-  bool _delegateValid = true; 
-  bool _domainValid = false;
+  // Dynamic State
+  final Map<String, GlobalKey<FieldEditorState>> _editorKeys = {};
+  bool _isFormValid = true; // Cached validity state
   bool _hasChanges = false;
+
+  static final Map<TrustVerb, List<_FieldDef>> _fieldConfigs = {
+    TrustVerb.trust: [
+      _FieldDef('moniker', 
+        initialValueGetter: (s) => s.moniker,
+        ({required key, initialValue, required onChanged, enabled = true, required context}) => 
+        TextFieldEditor(
+          key: key,
+          label: 'MONIKER (Required)',
+          initialValue: initialValue,
+          hint: 'Name you know them by',
+          required: true,
+          enabled: enabled,
+          onChanged: onChanged,
+        ), required: true),
+      _FieldDef('comment', 
+        initialValueGetter: (s) => s.comment,
+        ({required key, initialValue, required onChanged, enabled = true, required context}) => 
+        TextBoxEditor(
+          key: key,
+          label: 'COMMENT (Optional)',
+          initialValue: initialValue,
+          hint: 'E.g. "Colleague from work", "Met at conference"',
+          onChanged: onChanged,
+        )),
+    ],
+    TrustVerb.block: [
+      _FieldDef('comment', 
+        initialValueGetter: (s) => s.comment,
+        ({required key, initialValue, required onChanged, enabled = true, required context}) => 
+        TextBoxEditor(
+          key: key,
+          label: 'REASON (Recommended)',
+          initialValue: initialValue,
+          hint: 'Why are you blocking this key?',
+          onChanged: onChanged,
+        )),
+    ],
+    TrustVerb.delegate: [
+      _FieldDef('domain', 
+        initialValueGetter: (s) => s.domain,
+        ({required key, initialValue, required onChanged, enabled = true, required context}) => 
+        TextFieldEditor(
+          key: key,
+          label: 'DOMAIN',
+          initialValue: initialValue,
+          hint: 'e.g. nerdster.org',
+          enabled: enabled,
+          required: true,
+          onChanged: onChanged,
+        ), required: true, immutable: true),
+      _FieldDef('revokeAt', 
+        initialValueGetter: (s) => s.revokeAt,
+        ({required key, initialValue, required onChanged, enabled = true, required context}) => 
+        DelegateRevokeAtEditor(
+          key: key,
+          initialRevokeAt: initialValue,
+          onChanged: onChanged,
+        )),
+    ],
+    TrustVerb.replace: [
+      _FieldDef('revokeAt', 
+        initialValueGetter: (s) => s.revokeAt,
+        ({required key, initialValue, required onChanged, enabled = true, required context}) => 
+        const ReplaceRevokeAt()),
+      _FieldDef('comment', 
+        initialValueGetter: (s) => s.comment,
+        ({required key, initialValue, required onChanged, enabled = true, required context}) => 
+        TextBoxEditor(
+          key: key,
+          label: 'COMMENT',
+          initialValue: initialValue,
+          hint: 'Reason for replacement',
+          onChanged: onChanged,
+        )),
+    ],
+  };
 
   @override
   void initState() {
     super.initState();
     _selectedVerb = widget.proposedStatement.verb;
     
-    // Initialize Keys
-    _monikerKey = GlobalKey<FieldEditorState>();
-    _commentKey = GlobalKey<FieldEditorState>();
-    _domainKey = GlobalKey<FieldEditorState>();
-    _revokeAtKey = GlobalKey<FieldEditorState>();
-
-    // Initial validation state based on existing data
-    _monikerValid = widget.proposedStatement.moniker?.isNotEmpty ?? false;
-    _domainValid = widget.proposedStatement.domain?.isNotEmpty ?? false;
+    // Initialize Keys for current verb
+    final fields = _fieldConfigs[_selectedVerb] ?? [];
+    for (var field in fields) {
+      _editorKeys[field.name] = GlobalKey<FieldEditorState>();
+    }
     
+    // We defer initial validation check to post frame because keys aren't attached yet
+    // But we can initialize boolean checks
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkForChanges());
+
     // Determine initial "has changes" state:
-    // 1. If no existing statement, we are creating new -> Changed
-    // 2. If verb mismatch, we are changing disposition -> Changed
-    // 3. Otherwise (same verb, existing statement), we start with NO changes (pre-filled)
     if (widget.existingStatement == null) {
       _hasChanges = true;
     } else {
@@ -78,7 +160,6 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
 
   @override
   void dispose() {
-    // Keys don't need disposal, controllers are owned by children
     super.dispose();
   }
 
@@ -93,20 +174,7 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
     }
   }
   
-  bool get _isFormValid {
-    switch (_selectedVerb) {
-      case TrustVerb.trust:
-        return _monikerValid;
-      case TrustVerb.block:
-        return true; 
-      case TrustVerb.delegate:
-        return _domainValid && _delegateValid;
-      case TrustVerb.replace:
-        return true; // Moniker is inherited/fixed
-      default:
-        return true;
-    }
-  }
+  // _isFormValid is now a field updated by _checkForChanges
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +202,6 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
               const SizedBox(height: 24),
             ],
 
-            // Re-introduced layout logic for "plopping in" FieldEditors
             ..._buildFields(),
 
             if (_isSaving) ...[
@@ -179,185 +246,120 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
   }
 
   void _checkForChanges() {
-    // If no existing statement (creation) or verb changed, we consider it "changed" compared to DB.
     if (widget.existingStatement == null || widget.existingStatement!.verb != _selectedVerb) {
       if (!_hasChanges) setState(() => _hasChanges = true);
       return;
     }
 
-    // Otherwise, we compare current form values against the initial/existing statement values.
+    bool hasValChanges = false;
+
+    // Check Validity on every change
+    final fields = _fieldConfigs[_selectedVerb] ?? [];
+    bool newValidity = true;
     
-    String? currentMoniker;
-    if (_monikerKey.currentState != null) {
-      currentMoniker = (_monikerKey.currentState as dynamic).value;
-    }
-
-    String? currentComment;
-    if (_commentKey.currentState != null) {
-      currentComment = (_commentKey.currentState as dynamic).value;
-    }
-    
-    String? currentDomain;
-    if (_domainKey.currentState != null) {
-      currentDomain = (_domainKey.currentState as dynamic).value;
+    for (var field in fields) {
+      final key = _editorKeys[field.name];
+      // Skip if key not attached (e.g. ReplaceRevokeAt)
+      if (key == null || key.currentState == null) continue;
+      
+      // Pull validity from child
+      if (!key.currentState!.isValid) {
+        newValidity = false;
+        // Don't break here if we want to check all, but for boolean result break is fine.
+        // However, if we wanted to show specific errors per field, we'd continue.
+      }
     }
     
-    String? currentRevokeAt;
-    if (_revokeAtKey.currentState != null) {
-      currentRevokeAt = (_revokeAtKey.currentState as dynamic).value;
+    // Check for Value Changes
+    if (widget.existingStatement == null || widget.existingStatement!.verb != _selectedVerb) {
+      // New or Verb change = always changed regardless of field values
+      hasValChanges = true;
+    } else {
+      for (var field in fields) {
+        final key = _editorKeys[field.name];
+        if (key == null || key.currentState == null) continue;
+        
+        final currentVal = (key.currentState as dynamic).value as String?;
+        final initialVal = field.initialValueGetter != null 
+            ? field.initialValueGetter!(widget.proposedStatement) 
+            : widget.proposedStatement.json[field.name] as String?;
+
+        if (currentVal != initialVal) {
+          hasValChanges = true;
+          break; // Optimization
+        }
+      }
     }
 
-    // Normalize nulls vs empty strings for comparison
-    final initialMoniker = widget.proposedStatement.moniker ?? '';
-    final initialComment = widget.proposedStatement.comment ?? '';
-    final initialDomain = widget.proposedStatement.domain ?? '';
-    final initialRevokeAt = widget.proposedStatement.revokeAt; // can be null
-
-    final isChanged = (currentMoniker != null && currentMoniker != initialMoniker) ||
-                      (currentComment != null && currentComment != initialComment) ||
-                      (currentDomain != null && currentDomain != initialDomain) ||
-                      (currentRevokeAt != initialRevokeAt);
-
-    if (_hasChanges != isChanged) {
-      setState(() => _hasChanges = isChanged);
+    if (_hasChanges != hasValChanges || _isFormValid != newValidity) {
+      setState(() {
+        _hasChanges = hasValChanges;
+        _isFormValid = newValidity;
+      });
     }
   }
 
   List<Widget> _buildFields() {
-    switch (_selectedVerb) {
-      case TrustVerb.trust:
-        return _buildTrustFields();
-      case TrustVerb.block:
-        return _buildBlockFields();
-      case TrustVerb.delegate:
-        return _buildDelegateFields();
-      case TrustVerb.replace:
-        return _buildReplaceFields();
-      default:
-        return [];
+    final fields = _fieldConfigs[_selectedVerb] ?? [];
+    List<Widget> children = [];
+    
+    for (var field in fields) {
+      final initialVal = field.initialValueGetter != null 
+          ? field.initialValueGetter!(widget.proposedStatement) 
+          : widget.proposedStatement.json[field.name] as String?;
+
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: field.builder(
+            context: context,
+            key: _editorKeys[field.name]!,
+            initialValue: initialVal,
+            enabled: field.immutable ? widget.isNewScan : true,
+            onChanged: (_) => _checkForChanges(),
+          ),
+        )
+      );
     }
-  }
-
-  List<Widget> _buildTrustFields() {
-    return [
-      TextFieldEditor(
-        key: _monikerKey,
-        label: 'MONIKER (Required)',
-        initialValue: widget.proposedStatement.moniker,
-        hint: 'Name you know them by',
-        required: true,
-        onValidityChanged: (valid) {
-          if (_monikerValid != valid) setState(() => _monikerValid = valid);
-        },
-        onChanged: (_) => _checkForChanges(),
-      ),
-      const SizedBox(height: 16),
-      TextBoxEditor(
-        key: _commentKey,
-        label: 'COMMENT (Optional)',
-        initialValue: widget.proposedStatement.comment,
-        hint: 'E.g. "Colleague from work", "Met at conference"',
-        onChanged: (_) => _checkForChanges(),
-      ),
-    ];
-  }
-
-  List<Widget> _buildBlockFields() {
-    return [
-      TextBoxEditor(
-        key: _commentKey,
-        label: 'REASON (Recommended)',
-        initialValue: widget.proposedStatement.comment,
-        hint: 'Why are you blocking this key?',
-        onChanged: (_) => _checkForChanges(),
-      ),
-    ];
-  }
-
-  List<Widget> _buildDelegateFields() {
-    return [
-      TextFieldEditor(
-        key: _domainKey,
-        label: 'DOMAIN',
-        initialValue: widget.proposedStatement.domain,
-        hint: 'e.g. nerdster.org',
-        enabled: widget.isNewScan,
-        required: true,
-        onValidityChanged: (valid) {
-          if (_domainValid != valid) setState(() => _domainValid = valid);
-        },
-        onChanged: (_) => _checkForChanges(),
-      ),
-      const SizedBox(height: 16),
-      DelegateRevokeAtEditor(
-        key: _revokeAtKey,
-        initialRevokeAt: widget.proposedStatement.revokeAt,
-        onScan: (context) async {
-           return await QrScanner.scan(
-             context,
-             title: 'Scan Revocation Token',
-             validator: (code) async => RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(code),
-           );
-        },
-        onValidityChanged: (valid) {
-          if (_delegateValid != valid) setState(() => _delegateValid = valid);
-        },
-        onChanged: (_) => _checkForChanges(),
-      ),
-    ];
-  }
-
-  List<Widget> _buildReplaceFields() {
-    return [
-      const ReplaceRevokeAt(),
-      const SizedBox(height: 16),
-      TextBoxEditor(
-        key: _commentKey,
-        label: 'COMMENT',
-        initialValue: widget.proposedStatement.comment,
-        hint: 'Reason for replacement',
-        onChanged: (_) => _checkForChanges(),
-      ),
-    ];
+    return children;
   }
 
   Future<void> _submit() async {
-    if (_selectedVerb == null) return;
-    
-    // Safety check, though UI should prevent this
-    if (!_isFormValid) return;
+    if (_selectedVerb == null || !_isFormValid) return;
 
     setState(() => _isSaving = true);
     
     try {
-      // Gather data from keys
+      // Harvest Data
       String? moniker;
-      if (_monikerKey.currentState != null) {
-        moniker = (_monikerKey.currentState as dynamic).value;
+      String? comment;
+      String? domain;
+      String? revokeAt;
+
+      // Helper to safely get value from key
+      String? getValue(String name) {
+        final key = _editorKeys[name];
+        if (key != null && key.currentState != null) {
+          return (key.currentState as dynamic).value;
+        }
+        return null;
       }
 
-      String? comment;
-      if (_commentKey.currentState != null) {
-        comment = (_commentKey.currentState as dynamic).value;
-      }
-      
-      String? domain;
-      if (_domainKey.currentState != null) {
-        domain = (_domainKey.currentState as dynamic).value;
-      }
-      
-      String? revokeAt;
-      if (_revokeAtKey.currentState != null) {
-        revokeAt = (_revokeAtKey.currentState as dynamic).value;
-      } else if (_selectedVerb == TrustVerb.replace) {
+      moniker = getValue('moniker');
+      comment = getValue('comment');
+      domain = getValue('domain');
+      revokeAt = getValue('revokeAt');
+
+      // Special handling for Replace which doesn't use a FieldEditor for revokeAt
+      if (_selectedVerb == TrustVerb.replace) {
         revokeAt = '<since always>';
-      } else {
-         revokeAt = widget.proposedStatement.revokeAt; // Fallback? should be in key
+      } else if (revokeAt == null) {
+         revokeAt = widget.proposedStatement.revokeAt; 
       }
 
       Json iJson = (await Keys().getIdentityPublicKeyJson())!;
-      
-      final subjectJson = widget.proposedStatement[widget.proposedStatement.verb.label];
+      // Subject is stored under the verb key in the original statement
+      final subjectJson = widget.proposedStatement.json[widget.proposedStatement.verb.label];
 
       final json = TrustStatement.make(
         iJson,
@@ -370,8 +372,8 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
       );
 
       final statement = TrustStatement(Jsonish(json));
-
       await widget.onSubmit(statement);
+      
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {

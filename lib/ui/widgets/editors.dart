@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../qr_scanner.dart';
+
 abstract class FieldEditor extends StatefulWidget {
-  final ValueChanged<bool>? onValidityChanged;
   final ValueChanged<void>? onChanged;
 
-  const FieldEditor({super.key, this.onValidityChanged, this.onChanged});
+  const FieldEditor({super.key, this.onChanged});
 }
 
 abstract class FieldEditorState<T extends FieldEditor, K> extends State<T> {
   // Returns the current value of the field
   K get value;
 
-  // Convenience method to notify validity
-  void reportValidity(bool isValid) {
-    if (widget.onValidityChanged != null) {
-      widget.onValidityChanged!(isValid);
-    }
-  }
+  // Returns true if the field content is valid
+  bool get isValid;
 
   void notifyChanged() {
     widget.onChanged?.call(null);
@@ -38,7 +35,6 @@ class TextFieldEditor extends FieldEditor {
     this.hint,
     this.enabled = true,
     this.required = false,
-    super.onValidityChanged,
     super.onChanged,
   });
 
@@ -54,13 +50,11 @@ class _TextFieldEditorState extends FieldEditorState<TextFieldEditor, String> {
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
-    _controller.addListener(_validate);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _validate());
+    _controller.addListener(() => notifyChanged());
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_validate);
     _controller.dispose();
     super.dispose();
   }
@@ -68,11 +62,8 @@ class _TextFieldEditorState extends FieldEditorState<TextFieldEditor, String> {
   @override
   String get value => _controller.text.trim();
 
-  void _validate() {
-    final isValid = !widget.required || _controller.text.trim().isNotEmpty;
-    reportValidity(isValid);
-    notifyChanged();
-  }
+  @override
+  bool get isValid => !widget.required || _controller.text.trim().isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +116,6 @@ class TextBoxEditor extends FieldEditor {
     this.initialValue,
     this.hint,
     this.maxLines = 3,
-    super.onValidityChanged, // Usually text boxes are optional, but interface supports it
     super.onChanged,
   });
 
@@ -142,8 +132,6 @@ class _TextBoxEditorState extends FieldEditorState<TextBoxEditor, String> {
     super.initState();
     _controller = TextEditingController(text: widget.initialValue);
     _controller.addListener(() => notifyChanged());
-    // TextBox is typically optional, so always valid unless we add logic later
-    WidgetsBinding.instance.addPostFrameCallback((_) => reportValidity(true));
   }
 
   @override
@@ -154,6 +142,9 @@ class _TextBoxEditorState extends FieldEditorState<TextBoxEditor, String> {
 
   @override
   String get value => _controller.text.trim();
+
+  @override
+  bool get isValid => true; // Always valid
 
   @override
   Widget build(BuildContext context) {
@@ -196,13 +187,10 @@ class _TextBoxEditorState extends FieldEditorState<TextBoxEditor, String> {
 // --- DelegateRevokeAtEditor ---
 class DelegateRevokeAtEditor extends FieldEditor {
   final String? initialRevokeAt;
-  final Future<String?> Function(BuildContext) onScan;
 
   const DelegateRevokeAtEditor({
     super.key,
     required this.initialRevokeAt,
-    required this.onScan,
-    super.onValidityChanged,
     super.onChanged,
   });
 
@@ -218,26 +206,28 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
   void initState() {
     super.initState();
     currentRevokeAt = widget.initialRevokeAt;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _validate());
   }
 
   @override
   String? get value => currentRevokeAt;
 
-  void _validate() {
+  @override
+  bool get isValid {
       const kSinceAlways = '<since always>';
       final isActive = currentRevokeAt == null;
       final isFullyRevoked = currentRevokeAt == kSinceAlways;
       final isPartiallyRevoked = !isActive && !isFullyRevoked;
 
-      bool isValid = true;
       if (isPartiallyRevoked) {
         if (currentRevokeAt == null || !RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(currentRevokeAt!)) {
-          isValid = false; 
+          return false;
         }
       }
-      reportValidity(isValid);
-      notifyChanged();
+      return true;
+  }
+
+  void _updateAndNotify() {
+    notifyChanged();
   }
 
   @override
@@ -268,7 +258,7 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
                 isSelected: isActive,
                 onSelected: () {
                   setState(() => currentRevokeAt = null);
-                  _validate();
+                  _updateAndNotify();
                 },
                 selectedColor: const Color(0xFF0288D1),
               ),
@@ -280,7 +270,7 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
                 isSelected: isFullyRevoked,
                 onSelected: () {
                   setState(() => currentRevokeAt = kSinceAlways);
-                  _validate();
+                  _updateAndNotify();
                 },
                 selectedColor: Colors.blueGrey,
               ),
@@ -300,7 +290,7 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
                     ? widget.initialRevokeAt 
                     : "";
                 });
-                _validate();
+                _updateAndNotify();
               }
             },
             selectedColor: Colors.orange,
@@ -345,10 +335,14 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
               IconButton(
                 icon: const Icon(Icons.qr_code_scanner, size: 20),
                 onPressed: () async {
-                  final scanned = await widget.onScan(context);
+                  final scanned = await QrScanner.scan(
+                    context,
+                    title: 'Scan Revocation Token',
+                    validator: (code) async => RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(code),
+                  );
                   if (scanned != null) {
                     setState(() => currentRevokeAt = scanned);
-                    _validate();
+                    _updateAndNotify();
                   }
                 },
               ),
