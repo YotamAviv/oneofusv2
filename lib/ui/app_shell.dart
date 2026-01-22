@@ -382,7 +382,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
           context: context,
           builder: (context) => AlertDialog(
             title: const Text("That's you"),
-            content: const Text("Don't statement yourself."),
+            content: Text("Don't ${targetVerb.label} yourself."),
             actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
           ),
         );
