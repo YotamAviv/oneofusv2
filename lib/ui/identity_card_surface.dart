@@ -164,7 +164,7 @@ class IdentityCardSurfaceState extends State<IdentityCardSurface> with SingleTic
                                   fontSize: cardH * 0.22, 
                                   fontWeight: FontWeight.w900,
                                   color: Colors.black87,
-                                  fontFamily: 'serif',
+                                  fontFamily: Theme.of(context).platform == TargetPlatform.iOS ? 'Georgia' : 'serif',
                                   height: 1.0,
                                 ),
                               ),
