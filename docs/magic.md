@@ -79,3 +79,49 @@ To enable Universal/App Links, you must host two files on your web server at the
 *How to find YOUR_TEAM_ID:*
 1. Sign in to the [Apple Developer Portal](https://developer.apple.com/account).
 2. Look under **Membership Details** for the "Team ID" (a 10-character alphanumeric code).
+
+## 4. Linux Desktop & Android Emulator Development Setup
+
+When developing on a Linux Desktop with a local Android Emulator, clicking a `keymeid://` Magic Link in the Desktop Browser (e.g., while testing the Flutter Web client) will fail because the Linux host doesn't know how to route that scheme to the Emulator.
+
+To solve this, we implement a bridge that intercepts the URL on Linux and forwards it to the Emulator via ADB.
+
+### 4.1. The Bridge Script
+Create the script in your user binary directory at `~/.local/bin/oneofus-forward-link.sh`:
+
+```bash
+#!/bin/bash
+# Receives a URL (keymeid://...) as $1 and forwards it to the Android Emulator via ADB
+
+URL="$1"
+# Verify ADB is available and an emulator is connected
+if command -v adb &> /dev/null; then
+    adb shell am start -a android.intent.action.VIEW -d "$URL"
+fi
+```
+
+Make it executable: `chmod +x ~/.local/bin/oneofus-forward-link.sh`
+
+### 4.2. Linux Desktop Entry
+Register the custom scheme handler by creating `~/.local/share/applications/oneofus-link-handler.desktop`.
+*Note: The `Exec` path must be absolute (no `~`). Replace `/home/YOUR_USER` with your actual home directory.*
+
+```ini
+[Desktop Entry]
+Name=OneOfUs Link Handler
+Exec=/home/YOUR_USER/.local/bin/oneofus-forward-link.sh %u
+Type=Application
+Terminal=false
+MimeType=x-scheme-handler/keymeid;
+```
+
+Apply the changes:
+```bash
+update-desktop-database ~/.local/share/applications/
+xdg-mime default oneofus-link-handler.desktop x-scheme-handler/keymeid
+```
+
+### 4.3. Networking & Encoding Adjustments
+1.  **Emulator Networking**: The Flutter Web client (running on host) cannot contact `localhost` inside the Android app. The app must be configured to connect to `http://10.0.2.2:5001` (the emulator's alias for the host loopback interface) instead of `127.0.0.1`.
+2.  **Encoding**: The `keymeid://` scheme requires parameters to be Base64Url encoded (Standard Base64 with URL-safe characters and no padding). Ensure the generating client sends:
+    `keymeid://signin?parameters=<Base64UrlEncodedJson>`

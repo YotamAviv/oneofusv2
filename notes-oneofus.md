@@ -14,25 +14,25 @@ flutter run -d emulator-5554
 - keys received, just a text snackbar
 
 ## Bugs:
-claim key from welcome screen broken.
-restore key from welcome screen congratulates me, which it shouldn't.
+Welcome screen, claim key (form welcome with no key or from steady state), rotate key not confidence inspiring:
+- once over on steps, too
+- restore key from welcome screen congratulates me (which it shouldn't).
 
 ## Not required for launch:
 - settings
-- showCrypto
-- display delegate keys we have locally (private key) differently from ones we know about but don't have
+  - showCrypto
 
 ## magic sign in improve
 switch to card, show animation (might be working already)
 
-
 ## Notifications:
-  - key you trust [block, replace] you (or equivalent)
-  - key you trust trusts a key you've blocked
-  - key you trust blocks a key you trust
-  - (think about this more, replace, etc...)
-  - key is corrupted (crash and notify if it's my key)
-  - you replaced a key but didn't revoke it "<since always>"
+DEFER:
+- key you trust [block, replace] you (or equivalent)
+- key you trust trusts a key you've blocked
+- key you trust blocks a key you trust
+- (think about this more, replace, etc...)
+- key is corrupted (crash and notify if it's my key)
+- you replaced a key but didn't revoke it "<since always>"
 - 
 
 ## Settings
