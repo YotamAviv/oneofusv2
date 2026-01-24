@@ -26,8 +26,6 @@ Welcome screen, claim key (form welcome with no key or from steady state), rotat
 switch to card, show animation (might be working already)
 
 ## Notifications:
-- You're the only one in your network
-- None of those you've vouched for have vouched back
 DEFER:
 - key you trust [block, replace] you (or equivalent)
 - key you trust trusts a key you've blocked

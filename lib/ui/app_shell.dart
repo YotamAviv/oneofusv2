@@ -38,6 +38,7 @@ import '../features/congratulations_screen.dart';
 import '../features/delegates_screen.dart';
 import '../features/history_screen.dart';
 import '../features/blocks_screen.dart';
+import '../features/notifications_screen.dart';
 import '../features/people_screen.dart';
 import '../features/replace/replace_flow.dart';
 import 'dialogs/edit_statement_dialog.dart';
@@ -75,7 +76,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   bool _isLoading = true;
   bool _showCongrats = false;
   bool _hasKey = false;
-  bool _hasAlerts = true;
+  List<String> _notifications = [];
   // Initialize Dev Mode based on environment; secret tap (AboutScreen) allows override.
   late bool _isDevMode = Config.fireChoice != FireChoice.prod;
   bool _showLgtm = false;
@@ -226,10 +227,37 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       }
       
       if (mounted) {
+        // Calculate notifications
+        final List<String> activeNotifications = [];
+        
+        // 1. No vouches
+        final myVouches = newMyStatements.where((s) => s.verb == TrustVerb.trust).toList();
+        if (myVouches.isEmpty) {
+          activeNotifications.add('''You're the only one in your network.
+You should vouch for a capable human.
+(This is why your card calls you "Me".)''');
+        }
+
+        // 2. Unrequited vouches
+        bool hasUnrequited = false;
+        for (final vouch in myVouches) {
+          final peerStmts = newPeersStatements[vouch.subjectToken] ?? [];
+          final vouchedBack = peerStmts.any((s) => s.subjectToken == myToken && s.verb == TrustVerb.trust);
+          if (!vouchedBack) {
+            hasUnrequited = true;
+            break;
+          }
+        }
+        if (hasUnrequited) {
+          activeNotifications.add('''Some folks you've vouched for haven't vouched for you.
+You can see who those are by looking for the confirmation check mark to the right of their names on the PEOPLE screen.''');
+        }
+
         setState(() {
           // Update internal and public state
           myStatements.value = newMyStatements;
           peersStatements.value = newPeersStatements;
+          _notifications = activeNotifications;
 
           assert(() {
             Statement.validateOrderTypes(_myStatements);
@@ -595,27 +623,8 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    
-    final myToken = _keys.identityToken;
-    if (!_hasKey || myToken == null) {
-      return WelcomeScreen(
-        firestore: _firestore,
-        onIdentityCreated: () => setState(() => _showCongrats = true),
-      );
-    }
-
-    if (_showCongrats) {
-      return CongratulationsScreen(
-        onContinue: () => setState(() => _showCongrats = false),
-      );
-    }
-
-    final pages = [
+  List<Widget> get _pages {
+    return [
       CardScreen(
         cardKey: _cardKey,
       ),
@@ -639,6 +648,8 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
           );
         },
       ),
+      if (_notifications.isNotEmpty)
+        NotificationsScreen(notifications: _notifications),
       AboutScreen(onDevClick: _handleDevClick),
       if (_isDevMode)
         DevScreen(
@@ -647,6 +658,29 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
           onLgtmChanged: (v) => setState(() => _showLgtm = v),
         ),
     ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    
+    final myToken = _keys.identityToken;
+    if (!_hasKey || myToken == null) {
+      return WelcomeScreen(
+        firestore: _firestore,
+        onIdentityCreated: () => setState(() => _showCongrats = true),
+      );
+    }
+
+    if (_showCongrats) {
+      return CongratulationsScreen(
+        onContinue: () => setState(() => _showCongrats = false),
+      );
+    }
+
+    final pages = _pages;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F0EF),
@@ -722,24 +756,37 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
                               ),
                             ),
                             const SizedBox(width: 6),
-                            SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: Center(
-                                child: AnimatedBuilder(
-                                  animation: _pulseAnimation,
-                                  builder: (context, child) {
-                                    return Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: (_hasAlerts || _isRefreshing)
-                                            ? (_isRefreshing ? const Color(0xFF00897B) : Colors.redAccent).withOpacity(0.3 + (0.7 * _pulseAnimation.value))
-                                            : Colors.grey.withOpacity(0.2),
-                                      ),
-                                    );
-                                  },
+                            GestureDetector(
+                              onTap: () {
+                                if (_notifications.isNotEmpty) {
+                                  final index = pages.indexWhere((p) => p is NotificationsScreen);
+                                  if (index != -1) {
+                                    _pageController.animateToPage(index, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
+                                  }
+                                }
+                              },
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: Center(
+                                  child: (_isRefreshing || _notifications.isNotEmpty)
+                                      ? AnimatedBuilder(
+                                          animation: _pulseAnimation,
+                                          builder: (context, child) {
+                                            return Container(
+                                              width: 10,
+                                              height: 10,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: (_isRefreshing
+                                                        ? const Color(0xFF00897B)
+                                                        : Colors.redAccent)
+                                                    .withOpacity(0.3 + (0.7 * _pulseAnimation.value)),
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : const SizedBox.shrink(),
                                 ),
                               ),
                             ),
@@ -940,6 +987,13 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   }
 
   void _showManagementHub(BuildContext context) {
+    void jumpTo(bool Function(Widget) predicate) {
+      final index = _pages.indexWhere(predicate);
+      if (index != -1) {
+        _pageController.jumpToPage(index);
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -952,14 +1006,16 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
           children: [
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 32),
-            _HubTile(icon: Icons.credit_card_outlined, title: 'CARD', onTap: () => _pageController.jumpToPage(0)),
-            _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => _pageController.jumpToPage(1)),
-            _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => _pageController.jumpToPage(2)),
-            _HubTile(icon: Icons.vpn_key_outlined, title: 'IMPORT / EXPORT', onTap: () => _pageController.jumpToPage(3)),
-            _HubTile(icon: Icons.settings_accessibility_rounded, title: 'ADVANCED', onTap: () => _pageController.jumpToPage(4)),
-            _HubTile(icon: Icons.menu_book_rounded, title: 'INTRO', onTap: () => _pageController.jumpToPage(5)),
-            _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => _pageController.jumpToPage(6)),
-            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => _pageController.jumpToPage(7)),
+            _HubTile(icon: Icons.credit_card_outlined, title: 'CARD', onTap: () => jumpTo((w) => w is CardScreen)),
+            _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => jumpTo((w) => w is PeopleScreen)),
+            _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => jumpTo((w) => w is DelegatesScreen)),
+            _HubTile(icon: Icons.vpn_key_outlined, title: 'IMPORT / EXPORT', onTap: () => jumpTo((w) => w is ImportExportScreen)),
+            _HubTile(icon: Icons.settings_accessibility_rounded, title: 'ADVANCED', onTap: () => jumpTo((w) => w is AdvancedScreen)),
+            _HubTile(icon: Icons.menu_book_rounded, title: 'INTRO', onTap: () => jumpTo((w) => w is IntroScreen)),
+            if (_notifications.isNotEmpty)
+              _HubTile(icon: Icons.notifications_none, title: 'NOTIFICATIONS', onTap: () => jumpTo((w) => w is NotificationsScreen)),
+            _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => jumpTo((w) => w is AboutScreen)),
+            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => jumpTo((w) => w is DevScreen)),
           ],
         ),
       ),
