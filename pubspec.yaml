@@ -2,7 +2,7 @@ name: oneofus
 description: "The ONE-OF-US.NET phone app (V2)."
 publish_to: 'none'
 
-version: 2.0.2+89
+version: 2.0.3+90
 
 environment:
   sdk: ^3.8.1
