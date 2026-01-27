@@ -357,9 +357,16 @@ You can see who those are by looking for the confirmation check mark to the righ
         } catch (e) {}
       }
     } else if (uri.path.contains('sign-in')) {
-      final data = uri.queryParameters['data'];
-      if (data != null) {
-        await _executeSignIn(data);
+      final dataParam = uri.queryParameters['data'];
+      final paramsParam = uri.queryParameters['parameters'];
+
+      if (paramsParam != null) {
+        try {
+          final data = utf8.decode(base64Url.decode(paramsParam));
+          await _executeSignIn(data);
+        } catch (e) {}
+      } else if (dataParam != null) {
+        await _executeSignIn(dataParam);
       }
     }
   }
