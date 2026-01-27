@@ -6,6 +6,22 @@ import 'package:oneofus_common/util.dart';
 
 
 /// Writes statements directly to Firestore.
+/// 
+/// CONSIDERATION: Async/Optimistic Writes (Jan 2026)
+/// Proposal: Make writes more AJAX-like by signing the statement locally (using cached head)
+/// and pushing the *Signed Statement* asynchronously. This would improve UI responsiveness by 
+/// removing the network round-trip from the UI blocking path.
+/// 
+/// Decision: REJECTED (for now).
+/// Reason: The chained nature of statements requires the signature to lock in the *exact* previous hash.
+/// Pre-signing introduces a "Fragile Chain" risk:
+/// 1. Stale Head: If the local cache is milliseconds out of date (e.g. another device wrote), 
+///    the signature is invalid (wrong 'previous').
+/// 2. Poisoned Queue: If user actions A, B, C are queued rapidly, and A fails validation, 
+///    B and C (which point to A) are also dead. They cannot be retried without re-signing.
+/// 3. Data Loss: "Fire and forget" makes it hard to recover the user's intent/content after a silent failure.
+/// 
+/// Current "Just-in-Time" signing inside push() ensures we always sign the specific tip-of-chain at the moment of commit.
 class DirectFirestoreWriter implements StatementWriter {
   final FirebaseFirestore _fire;
 
