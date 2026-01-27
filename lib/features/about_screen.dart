@@ -1,11 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../ui/app_typography.dart';
 
-class AboutScreen extends StatelessWidget {
+class AboutScreen extends StatefulWidget {
   final VoidCallback onDevClick;
 
   const AboutScreen({super.key, required this.onDevClick});
+
+  @override
+  State<AboutScreen> createState() => _AboutScreenState();
+}
+
+class _AboutScreenState extends State<AboutScreen> {
+  String _version = "";
+  
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((packageInfo) {
+      if (mounted) {
+        setState(() {
+          _version = 'V${packageInfo.version} • BUILD ${packageInfo.buildNumber}';
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +91,7 @@ class AboutScreen extends StatelessWidget {
                 
                 const SizedBox(height: 60),
                 GestureDetector(
-                  onTap: onDevClick,
+                  onTap: widget.onDevClick,
                   child: Center(
                     child: Column(
                       children: [
@@ -80,7 +100,7 @@ class AboutScreen extends StatelessWidget {
                           style: AppTypography.caption,
                         ),
                         const SizedBox(height: 8),
-                        Text('V2.0.0 • BUILD 80', textAlign: TextAlign.center, style: AppTypography.labelSmall),
+                        Text(_version, textAlign: TextAlign.center, style: AppTypography.labelSmall),
                       ],
                     ),
                   ),

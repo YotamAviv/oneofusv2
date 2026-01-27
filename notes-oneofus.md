@@ -10,8 +10,7 @@ flutter run -d emulator-5554
 
 ## required for launch
 
-### Nerdster side
-- keys received, just a text snackbar
+scanner camera: Show better instructions 
 
 ## Bugs:
 Welcome screen, claim key (form welcome with no key or from steady state), rotate key not confidence inspiring:

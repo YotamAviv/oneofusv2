@@ -12,7 +12,7 @@ class DirectFirestoreWriter implements StatementWriter {
   DirectFirestoreWriter(this._fire);
 
   @override
-  Future<Statement> push(Json json, StatementSigner signer) async {
+  Future<Statement> push(Json json, StatementSigner signer, {String? previous}) async {
     final String issuerToken = getToken(json['I']);
     final fireStatements = _fire.collection(issuerToken).doc('statements').collection('statements');
 
@@ -28,6 +28,18 @@ class DirectFirestoreWriter implements StatementWriter {
       final latestDoc = latestSnapshot.docs.first;
       previousToken = latestDoc.id;
       prevTime = parseIso(latestDoc.data()['time']);
+    }
+
+    if (previous != null) {
+      if (previous.isEmpty) {
+        if (previousToken != null) {
+          throw Exception(
+              'Push Rejected: Optimistic locking failure. Expected Genesis (no previous), found=$previousToken');
+        }
+      } else if (previousToken != previous) {
+        throw Exception(
+            'Push Rejected: Optimistic locking failure. Expected previous=$previous, found=$previousToken');
+      }
     }
 
     if (previousToken != null) {

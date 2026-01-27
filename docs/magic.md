@@ -10,6 +10,7 @@ This is the traditional method for deep linking. An app registers a unique "sche
 ### Advantages
 - **Simplicity**: No server-side configuration required.
 - **Openness**: Any developer can define a scheme without permission from a domain owner.
+The ONE-OF-US.NET paradigm claims "heterogeneous", and so this is our preferred path.
 
 ### Disadvantages
 - **Security (Hijacking)**: Any app can register any scheme. If two apps register `keymeid`, the OS doesn't know which is the "real" one, leading to potential data theft.
@@ -69,7 +70,7 @@ To enable Universal/App Links, you must host two files on your web server at the
     "apps": [],
     "details": [
       {
-        "appID": "YOUR_TEAM_ID.net.oneofus.app",
+        "appID": "PG2Q5QYA2W.net.oneofus.app",
         "paths": [ "/sign-in", "/sign-in/*", "/replace/*" ]
       }
     ]
