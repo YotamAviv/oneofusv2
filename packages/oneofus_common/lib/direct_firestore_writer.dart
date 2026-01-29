@@ -6,6 +6,13 @@ import 'package:oneofus_common/util.dart';
 
 
 /// Writes statements directly to Firestore.
+/// 
+/// CONSIDERATION: Async/Optimistic Writes (Jan 2026)
+/// Proposal: Make writes more AJAX-like by signing the statement locally (using cached head)
+/// and pushing the *Signed Statement* asynchronously. This would improve UI responsiveness by 
+/// removing the network round-trip from the UI blocking path.
+/// 
+/// 
 class DirectFirestoreWriter implements StatementWriter {
   final FirebaseFirestore _fire;
 

@@ -319,7 +319,8 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
                 onPressed: () async {
                   final scanned = await QrScanner.scan(
                     context,
-                    title: 'Scan Revocation Token',
+                    title: 'Scan revokeAt Statement Token',
+                    instruction: 'Scan the token of the last valid statement signed by the key you want to revoke.',
                     validator: (code) async => RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(code),
                   );
                   if (scanned != null) {

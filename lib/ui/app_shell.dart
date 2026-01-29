@@ -372,9 +372,29 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   Future<void> _onScanPressed({TrustVerb targetVerb = TrustVerb.trust}) async {
+    String title;
+    String instruction;
+
+    switch (targetVerb) {
+      case TrustVerb.delegate:
+        title = 'Scan Key QR';
+        instruction = 'Scan a delegate key to state that it represents you.';
+        break;
+      case TrustVerb.block:
+        title = 'Scan key QR';
+        instruction = 'Scan the key to block.';
+        break;
+      case TrustVerb.trust:
+      default:
+        title = 'Scan Identity or Sign-in';
+        instruction = 'Scan someone\'s identity key to vouch for them, or scan a services sign-in parameters to identify yourself and sign in.';
+        break;
+    }
+
     final scanned = await QrScanner.scan(
       context,
-      title: 'Scan Sign-in or Personal Key',
+      title: title,
+      instruction: instruction,
       validator: (data) async {
         try {
           final json = jsonDecode(data);

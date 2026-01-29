@@ -17,11 +17,7 @@ class CongratulationsScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'CONGRATULATIONS!',
-                textAlign: TextAlign.center,
-                style: AppTypography.display,
-              ),
+              Text('CONGRATULATIONS!', textAlign: TextAlign.center, style: AppTypography.display),
               const SizedBox(height: 24),
               Text(
                 'You possess a public/private cryptographic key pair!',
@@ -50,10 +46,7 @@ Use the QR icon (bottom center) to:
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 4,
                 ),
-                child: Text(
-                  'Okay',
-                  style: AppTypography.label,
-                ),
+                child: Text('Okay', style: AppTypography.label.copyWith(color: Colors.white)),
               ),
               const SizedBox(height: 20),
             ],
