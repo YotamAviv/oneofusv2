@@ -5,11 +5,13 @@ import 'app_typography.dart';
 
 class QrScanner extends StatefulWidget {
   final String title;
+  final String instruction;
   final Future<bool> Function(String) validator;
 
   const QrScanner({
     super.key,
     required this.title,
+    required this.instruction,
     required this.validator,
   });
 
@@ -19,11 +21,13 @@ class QrScanner extends StatefulWidget {
   static Future<String?> scan(
     BuildContext context, {
     String title = 'Scan QR Code',
+    required String instruction,
     required Future<bool> Function(String) validator,
   }) async {
     return await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (context) => QrScanner(title: title, validator: validator),
+        builder: (context) =>
+            QrScanner(title: title, instruction: instruction, validator: validator),
       ),
     );
   }
@@ -58,9 +62,9 @@ class _QrScannerState extends State<QrScanner> {
         _isHandled = true;
         Navigator.of(context).pop(text);
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid data in clipboard')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Invalid data in clipboard')));
       }
     }
   }
@@ -70,6 +74,18 @@ class _QrScannerState extends State<QrScanner> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            child: Text(
+              widget.instruction,
+              textAlign: TextAlign.center,
+              style: AppTypography.caption,
+              maxLines: 3,
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.paste_rounded),
@@ -80,9 +96,7 @@ class _QrScannerState extends State<QrScanner> {
       ),
       body: Stack(
         children: [
-          MobileScanner(
-            onDetect: _onDetect,
-          ),
+          MobileScanner(onDetect: _onDetect),
           Center(
             child: Container(
               width: 250,
@@ -104,9 +118,21 @@ class _QrScannerState extends State<QrScanner> {
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Text(
-                  'Align QR code within frame',
-                  style: AppTypography.body.copyWith(color: Colors.white),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Align QR code within frame',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.body.copyWith(color: Colors.white),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '''If you have a QR code in text form, you can paste it using the paste button (top right).''',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.caption.copyWith(color: Colors.white),
+                    ),
+                  ],
                 ),
               ),
             ),

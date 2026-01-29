@@ -311,6 +311,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
     final result = await QrScanner.scan(
       context,
       title: 'Scan Old Identity',
+      instruction: '''Scan a previous identity key that you've used to claim that it represents you.''',
       validator: (s) async {
         try {
           final map = jsonDecode(s);
@@ -513,6 +514,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           padding: const EdgeInsets.all(24),
           child: ElevatedButton(
             onPressed: (_allStatements != null) ? _startRecovery : null,
+            // TODO: factor out common style
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 20),
               backgroundColor: const Color(0xFF37474F),
