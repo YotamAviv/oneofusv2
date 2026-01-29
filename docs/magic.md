@@ -1,5 +1,13 @@
 # Deep Link Technologies: Magic vs. Universal
 
+## Current Status (Jan 29, 2026)
+Both apps have been pushed to production on the Google Play Store and Apple App Store.
+Currently, Universal Links (iOS) and App Links (Android) are not working for either platform.
+- **Android**: Only works if the user manually specifies the app to open the link. Custom URL Schemes seem to work consistently.
+- **iOS**: Universal links fail in both Safari and Chrome.
+
+The priority is to resolve the iPhone issues, although debugging is primarily done in a Linux/Android environment.
+
 This document explores the two primary ways mobile applications are launched from web browsers and why the "Magic Sign-in" experience varies across platforms.
 
 ## 1. Custom URL Schemes (The "Magic" Link)
@@ -44,39 +52,16 @@ To enable Universal/App Links, you must host two files on your web server at the
 ### 3.1. Android (`assetlinks.json`)
 **Path:** `https://one-of-us.net/.well-known/assetlinks.json`
 
-```json
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "net.oneofus.app",
-      "sha256_cert_fingerprints": [
-        "DB:81:58:06:A3:DE:7A:D5:5E:7C:27:18:97:B1:B6:D1:82:3C:EC:D7:8A:3A:D1:2F:65:C9:E0:6B:03:82:1D:1E"
-      ]
-    }
-  }
-]
-```
+(File contents are now maintained in source control).
+
 *Note: The fingerprint above is for your **Debug** key. You must eventually add your **Production** SHA256 fingerprint (found in the Play Console under Setup > App Integrity).*
 
 ### 3.2. iOS (`apple-app-site-association`)
 **Path:** `https://one-of-us.net/.well-known/apple-app-site-association`
 **Important:** This file must be served with `Content-Type: application/json` and **no file extension** in the URL.
 
-```json
-{
-  "applinks": {
-    "apps": [],
-    "details": [
-      {
-        "appID": "PG2Q5QYA2W.net.oneofus.app",
-        "paths": [ "/sign-in", "/sign-in/*", "/replace/*" ]
-      }
-    ]
-  }
-}
-```
+(File contents are now maintained in source control).
+
 *How to find YOUR_TEAM_ID:*
 1. Sign in to the [Apple Developer Portal](https://developer.apple.com/account).
 2. Look under **Membership Details** for the "Team ID" (a 10-character alphanumeric code).

@@ -5,6 +5,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:one-of-us.net</string>
+		<string>applinks:www.one-of-us.net</string>
 	</array>
 </dict>
 </plist>
