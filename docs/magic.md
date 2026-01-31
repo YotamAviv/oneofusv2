@@ -82,7 +82,8 @@ Create the script in your user binary directory at `~/.local/bin/oneofus-forward
 URL="$1"
 # Verify ADB is available and an emulator is connected
 if command -v adb &> /dev/null; then
-    adb shell am start -a android.intent.action.VIEW -d "$URL"
+    # Use -e to target the only running emulator, avoiding ambiguity if physical devices are also connected.
+    adb -e shell am start -a android.intent.action.VIEW -d "$URL"
 fi
 ```
 

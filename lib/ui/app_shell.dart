@@ -319,20 +319,22 @@ You can see who those are by looking for the confirmation check mark to the righ
 
   Future<void> _executeSignIn(String data) async {
     try {
+      // 1. Ensure we are on the Card Screen (Page 0) so the user sees the animation
+      if (mounted && _pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
+      // 2. Wait a brief moment for the UI to settle/render/focus
+      await Future.delayed(const Duration(milliseconds: 500));
+
       final success = await SignInService.signIn(
-        data, 
-        context, 
-        firestore: _firestore, 
+        data,
+        context,
+        firestore: _firestore,
         myStatements: _myStatements,
         onSending: () => _cardKey.currentState?.throwQr(),
       );
       if (success && mounted) {
         loadAllData();
-        _pageController.animateToPage(
-          0,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
       }
     } catch (e) {
       // Logic might catch errors during sign-in
