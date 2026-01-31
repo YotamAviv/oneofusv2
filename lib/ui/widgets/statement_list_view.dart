@@ -74,10 +74,7 @@ class StatementListView extends StatelessWidget {
         if (bottomDescription != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-            child: Text(
-              bottomDescription!,
-              style: AppTypography.caption,
-            ),
+            child: _ExpandableDescription(bottomDescription!),
           ),
         if (onAdd != null)
           Padding(
@@ -121,6 +118,31 @@ class StatementListView extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ExpandableDescription extends StatefulWidget {
+  final String text;
+  const _ExpandableDescription(this.text);
+
+  @override
+  State<_ExpandableDescription> createState() => _ExpandableDescriptionState();
+}
+
+class _ExpandableDescriptionState extends State<_ExpandableDescription> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Text(
+        widget.text,
+        style: AppTypography.caption,
+        maxLines: _expanded ? null : 2,
+        overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
       ),
     );
   }
