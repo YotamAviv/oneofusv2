@@ -58,9 +58,11 @@ class WelcomeScreen extends StatelessWidget {
           ),
 
           Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 48),
-              child: Column(
+            child: Scrollbar(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 48),
+                  child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -159,6 +161,8 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            ),
             ),
           ),
         ],

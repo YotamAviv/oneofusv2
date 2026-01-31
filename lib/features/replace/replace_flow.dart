@@ -242,14 +242,16 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
   }
 
   Widget _buildIdentifyScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Icon(Icons.qr_code_scanner_rounded, size: 80, color: Color(0xFF00897B)),
-          const SizedBox(height: 32),
+    return Scrollbar(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.qr_code_scanner_rounded, size: 80, color: Color(0xFF00897B)),
+              const SizedBox(height: 32),
           Text(
             widget.claimMode
                 ? 'Identify the key you want to claim.'
@@ -304,6 +306,8 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           ],
         ],
       ),
+    ),
+    ),
     );
   }
 
@@ -720,9 +724,11 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
   }
 
   Widget _buildProcessingScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(48),
-      child: Column(
+    return Scrollbar(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(48),
+          child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
@@ -745,13 +751,17 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           ),
         ],
       ),
+      ),
+      ),
     );
   }
 
   Widget _buildSuccessScreen() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
+    return Scrollbar(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.check_circle_rounded, size: 100, color: Color(0xFF00897B)),
@@ -780,6 +790,8 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
             child: Text('DONE', style: AppTypography.label.copyWith(color: Colors.white)),
           ),
         ],
+      ),
+      ),
       ),
     );
   }
