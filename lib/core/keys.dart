@@ -207,7 +207,9 @@ class Keys extends ChangeNotifier {
   /// Removes a delegate by its public key token.
   Future<void> removeDelegateByToken(String token) async {
     String? domainToRemove;
-    for (final entry in _keys.entries) {
+    // Snapshot entries to avoid concurrent modification issues during async iteration
+    final entries = _keys.entries.toList();
+    for (final entry in entries) {
       if (entry.key == kOneofusDomain) continue;
       final pubKey = await entry.value.publicKey;
       final t = getToken(await pubKey.json);

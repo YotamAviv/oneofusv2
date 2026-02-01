@@ -350,11 +350,13 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
       comment = getValue('comment');
       domain = getValue('domain');
       revokeAt = getValue('revokeAt');
+      
+      final bool isRevokeExposed = _fieldConfigs[_selectedVerb]?.any((f) => f.name == 'revokeAt') ?? false;
 
       // Special handling for Replace which doesn't use a FieldEditor for revokeAt
       if (_selectedVerb == TrustVerb.replace) {
         revokeAt = '<since always>';
-      } else if (revokeAt == null) {
+      } else if (!isRevokeExposed && revokeAt == null) {
          revokeAt = widget.proposedStatement.revokeAt; 
       }
 
