@@ -48,5 +48,7 @@ After Phase 1 and 2, the `oneofusv22` common package will be closer to `nerdster
 
 1.  **Split `io.dart`:** Refactor `io.dart` in `oneofusv22` into `statement_source.dart` and `statement_writer.dart`.
 2.  **Move Crypto:** Move `crypto.dart` and `crypto25519.dart` to `lib/crypto/`.
-3.  **Add Missing Files:** Copy `setting.dart` (which we modified) to `nerdster13`'s copy to preserve it, as `nerdster13` lacks it entirely.
+
+Pause here
+
 4.  **Hard Swap:** Replace `oneofusv22/packages/oneofus_common` with the `nerdster13` version and fix any remaining broken imports.
