@@ -79,7 +79,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   bool _showLgtm = false;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
-  late final CachedStatementSource<TrustStatement> _source;
+  late final CachedSource<TrustStatement> _source;
   
   // Data State
   final ValueNotifier<List<TrustStatement>> myStatements = ValueNotifier([]);
@@ -111,7 +111,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     } else {
       baseSource = DirectFirestoreSource<TrustStatement>(_firestore);
     }
-    _source = CachedStatementSource<TrustStatement>(baseSource);
+    _source = CachedSource<TrustStatement>(baseSource);
 
     if (_isDevMode) {
       Tester.init(DirectFirestoreWriter(_firestore));
@@ -195,11 +195,12 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     }
     
     _source.clear();
-    
+      
     try {
       // Fetch statements authored by the current user
       final Map<String, List<TrustStatement>> myStatementsMap = await _source.fetch({myToken: null});
-      final List<TrustStatement> newMyStatements = myStatementsMap[myToken] ?? [];
+      // The source returns unmodifiable lists, so we must copy them before modification.
+      final List<TrustStatement> newMyStatements = List.from(myStatementsMap[myToken] ?? []);
       
       newMyStatements.removeWhere((s) => s.verb == TrustVerb.clear);
 
@@ -217,10 +218,13 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
         final Map<String, String?> keysToFetch = {
           for (final String token in directContacts) token: null
         };
-        newPeersStatements = await _source.fetch(keysToFetch);
-        for (final list in newPeersStatements.values) {
-          list.removeWhere((s) => s.verb == TrustVerb.clear);
-        }
+        // Fetch checks out immutable lists. We need to replace them with mutable ones.
+        final rawPeersStatements = await _source.fetch(keysToFetch);
+        newPeersStatements = rawPeersStatements.map((key, value) {
+          final mutableList = List<TrustStatement>.from(value);
+          mutableList.removeWhere((s) => s.verb == TrustVerb.clear);
+          return MapEntry(key, mutableList);
+        });
       }
       
       if (mounted) {

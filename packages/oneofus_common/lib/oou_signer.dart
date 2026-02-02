@@ -1,4 +1,5 @@
-import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
+
 import 'crypto/crypto.dart';
 import 'jsonish.dart';
 
@@ -11,15 +12,13 @@ class OouSigner implements StatementSigner {
     Json publicKeyJson = await publicKey.json;
     return OouSigner._internal(keyPair, publicKeyJson);
   }
-  
+
   OouSigner._internal(this._keyPair, this._publicKeyJson);
 
   @override
-  Future<String> sign(Map<String, dynamic> json, String string) async {
-    // Note: Using deep collection equality check for the public key
-    if (!const DeepCollectionEquality().equals(json['I'], _publicKeyJson)) {
-       throw Exception('Signer public key does not match statement "I" field');
-    }
-    return await _keyPair.sign(string);
+  Future<String> sign(Json json, String string) async {
+    assert(mapEquals(json['I'], _publicKeyJson));
+    String out = await _keyPair.sign(string);
+    return out;
   }
 }

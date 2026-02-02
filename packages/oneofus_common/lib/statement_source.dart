@@ -12,3 +12,4 @@ abstract class StatementSource<T extends Statement> {
   /// Returns any notifications (e.g. corruption, warnings) generated during the last fetch.
   List<SourceError> get errors;
 }
+

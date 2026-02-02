@@ -92,7 +92,7 @@ class TrustStatement extends Statement {
       TrustVerb verb, String? revokeAt, String? moniker, String? comment, String? domain) {
     switch (verb) {
       case TrustVerb.trust:
-        // assert(revokeAt == null);
+        assert(revokeAt == null);
         // assert(b(moniker)); For phone UI in construction..
         assert(domain == null);
       case TrustVerb.block:
