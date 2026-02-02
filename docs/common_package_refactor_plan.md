@@ -51,4 +51,7 @@ After Phase 1 and 2, the `oneofusv22` common package will be closer to `nerdster
 
 Pause here
 
+Rename files to match the Nerdster's names for statement sources and writers.
+
+
 4.  **Hard Swap:** Replace `oneofusv22/packages/oneofus_common` with the `nerdster13` version and fix any remaining broken imports.
