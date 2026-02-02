@@ -3,6 +3,7 @@ import 'statement.dart';
 import 'clock.dart';
 
 const String kOneofusDomain = 'one-of-us.net';
+const String kSinceAlways = '<since always>';
 
 extension type IdentityKey(String value) {}
 extension type DelegateKey(String value) {}
