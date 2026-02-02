@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../app_typography.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'package:oneofus_common/ui/json_display.dart';
 
-import 'json_display.dart';
 import 'key_widget.dart';
 import '../interpreter.dart';
 import '../../core/labeler.dart';
@@ -252,7 +252,7 @@ class StatementCard extends StatelessWidget {
                 Expanded(
                   child: JsonDisplay(
                     json,
-                    instanceInterpreter: interpreter,
+                    interpreter: interpreter,
                     fit: StackFit.expand,
                   ),
                 ),

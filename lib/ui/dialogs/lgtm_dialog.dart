@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'package:oneofus_common/ui/json_display.dart';
 import '../app_typography.dart';
-import '../widgets/json_display.dart';
+
 
 class LgtmDialog extends StatefulWidget {
   final TrustStatement statement;
@@ -41,7 +42,7 @@ class _LgtmDialogState extends State<LgtmDialog> {
               padding: const EdgeInsets.all(8),
               child: JsonDisplay(
                 widget.statement.jsonish.json,
-                instanceInterpreter: widget.interpreter,
+                interpreter: widget.interpreter,
               ),
             ),
           ],

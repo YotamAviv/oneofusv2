@@ -1,9 +1,10 @@
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/clock.dart';
+import 'package:oneofus_common/ui/json_display.dart';
 import '../util.dart';
 import '../core/labeler.dart';
-import 'widgets/json_display.dart';
+
 
 const kUnknown = '<unknown key>';
 

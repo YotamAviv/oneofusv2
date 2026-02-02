@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/ui/json_display.dart'; // From package
 import 'core/config.dart';
 import 'ui/app_shell.dart';
-import 'ui/widgets/json_display.dart';
+import 'ui/app_typography.dart'; // import typography
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Config.initFirebase();
 
+  // Configure Global JsonDisplay Defaults
+  JsonDisplay.defaultTextStyle = AppTypography.mono;
   JsonDisplay.highlightKeys = Set.unmodifiable({
     'I',
     'moniker',
