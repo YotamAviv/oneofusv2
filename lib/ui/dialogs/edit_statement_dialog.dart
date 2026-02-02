@@ -243,7 +243,7 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
   String get _submitLabel {
     if (_selectedVerb == TrustVerb.block) return 'BLOCK KEY';
     if (_selectedVerb == TrustVerb.replace) return 'REPLACE KEY';
-    return 'SAVE';
+    return 'PUBLISH';
   }
 
   void _checkForChanges() {
