@@ -1,6 +1,6 @@
 import 'jsonish.dart';
 import 'statement.dart';
-import 'util.dart';
+import 'clock.dart';
 
 const String kOneofusDomain = 'one-of-us.net';
 
@@ -46,7 +46,7 @@ class TrustStatement extends Statement {
     dynamic subject;
     for (var v in TrustVerb.values) {
       subject = jsonish[v.label];
-      if (b(subject)) {
+      if (subject != null) {
         verb = v;
         break;
       }
@@ -88,7 +88,7 @@ class TrustStatement extends Statement {
     if (revokeAt != null) withx['revokeAt'] = revokeAt;
     if (domain != null) withx['domain'] = domain;
     if (moniker != null) withx['moniker'] = moniker;
-    withx.removeWhere((key, value) => !b(value));
+    withx.removeWhere((key, value) => value == null);
     if (withx.isNotEmpty) json['with'] = withx;
     return json;
   }

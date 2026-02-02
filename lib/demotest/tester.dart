@@ -6,7 +6,7 @@ import 'package:oneofus_common/io.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/trust_statement.dart';
-import 'package:oneofus_common/util.dart';
+import '../util.dart';
 import '../core/keys.dart';
 
 final crypto = CryptoFactoryEd25519();

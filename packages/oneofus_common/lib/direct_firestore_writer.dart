@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:oneofus_common/io.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/statement.dart';
-import 'package:oneofus_common/util.dart';
+import 'package:oneofus_common/clock.dart';
 
 
 /// Writes statements directly to Firestore.

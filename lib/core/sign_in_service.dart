@@ -10,7 +10,6 @@ import 'package:oneofus_common/crypto25519.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/direct_firestore_writer.dart';
 import 'package:oneofus_common/oou_signer.dart';
-import 'package:oneofus_common/util.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'config.dart';
 import 'keys.dart';

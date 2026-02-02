@@ -1,6 +1,7 @@
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
-import 'package:oneofus_common/util.dart';
+import 'package:oneofus_common/clock.dart';
+import '../util.dart';
 import '../core/labeler.dart';
 import 'widgets/json_display.dart';
 

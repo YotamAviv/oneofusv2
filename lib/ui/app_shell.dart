@@ -16,7 +16,7 @@ import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/oou_verifier.dart';
 import 'package:oneofus_common/statement.dart';
 import 'package:oneofus_common/trust_statement.dart';
-import 'package:oneofus_common/util.dart';
+import '../util.dart';
 
 import '../core/config.dart';
 import '../core/keys.dart';

@@ -1,5 +1,5 @@
 import 'jsonish.dart';
-import 'util.dart';
+import 'clock.dart';
 
 typedef Transformer = String Function(String);
 
