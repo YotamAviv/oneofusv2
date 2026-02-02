@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'crypto.dart';
+import 'crypto/crypto.dart';
 import 'jsonish.dart';
 
 class OouSigner implements StatementSigner {

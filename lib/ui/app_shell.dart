@@ -10,7 +10,7 @@ import 'package:oneofus_common/cached_statement_source.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
 import 'package:oneofus_common/direct_firestore_writer.dart';
 import 'package:oneofus_common/firestore_source.dart';
-import 'package:oneofus_common/io.dart';
+import 'package:oneofus_common/statement_source.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/oou_verifier.dart';

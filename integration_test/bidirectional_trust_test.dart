@@ -4,7 +4,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:oneofus/core/config.dart';
 import 'package:oneofus/core/keys.dart';
 import 'package:oneofus/main.dart' as app;
-import 'package:oneofus_common/crypto25519.dart';
+import 'package:oneofus_common/crypto/crypto25519.dart';
 import 'package:oneofus_common/direct_firestore_writer.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/oou_signer.dart';

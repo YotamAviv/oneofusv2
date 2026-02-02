@@ -1,4 +1,4 @@
-import 'io.dart';
+import 'statement_source.dart';
 import 'statement.dart';
 import 'source_error.dart';
 

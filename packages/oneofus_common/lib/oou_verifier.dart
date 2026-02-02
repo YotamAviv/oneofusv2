@@ -1,5 +1,5 @@
-import 'package:oneofus_common/crypto.dart';
-import 'package:oneofus_common/crypto25519.dart';
+import 'package:oneofus_common/crypto/crypto.dart';
+import 'package:oneofus_common/crypto/crypto25519.dart';
 import 'package:oneofus_common/jsonish.dart';
 
 class OouVerifier implements StatementVerifier {

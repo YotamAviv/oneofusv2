@@ -1,4 +1,4 @@
-import 'jsonish.dart';
+import 'package:oneofus_common/jsonish.dart';
 
 abstract class OouCryptoFactory {
   Future<OouKeyPair> createKeyPair();

@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'distincter.dart' as d;
 import 'jsonish.dart';
 import 'statement.dart';
-import 'io.dart';
+import 'statement_source.dart';
 import 'source_error.dart';
 
 class DirectFirestoreSource<T extends Statement> implements StatementSource<T> {
