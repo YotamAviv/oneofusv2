@@ -37,6 +37,8 @@ Block: Bots, spammers, bad actors, careless, confused..''',
                 emptyTitle: 'No Trusted People',
                 emptySubtitle: 'People you trust by scanning their QR code will appear here.',
                 emptyIcon: Icons.people_outline,
+                onAdd: () => AppShell.instance.scan(TrustVerb.trust, allowSignIn: false),
+                addLabel: 'NEW VOUCH',
                 itemCount: myTrustStatements.length,
                 itemBuilder: (context, index) {
                   final statement = myTrustStatements[index];

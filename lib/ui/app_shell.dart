@@ -301,8 +301,8 @@ You can see who those are by looking for the confirmation check mark to the righ
     loadAllData();
   }
 
-  Future<void> scan(TrustVerb targetVerb) async {
-    await _onScanPressed(targetVerb: targetVerb);
+  Future<void> scan(TrustVerb targetVerb, {bool allowSignIn = true}) async {
+    await _onScanPressed(targetVerb: targetVerb, allowSignIn: allowSignIn);
     loadAllData();
   }
 
@@ -374,7 +374,7 @@ You can see who those are by looking for the confirmation check mark to the righ
     }
   }
 
-  Future<void> _onScanPressed({TrustVerb targetVerb = TrustVerb.trust}) async {
+  Future<void> _onScanPressed({TrustVerb targetVerb = TrustVerb.trust, bool allowSignIn = true}) async {
     String title;
     String instruction;
 
@@ -389,9 +389,11 @@ You can see who those are by looking for the confirmation check mark to the righ
         break;
       case TrustVerb.trust:
       default:
-        title = 'Scan Key or Sign-in Parameters';
-        instruction = '''Scan a person's identity key to vouch for them, or 
-scan a service's sign-in parameters to identify yourself and sign in.''';
+        title = allowSignIn ? 'Scan Key or Sign-in Parameters' : 'Scan Key';
+        instruction = allowSignIn 
+            ? '''Scan a person's identity key to vouch for them, or 
+scan a service's sign-in parameters to identify yourself and sign in.'''
+            : 'Scan a person\'s identity key to vouch for them.';
         break;
     }
 
@@ -403,7 +405,7 @@ scan a service's sign-in parameters to identify yourself and sign in.''';
         try {
           final json = jsonDecode(data);
           if (json is! Map<String, dynamic>) return false;
-          if (await SignInService.validateSignIn(data)) return true;
+          if (allowSignIn && await SignInService.validateSignIn(data)) return true;
           return isPubKey(json);
         } catch (_) {
           return false;
@@ -415,7 +417,7 @@ scan a service's sign-in parameters to identify yourself and sign in.''';
       try {
         final Map<String, dynamic> json = jsonDecode(scanned);
         
-        if (await SignInService.validateSignIn(scanned)) {
+        if (allowSignIn && await SignInService.validateSignIn(scanned)) {
           await _executeSignIn(scanned);
         } else if (isPubKey(json)) {
           await _handlePublicKeyScan(json, targetVerb: targetVerb);
