@@ -389,8 +389,9 @@ You can see who those are by looking for the confirmation check mark to the righ
         break;
       case TrustVerb.trust:
       default:
-        title = 'Scan Identity or Sign-in';
-        instruction = 'Scan someone\'s identity key to vouch for them, or scan a services sign-in parameters to identify yourself and sign in.';
+        title = 'Scan Key or Sign-in Parameters';
+        instruction = '''Scan a person's identity key to vouch for them, or 
+scan a service's sign-in parameters to identify yourself and sign in.''';
         break;
     }
 

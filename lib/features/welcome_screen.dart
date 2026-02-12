@@ -68,14 +68,14 @@ class WelcomeScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 40),
                   const Text(
-                    'Welcome',
+                    'WELCOME',
                     textAlign: TextAlign.center,
-                    style: AppTypography.hero,
+                    style: AppTypography.display,
                   ),
                   const Text(
                     'You have no keys on this device',
                     textAlign: TextAlign.center,
-                    style: AppTypography.body,
+                    style: AppTypography.header,
                   ),
                   const SizedBox(height: 40),
                   ElevatedButton(

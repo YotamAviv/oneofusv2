@@ -128,7 +128,7 @@ class _QrScannerState extends State<QrScanner> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '''If you have a QR code in text form, you can paste it using the paste button (top right).''',
+                      '''You can paste text instead of scanning a QR code using the paste button (top right).''',
                       textAlign: TextAlign.center,
                       style: AppTypography.caption.copyWith(color: Colors.white),
                     ),

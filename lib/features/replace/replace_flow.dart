@@ -333,46 +333,16 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
 
         if (json is Map<String, dynamic> && isPubKey(json)) {
           final token = getToken(json);
-          final exists = await _verifyIdentityExists(token);
-          if (exists) {
-            setState(() {
-              _oldIdentityToken = token;
-              _oldIdentityPubKeyJson = json;
-            });
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Identity found, but it has no history on the network.'),
-                ),
-              );
-            }
-          }
+          setState(() {
+            _oldIdentityToken = token;
+            _oldIdentityPubKeyJson = json;
+          });
         } else {
           throw Exception('Could not find identity token in the scanned QR code.');
         }
       } catch (e) {
         if (mounted) ErrorDialog.show(context, 'Identification Error', e, null);
       }
-    }
-  }
-
-  Future<bool> _verifyIdentityExists(String token) async {
-    debugPrint('[ReplaceFlow] _verifyIdentityExists (via HTTP): token=$token');
-    try {
-      final source = CloudFunctionsSource<TrustStatement>(
-        baseUrl: Config.exportUrl,
-        verifier: OouVerifier(),
-        // We only need to know if at least one exists
-        paramsOverride: {"distinct": "true", "includeId": "false", "checkPrevious": "false"},
-      );
-      final results = await source.fetch({token: null});
-      final exists = results[token]?.isNotEmpty ?? false;
-      debugPrint('[ReplaceFlow] _verifyIdentityExists result: $exists');
-      return exists;
-    } catch (e) {
-      debugPrint('[ReplaceFlow] _verifyIdentityExists error: $e');
-      return false;
     }
   }
 
@@ -407,7 +377,8 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         '[ReplaceFlow] Executing HTTP fetch via CloudFunctionsSource for $_oldIdentityToken',
       );
       final results = await source.fetch({_oldIdentityToken!: null});
-      final List<TrustStatement> statements = results[_oldIdentityToken!] ?? [];
+      // Ensure the list is mutable
+      final List<TrustStatement> statements = (results[_oldIdentityToken!] ?? []).toList();
 
       debugPrint('[ReplaceFlow] _fetchHistory: statements=${statements.length}');
 

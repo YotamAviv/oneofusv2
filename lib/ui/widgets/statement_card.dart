@@ -40,6 +40,13 @@ class StatementCard extends StatelessWidget {
     
     // Access global state
     final peersStatements = AppShell.instance.peersStatements.value;
+    final myStatements = AppShell.instance.myStatements.value;
+
+    final Map<String, List<TrustStatement>> allStatements = {};
+    if (peersStatements.isNotEmpty) allStatements.addAll(peersStatements);
+    if (myStatements.isNotEmpty) allStatements[myKeyToken] = myStatements;
+    final labeler = Labeler(allStatements, myKeyToken);
+    final String? label = labeler.getLabel(subjectToken);
 
     // 1. Determine Color
     Color themeColor;
@@ -138,7 +145,7 @@ class StatementCard extends StatelessWidget {
                               children: [
                                 Flexible(
                                   child: Text(
-                                    statement.moniker ?? (statement.domain ?? 'Unknown'),
+                                    label ?? 'Unknown',
                                     style: AppTypography.itemTitle,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,

@@ -53,6 +53,15 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
   bool _isFormValid = true; // Cached validity state
   bool _hasChanges = false;
 
+  static const Map<TrustVerb, String> _verbDescriptions = {
+    TrustVerb.trust: '''Trust: Human, capable, acting in good faith.
+Block: Bots, spammers, bad actors, careless, confused..''',
+    TrustVerb.block: '''Trust: Human, capable, acting in good faith.
+Block: Bots, spammers, bad actors, careless, confused..''',
+    TrustVerb.delegate: 'Delegate keys represent you on a service.',
+    TrustVerb.replace: 'Replaced by my current identity key.',
+  };
+
   static final Map<TrustVerb, List<_FieldDef>> _fieldConfigs = {
     TrustVerb.trust: [
       _FieldDef('moniker', 
@@ -174,7 +183,7 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
       default: throw StateError('Unexpected verb for title: $_selectedVerb');
     }
   }
-  
+
   // _isFormValid is now a field updated by _checkForChanges
 
   @override
@@ -194,6 +203,11 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Text(
+              _verbDescriptions[_selectedVerb]!,
+              style: AppTypography.body,
+            ),
+            const SizedBox(height: 24),
             if (_hasConflict) ...[
               VerbConflictWarning(
                 existingStatement: widget.existingStatement!,
