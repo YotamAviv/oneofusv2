@@ -67,6 +67,17 @@ class WelcomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 40),
+                  const Text(
+                    'Welcome',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.hero,
+                  ),
+                  const Text(
+                    'You have no keys on this device',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body,
+                  ),
+                  const SizedBox(height: 40),
                   ElevatedButton(
                     onPressed: () async {
                       if (firestore == null) return;
