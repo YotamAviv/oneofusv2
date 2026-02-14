@@ -23,7 +23,7 @@ class DevScreen extends StatelessWidget {
         Text('DIAGNOSTICS (DEV)', style: AppTypography.header),
         const Divider(),
         CheckboxListTile(
-          title: Text('LGTM', style: AppTypography.label),
+          title: Text('FYI', style: AppTypography.label),
           value: showLgtm,
           onChanged: (v) => onLgtmChanged(v ?? false),
         ),

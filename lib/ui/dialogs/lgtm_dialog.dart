@@ -29,7 +29,7 @@ class _LgtmDialogState extends State<LgtmDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'FYI: The exact data that will be cryptographically signed and published.',
+              'FYI: To be signed and published.',
               style: AppTypography.caption.copyWith(color: Colors.black87),
             ),
             const SizedBox(height: 16),
@@ -51,7 +51,7 @@ class _LgtmDialogState extends State<LgtmDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('EDIT'),
+          child: const Text('CANCEL'),
         ),
         FilledButton.icon(
           onPressed: () => Navigator.pop(context, true),

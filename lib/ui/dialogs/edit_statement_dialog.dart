@@ -229,7 +229,7 @@ Block: Bots, spammers, bad actors, careless, confused..''',
       actions: _isSaving ? null : [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text('CANCEL', style: AppTypography.labelSmall),
+          child: const Text('CANCEL'),
         ),
         FilledButton(
           onPressed: canSubmit ? _submit : null,
@@ -261,13 +261,6 @@ Block: Bots, spammers, bad actors, careless, confused..''',
   }
 
   void _checkForChanges() {
-    if (widget.existingStatement == null || widget.existingStatement!.verb != _selectedVerb) {
-      if (!_hasChanges) setState(() => _hasChanges = true);
-      return;
-    }
-
-    bool hasValChanges = false;
-
     // Check Validity on every change
     final fields = _fieldConfigs[_selectedVerb] ?? [];
     bool newValidity = true;
@@ -284,25 +277,31 @@ Block: Bots, spammers, bad actors, careless, confused..''',
         // However, if we wanted to show specific errors per field, we'd continue.
       }
     }
-    
-    // Check for Value Changes
-    if (widget.existingStatement == null || widget.existingStatement!.verb != _selectedVerb) {
-      // New or Verb change = always changed regardless of field values
-      hasValChanges = true;
-    } else {
-      for (var field in fields) {
-        final key = _editorKeys[field.name];
-        if (key == null || key.currentState == null) continue;
-        
-        final currentVal = (key.currentState as dynamic).value as String?;
-        final initialVal = field.initialValueGetter != null 
-            ? field.initialValueGetter!(widget.proposedStatement) 
-            : widget.proposedStatement.json[field.name] as String?;
 
-        if (currentVal != initialVal) {
-          hasValChanges = true;
-          break; // Optimization
-        }
+    if (widget.existingStatement == null || widget.existingStatement!.verb != _selectedVerb) {
+      if (!_hasChanges || _isFormValid != newValidity) {
+        setState(() {
+          _hasChanges = true;
+          _isFormValid = newValidity;
+        });
+      }
+      return;
+    }
+
+    bool hasValChanges = false;
+
+    for (var field in fields) {
+      final key = _editorKeys[field.name];
+      if (key == null || key.currentState == null) continue;
+      
+      final currentVal = (key.currentState as dynamic).value as String?;
+      final initialVal = field.initialValueGetter != null 
+          ? field.initialValueGetter!(widget.proposedStatement) 
+          : widget.proposedStatement.json[field.name] as String?;
+
+      if (currentVal != initialVal) {
+        hasValChanges = true;
+        break; // Optimization
       }
     }
 
