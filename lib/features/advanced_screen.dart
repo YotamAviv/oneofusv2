@@ -5,12 +5,16 @@ class AdvancedScreen extends StatelessWidget {
   final VoidCallback onShowBlocks;
   final VoidCallback onShowEquivalents;
   final VoidCallback onReplaceKey;
+  final bool showLgtm;
+  final ValueChanged<bool> onLgtmChanged;
 
   const AdvancedScreen({
     super.key,
     required this.onShowBlocks,
     required this.onShowEquivalents,
     required this.onReplaceKey,
+    required this.showLgtm,
+    required this.onLgtmChanged,
   });
 
   @override
@@ -62,6 +66,14 @@ class AdvancedScreen extends StatelessWidget {
                   buttonLabel: 'ROTATE IDENTITY KEY',
                   icon: Icons.published_with_changes_rounded,
                   onTap: onReplaceKey,
+                ),
+
+                const SizedBox(height: 24),
+                const Divider(),
+                CheckboxListTile(
+                  title: Text('FYI', style: AppTypography.label),
+                  value: showLgtm,
+                  onChanged: (v) => onLgtmChanged(v ?? false),
                 ),
               ],
             ),

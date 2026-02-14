@@ -668,6 +668,8 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         onShowBlocks: () => _showBlocksModal(context),
         onShowEquivalents: () => _showEquivalentsModal(context),
         onReplaceKey: () => _showReplaceKeyDialog(context),
+        showLgtm: _showLgtm,
+        onLgtmChanged: (v) => setState(() => _showLgtm = v),
       ),
       IntroScreen(
         onShowWelcome: () {
@@ -687,8 +689,6 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       if (_isDevMode)
         DevScreen(
           onRefresh: loadAllData,
-          showLgtm: _showLgtm,
-          onLgtmChanged: (v) => setState(() => _showLgtm = v),
         ),
     ];
   }

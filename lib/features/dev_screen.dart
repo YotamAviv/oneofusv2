@@ -4,14 +4,10 @@ import '../demotest/tester.dart';
 
 class DevScreen extends StatelessWidget {
   final VoidCallback onRefresh;
-  final bool showLgtm;
-  final ValueChanged<bool> onLgtmChanged;
 
   const DevScreen({
     super.key,
     required this.onRefresh,
-    required this.showLgtm,
-    required this.onLgtmChanged,
   });
 
   @override
@@ -22,11 +18,6 @@ class DevScreen extends StatelessWidget {
         const SizedBox(height: 50),
         Text('DIAGNOSTICS (DEV)', style: AppTypography.header),
         const Divider(),
-        CheckboxListTile(
-          title: Text('FYI', style: AppTypography.label),
-          value: showLgtm,
-          onChanged: (v) => onLgtmChanged(v ?? false),
-        ),
         const SizedBox(height: 12),
         Text('DEMO DATA', style: AppTypography.labelSmall.copyWith(color: Colors.blue)),
         const SizedBox(height: 12),
