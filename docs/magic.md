@@ -1,5 +1,17 @@
 # Deep Link Technologies: Magic vs. Universal
 
+## Terminology Standard
+To avoid confusion, this project uses the following specific terms:
+
+*   **Custom Scheme Link**: References a URL starting with a custom scheme like `keymeid://`.
+    *   *Also known as*: Deep Link, Custom URL Scheme.
+    *   *Behavior*: Direct app launch if installed; failure if not.
+*   **Universal/App Link**: References a standard web URL (`https://one-of-us.net/...`) configured for app interception.
+    *   *Also known as*: Universal Links (iOS), App Links (Android).
+    *   *Behavior*: Direct app launch if installed; falls back to web browser if not.
+*   **Intent Filter**: An Android-specific configuration (in `AndroidManifest.xml`) used to implement *both* Custom Scheme Links and App Links. It acts as a listener that tells the OS which URL patterns the app should intercept (e.g., `keymeid://` or `https://one-of-us.net`).
+*   **Magic Link**: A general term referring to *any* link sent (usually via email/SMS) to perform an authentication or "magic" action, regardless of the underlying technology (Scheme vs. Universal).
+
 ## Current Status (Jan 29, 2026)
 Both apps have been pushed to production on the Google Play Store and Apple App Store.
 Currently, Universal Links (iOS) and App Links (Android) are not working for either platform.
