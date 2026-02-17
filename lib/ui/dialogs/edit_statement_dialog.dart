@@ -60,16 +60,26 @@ class _EditStatementDialogState extends State<EditStatementDialog> {
   bool _isFormValid = true; // Cached validity state
   bool _hasChanges = false;
 
-  static const Map<TrustVerb, String> _verbDescriptions = {
-    TrustVerb.trust: '''You'll be vouching for this identity.
-(We're building an identity network.)
+  static const Map<TrustVerb, String> _topsNew = {
+    TrustVerb.trust: '''Vouch for this identity only if you know.''',
+    TrustVerb.block: '''Block this key.''',
+    TrustVerb.delegate: 'Delegate this key to represent you on a service.',
+    TrustVerb.replace: 'Claim this key as yours.',
+  };
+  static const Map<TrustVerb, String> _topsUpdate = {
+    TrustVerb.trust: '''(We're building an identity network.)''',
+    TrustVerb.block: '''Block this key.''',
+    TrustVerb.delegate: 'Delegate this key to represent you on a service.',
+    TrustVerb.replace: 'Claim this key as yours.',
+  };
 
-Trust: Human, capable, acting in good faith.
+  static const Map<TrustVerb, String> _bottoms = {
+    TrustVerb.trust: '''Trust: Human, capable, acting in good faith.
 Block: Bots, spammers, bad actors, careless, confused..''',
     TrustVerb.block: '''Trust: Human, capable, acting in good faith.
 Block: Bots, spammers, bad actors, careless, confused..''',
-    TrustVerb.delegate: 'Delegate keys represent you on a service.',
-    TrustVerb.replace: 'Replaced by my current identity key.',
+    TrustVerb.delegate: 'Your delegate keys represent you on different services.',
+    TrustVerb.replace: 'Your replaced keys still represent your identity.',
   };
 
   static final Map<TrustVerb, List<_FieldDef>> _fieldConfigs = {
@@ -214,15 +224,16 @@ Block: Bots, spammers, bad actors, careless, confused..''',
         throw StateError('Unexpected verb for title: $_selectedVerb');
     }
   }
-
-  // _isFormValid is now a field updated by _checkForChanges
-
+  
   @override
   Widget build(BuildContext context) {
     bool canSubmit = !_isSaving && _isFormValid && _hasChanges;
     if (_hasConflict && !_warningConfirmed) {
       canSubmit = false;
     }
+    final Map<TrustVerb, String> tops = widget.existingStatement == null ? _topsNew : _topsUpdate;
+    String top = tops[_selectedVerb]!;
+    String bottom = _bottoms[_selectedVerb]!;
     return AlertDialog(
       title: Text(_title),
       backgroundColor: Colors.white,
@@ -234,7 +245,8 @@ Block: Bots, spammers, bad actors, careless, confused..''',
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(_verbDescriptions[_selectedVerb]!, style: AppTypography.body),
+            Text(top, style: AppTypography.body),
+
             const SizedBox(height: 24),
             if (_hasConflict) ...[
               VerbConflictWarning(
@@ -246,6 +258,8 @@ Block: Bots, spammers, bad actors, careless, confused..''',
             ],
 
             ..._buildFields(),
+
+            Text(bottom, style: AppTypography.labelSmall),
 
             if (_isSaving) ...[
               const SizedBox(height: 20),

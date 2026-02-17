@@ -905,13 +905,6 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // const Text('SHARE', style: AppTypography.header),
-              // const SizedBox(height: 12),
-              
-              // Padding(
-              //   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              //   child: Text('MY IDENTITY KEY', style: AppTypography.labelSmall),
-              // ),
               ListTile(
                 leading: const Icon(Icons.share_rounded),
                 title: const Text('Share Invitation Link'),
@@ -921,46 +914,6 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                   ShareService.shareIdentityPackage();
                 },
               ),
-              // TEMP: TODO: Remove, also the implementations.
-              // ListTile(
-              //   leading: const Icon(Icons.qr_code_2_rounded),
-              //   title: const Text('Share as QR Image'),
-              //   onTap: () {
-              //     Navigator.pop(context);
-              //     ShareService.shareIdentityQr();
-              //   },
-              // ),
-              // ListTile(
-              //   leading: const Icon(Icons.code_rounded),
-              //   title: const Text('Share as JSON Text'),
-              //   onTap: () {
-              //     Navigator.pop(context);
-              //     ShareService.shareIdentityText();
-              //   },
-              // ),
-              
-              // const Divider(indent: 24, endIndent: 24),
-              
-              // Padding(
-              //   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              //   child: Text('ONE-OF-US.NET LINK', style: AppTypography.labelSmall),
-              // ),
-              // ListTile(
-              //   leading: const Icon(Icons.qr_code_rounded),
-              //   title: const Text('Show QR Code'),
-              //   onTap: () {
-              //     Navigator.pop(context);
-              //     ShareService.showQrDialog(context, ShareService.homeUrl, 'ONE-OF-US.NET');
-              //   },
-              // ),
-              // ListTile(
-              //   leading: const Icon(Icons.link_rounded),
-              //   title: const Text('Share Text Link'),
-              //   onTap: () {
-              //     Navigator.pop(context);
-              //     ShareService.shareHomeLink();
-              //   },
-              // ),
             ],
           ),
         ),

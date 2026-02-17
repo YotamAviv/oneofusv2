@@ -49,35 +49,6 @@ $prettyJson
     );
   }
 
-  static Future<void> shareIdentityText() async {
-    final Json pubKeyJson = (await Keys().getIdentityPublicKeyJson())!;
-    final String text = Jsonish(pubKeyJson).ppJson;
-    await SharePlus.instance.share(
-      ShareParams(text: text, subject: 'ONE-OF-US.NET Public Identity Key'),
-    );
-  }
-
-  static Future<void> shareIdentityQr() async {
-    final Json pubKeyJson = (await Keys().getIdentityPublicKeyJson())!;
-    final String text = Jsonish(pubKeyJson).ppJson;
-    final String token = Keys().identityToken!;
-    await _shareQrImage(text, 'oneofus_id_$token.png', 'ONE-OF-US.NET Public Identity Key QR');
-  }
-
-  static Future<void> shareHomeLink() async {
-    await SharePlus.instance.share(ShareParams(text: homeUrl, subject: 'ONE-OF-US.NET'));
-  }
-
-  static Future<void> _shareQrImage(String data, String fileName, String subject) async {
-    final Uint8List imageBytes = await _generateQrImage(data);
-    final directory = await getTemporaryDirectory();
-    final imagePath = '${directory.path}/$fileName';
-    final imageFile = File(imagePath);
-    await imageFile.writeAsBytes(imageBytes);
-
-    await SharePlus.instance.share(ShareParams(files: [XFile(imagePath)], subject: subject));
-  }
-
   static Future<Uint8List> _generateQrImage(String data) async {
     final painter = QrPainter(
       data: data,
