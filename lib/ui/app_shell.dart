@@ -68,7 +68,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   final Keys _keys = Keys();
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSubscription;
-  
+
   int _currentPageIndex = 0;
   bool _isLoading = true;
   bool _showCongrats = false;
@@ -80,11 +80,11 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedSource<TrustStatement> _source;
-  
+
   // Data State
   final ValueNotifier<List<TrustStatement>> myStatements = ValueNotifier([]);
   final ValueNotifier<Map<String, List<TrustStatement>>> peersStatements = ValueNotifier({});
-  
+
   // Legacy getters (can refactor later or keep for internal use)
   List<TrustStatement> get _myStatements => myStatements.value;
   Map<String, List<TrustStatement>> get _peersStatements => peersStatements.value;
@@ -99,9 +99,12 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     TrustStatement.init();
 
     // Initialize the statement source based on the environment
-    _firestore = widget.firestore ?? 
-                (Config.fireChoice == FireChoice.fake ? FakeFirebaseFirestore() : FirebaseFirestore.instance);
-    
+    _firestore =
+        widget.firestore ??
+        (Config.fireChoice == FireChoice.fake
+            ? FakeFirebaseFirestore()
+            : FirebaseFirestore.instance);
+
     StatementSource<TrustStatement> baseSource;
     if (Config.fireChoice != FireChoice.fake) {
       baseSource = CloudFunctionsSource<TrustStatement>(
@@ -125,22 +128,16 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       }
     });
 
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    );
-    
+    _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2));
+
     if (!widget.isTesting) {
       _pulseController.repeat(reverse: true);
     }
-    _pulseAnimation = CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    );
-    
+    _pulseAnimation = CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut);
+
     _keys.addListener(_initIdentityAndLoadData);
     _initIdentityAndLoadData();
-    
+
     if (!widget.isTesting) {
       _initDeepLinks();
     }
@@ -154,11 +151,11 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     _pageController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _initIdentityAndLoadData() async {
     try {
       final found = await _keys.load();
-      
+
       if (mounted) {
         setState(() {
           _hasKey = found;
@@ -182,9 +179,9 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   Future<void> loadAllData() async {
     final String? myToken = _keys.identityToken;
     if (myToken == null) return;
-    
+
     assert(mounted);
-    
+
     // Only show the full-screen loader if we have absolutely no data yet.
     // If we're already displaying things, just set _isRefreshing.
     final bool showFullLoader = _myStatements.isEmpty && !_isRefreshing;
@@ -193,15 +190,17 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     } else {
       setState(() => _isRefreshing = true);
     }
-    
+
     _source.clear();
-      
+
     try {
       // Fetch statements authored by the current user
-      final Map<String, List<TrustStatement>> myStatementsMap = await _source.fetch({myToken: null});
+      final Map<String, List<TrustStatement>> myStatementsMap = await _source.fetch({
+        myToken: null,
+      });
       // The source returns unmodifiable lists, so we must copy them before modification.
       final List<TrustStatement> newMyStatements = List.from(myStatementsMap[myToken] ?? []);
-      
+
       newMyStatements.removeWhere((s) => s.verb == TrustVerb.clear);
 
       // Identify direct contacts (identities trusted by the user)
@@ -209,14 +208,14 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
           .where((s) => s.verb == TrustVerb.trust)
           .map((s) => s.subjectToken)
           .toSet();
-      
+
       directContacts.remove(myToken);
-      
+
       Map<String, List<TrustStatement>> newPeersStatements = {};
       if (directContacts.isNotEmpty) {
         // Fetch statements from all direct contacts
         final Map<String, String?> keysToFetch = {
-          for (final String token in directContacts) token: null
+          for (final String token in directContacts) token: null,
         };
         // Fetch checks out immutable lists. We need to replace them with mutable ones.
         final rawPeersStatements = await _source.fetch(keysToFetch);
@@ -226,11 +225,11 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
           return MapEntry(key, mutableList);
         });
       }
-      
+
       if (mounted) {
         // Calculate notifications
         final List<String> activeNotifications = [];
-        
+
         // 1. No vouches
         final myVouches = newMyStatements.where((s) => s.verb == TrustVerb.trust).toList();
         if (myVouches.isEmpty) {
@@ -243,15 +242,19 @@ You should vouch for a capable human.
         bool hasUnrequited = false;
         for (final vouch in myVouches) {
           final peerStmts = newPeersStatements[vouch.subjectToken] ?? [];
-          final vouchedBack = peerStmts.any((s) => s.subjectToken == myToken && s.verb == TrustVerb.trust);
+          final vouchedBack = peerStmts.any(
+            (s) => s.subjectToken == myToken && s.verb == TrustVerb.trust,
+          );
           if (!vouchedBack) {
             hasUnrequited = true;
             break;
           }
         }
         if (hasUnrequited) {
-          activeNotifications.add('''Some folks you've vouched for haven't vouched for you.
-You can see who those are by looking for the confirmation check mark to the right of their names on the PEOPLE screen.''');
+          activeNotifications.add(
+            '''Some folks you've vouched for haven't vouched for you.
+You can see who those are by looking for the confirmation check mark to the right of their names on the PEOPLE screen.''',
+          );
         }
 
         setState(() {
@@ -293,11 +296,7 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   Future<void> clearStatement(TrustStatement s) async {
-    await _showClearStatementDialog(
-      context: context,
-      statement: s,
-      publicKeyJson: s.subject,
-    );
+    await _showClearStatementDialog(context: context, statement: s, publicKeyJson: s.subject);
     loadAllData();
   }
 
@@ -308,14 +307,26 @@ You can see who those are by looking for the confirmation check mark to the righ
 
   void _initDeepLinks() {
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
-      _handleIncomingLink(uri);
-    });
-
-    _appLinks.getInitialLink().then((uri) {
-      if (uri != null) {
+      if (mounted) {
         _handleIncomingLink(uri);
       }
     });
+
+    // We check `mounted` to prevent calling `_handleIncomingLink` if the widget has been disposed
+    // (e.g., during navigation or app backgrounding/termination) before the async stream event fires.
+    // Calling methods that trigger UI changes (like dialogs) on a disposed widget throws an exception.
+
+    // AI: DO NOT REMOVE MY COMMENT OR THE OLD, COMMNETED OUT CODE BELOW.
+    // There was a bug where the "Edit Statement" dialog would appeare TWICE on cold launch from a link
+    // We assume the stream alone (NEW CODE ABOVE) is sufficient (as per app_links 6+) but this needs verification.
+    // _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
+    //   _handleIncomingLink(uri);
+    // });
+    // _appLinks.getInitialLink().then((uri) {
+    //   if (uri != null) {
+    //     _handleIncomingLink(uri);
+    //   }
+    // });
   }
 
   Future<void> _executeSignIn(String data) async {
@@ -392,7 +403,10 @@ You can see who those are by looking for the confirmation check mark to the righ
     }
   }
 
-  Future<void> _onScanPressed({TrustVerb targetVerb = TrustVerb.trust, bool allowSignIn = true}) async {
+  Future<void> _onScanPressed({
+    TrustVerb targetVerb = TrustVerb.trust,
+    bool allowSignIn = true,
+  }) async {
     String title;
     String instruction;
 
@@ -408,7 +422,7 @@ You can see who those are by looking for the confirmation check mark to the righ
       case TrustVerb.trust:
       default:
         title = allowSignIn ? 'Scan Key or Sign-in Parameters' : 'Scan Key';
-        instruction = allowSignIn 
+        instruction = allowSignIn
             ? '''Scan a person's identity key to vouch for them, or 
 scan a service's sign-in parameters to identify yourself and sign in.'''
             : 'Scan a person\'s identity key to vouch for them.';
@@ -434,7 +448,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     if (scanned != null && mounted) {
       try {
         final Map<String, dynamic> json = jsonDecode(scanned);
-        
+
         if (allowSignIn && await SignInService.validateSignIn(scanned)) {
           await _executeSignIn(scanned);
         } else if (isPubKey(json)) {
@@ -442,18 +456,21 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Invalid scan data: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Invalid scan data: $e')));
         }
       }
     }
   }
 
-  Future<void> _handlePublicKeyScan(Map<String, dynamic> publicKeyJson, {TrustVerb targetVerb = TrustVerb.trust}) async {
+  Future<void> _handlePublicKeyScan(
+    Map<String, dynamic> publicKeyJson, {
+    TrustVerb targetVerb = TrustVerb.trust,
+  }) async {
     try {
       final String subjectToken = getToken(publicKeyJson);
-      
+
       if (!mounted) return;
 
       if (_keys.isIdentityToken(subjectToken)) {
@@ -462,7 +479,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           builder: (context) => AlertDialog(
             title: const Text("That's you"),
             content: Text("Don't ${targetVerb.label} yourself."),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY'))],
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('OKAY')),
+            ],
           ),
         );
         return;
@@ -478,11 +497,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         template = existing;
       } else {
         final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
-        final json = TrustStatement.make(
-          myPubKeyJson!,
-          publicKeyJson,
-          targetVerb,
-        );
+        final json = TrustStatement.make(myPubKeyJson!, publicKeyJson, targetVerb);
         template = TrustStatement(Jsonish(json));
       }
 
@@ -498,9 +513,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error parsing scanned key: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error parsing scanned key: $e')));
       }
     }
   }
@@ -531,7 +546,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
   }) async {
     final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
     if (!mounted) return;
-    
+
     await showDialog(
       context: context,
       builder: (context) => ClearStatementDialog(
@@ -543,7 +558,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
             TrustVerb.clear,
             domain: statement.domain,
           );
-          
+
           await _pushTrustStatement(TrustStatement(Jsonish(json)));
         },
       ),
@@ -555,9 +570,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
 
     if (_showLgtm) {
       // Build interpreter for LGTM dialog
-      final Map<String, List<TrustStatement>> combined = {
-        _keys.identityToken!: _myStatements,
-      };
+      final Map<String, List<TrustStatement>> combined = {_keys.identityToken!: _myStatements};
       combined.addAll(_peersStatements);
       final labeler = Labeler(combined, _keys.identityToken!);
       final interpreter = OneOfUsInterpreter(labeler);
@@ -580,7 +593,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     final isMyDelegate = _keys.isDelegateToken(token);
     final isRevoking = (statement.verb == TrustVerb.delegate && statement.revokeAt != null);
     final isClearing = (statement.verb == TrustVerb.clear);
-    
+
     if (isMyDelegate && (isRevoking || isClearing)) {
       final bool proceed = await _confirmDeleteDelegate(isRevoking);
       if (!proceed) return;
@@ -588,52 +601,59 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
 
     try {
       await _executePush(statement, isMyDelegate, isRevoking, isClearing, token);
-      
+
       if (mounted) {
         _showSuccessSnackBar(statement);
         await loadAllData();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error pushing statement: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error pushing statement: $e')));
       }
     }
   }
 
   Future<bool> _confirmDeleteDelegate(bool isRevoking) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Local Key?'),
-        content: Text(
-          'You are ${isRevoking ? "revoking" : "clearing"} a delegate authorization '
-          'for which you have the private key stored on this device.\n\n'
-          'If you proceed, this key will be PERMANENTLY deleted from your local keyring after the network statement is published.'
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCEL'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              isRevoking ? 'REVOKE & DELETE' : 'CLEAR & DELETE',
-              style: AppTypography.label.copyWith(color: Colors.red),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Remove Local Key?'),
+            content: Text(
+              'You are ${isRevoking ? "revoking" : "clearing"} a delegate authorization '
+              'for which you have the private key stored on this device.\n\n'
+              'If you proceed, this key will be PERMANENTLY deleted from your local keyring after the network statement is published.',
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('CANCEL'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  isRevoking ? 'REVOKE & DELETE' : 'CLEAR & DELETE',
+                  style: AppTypography.label.copyWith(color: Colors.red),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
 
-  Future<void> _executePush(TrustStatement statement, bool isMyDelegate, bool isRevoking, bool isClearing, String token) async {
+  Future<void> _executePush(
+    TrustStatement statement,
+    bool isMyDelegate,
+    bool isRevoking,
+    bool isClearing,
+    String token,
+  ) async {
     final writer = DirectFirestoreWriter(_firestore);
     final identity = _keys.identity!; // Checked in caller
     final signer = await OouSigner.make(identity);
-    
+
     final mutableJson = Map<String, dynamic>.from(statement.json);
     await writer.push(mutableJson, signer);
 
@@ -645,18 +665,19 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
   void _showSuccessSnackBar(TrustStatement statement) {
     // Determine label and color
     final (String label, Color color) = switch (statement.verb) {
-      TrustVerb.trust    => ('Trusted', const Color(0xFF00897B)),
-      TrustVerb.block    => ('Blocked', Colors.red),
-      TrustVerb.clear    => ('Cleared', Colors.orange),
-      TrustVerb.replace  => ('Updated ID History', Colors.green),
-      TrustVerb.delegate => statement.revokeAt == null 
-          ? ('Delegated', const Color(0xFF0288D1)) 
-          : ('Revoked', Colors.blueGrey),
+      TrustVerb.trust => ('Trusted', const Color(0xFF00897B)),
+      TrustVerb.block => ('Blocked', Colors.red),
+      TrustVerb.clear => ('Cleared', Colors.orange),
+      TrustVerb.replace => ('Updated ID History', Colors.green),
+      TrustVerb.delegate =>
+        statement.revokeAt == null
+            ? ('Delegated', const Color(0xFF0288D1))
+            : ('Revoked', Colors.blueGrey),
     };
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label: Success'), backgroundColor: color),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$label: Success'), backgroundColor: color));
   }
 
   void _handleDevClick() {
@@ -668,17 +689,15 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       setState(() {
         _isDevMode = true;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Developer Mode Enabled')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Developer Mode Enabled')));
     }
   }
 
   List<Widget> get _pages {
     return [
-      CardScreen(
-        cardKey: _cardKey,
-      ),
+      CardScreen(cardKey: _cardKey),
       const PeopleScreen(),
       const DelegatesScreen(),
       const ImportExportScreen(),
@@ -694,20 +713,14 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => CongratulationsScreen(
-                onContinue: () => Navigator.pop(context),
-              ),
+              builder: (context) => CongratulationsScreen(onContinue: () => Navigator.pop(context)),
             ),
           );
         },
       ),
-      if (_notifications.isNotEmpty)
-        NotificationsScreen(notifications: _notifications),
+      if (_notifications.isNotEmpty) NotificationsScreen(notifications: _notifications),
       AboutScreen(onDevClick: _handleDevClick),
-      if (_isDevMode)
-        DevScreen(
-          onRefresh: loadAllData,
-        ),
+      if (_isDevMode) DevScreen(onRefresh: loadAllData),
     ];
   }
 
@@ -716,7 +729,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    
+
     final myToken = _keys.identityToken;
     if (!_hasKey || myToken == null) {
       return WelcomeScreen(
@@ -726,9 +739,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     }
 
     if (_showCongrats) {
-      return CongratulationsScreen(
-        onContinue: () => setState(() => _showCongrats = false),
-      );
+      return CongratulationsScreen(onContinue: () => setState(() => _showCongrats = false));
     }
 
     final pages = _pages;
@@ -760,28 +771,32 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _currentPageIndex == 0 
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Image.asset(
-                                  'assets/oneofus_1024.png',
-                                  height: 32,
-                                  errorBuilder: (context, _, __) => const Icon(Icons.shield_rounded, size: 32, color: Color(0xFF00897B)),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'ONE-OF-US.NET',
-                                  style: AppTypography.header.copyWith(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w800,
-                                    fontFamily: 'serif',
+                        _currentPageIndex == 0
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    'assets/oneofus_1024.png',
+                                    height: 32,
+                                    errorBuilder: (context, _, __) => const Icon(
+                                      Icons.shield_rounded,
+                                      size: 32,
+                                      color: Color(0xFF00897B),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            )
-                          : const SizedBox.shrink(),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'ONE-OF-US.NET',
+                                    style: AppTypography.header.copyWith(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      fontFamily: 'serif',
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : const SizedBox.shrink(),
 
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -789,11 +804,19 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                           children: [
                             if (_currentPageIndex != 0) ...[
                               GestureDetector(
-                                onTap: () => _pageController.animateToPage(0, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut),
+                                onTap: () => _pageController.animateToPage(
+                                  0,
+                                  duration: const Duration(milliseconds: 500),
+                                  curve: Curves.easeInOut,
+                                ),
                                 child: const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: Icon(Icons.badge_outlined, color: Color(0xFF37474F), size: 24),
+                                  child: Icon(
+                                    Icons.badge_outlined,
+                                    color: Color(0xFF37474F),
+                                    size: 24,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 6),
@@ -803,7 +826,11 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                               child: const SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: Icon(Icons.refresh_rounded, color: Color(0xFF00897B), size: 24),
+                                child: Icon(
+                                  Icons.refresh_rounded,
+                                  color: Color(0xFF00897B),
+                                  size: 24,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -812,7 +839,11 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                                 if (_notifications.isNotEmpty) {
                                   final index = pages.indexWhere((p) => p is NotificationsScreen);
                                   if (index != -1) {
-                                    _pageController.animateToPage(index, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
+                                    _pageController.animateToPage(
+                                      index,
+                                      duration: const Duration(milliseconds: 500),
+                                      curve: Curves.easeInOut,
+                                    );
                                   }
                                 }
                               },
@@ -829,10 +860,13 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                                               height: 10,
                                               decoration: BoxDecoration(
                                                 shape: BoxShape.circle,
-                                                color: (_isRefreshing
-                                                        ? const Color(0xFF00897B)
-                                                        : Colors.redAccent)
-                                                    .withOpacity(0.3 + (0.7 * _pulseAnimation.value)),
+                                                color:
+                                                    (_isRefreshing
+                                                            ? const Color(0xFF00897B)
+                                                            : Colors.redAccent)
+                                                        .withOpacity(
+                                                          0.3 + (0.7 * _pulseAnimation.value),
+                                                        ),
                                               ),
                                             );
                                           },
@@ -848,7 +882,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                   ),
                 ),
               ),
-              
+
               if (!isLandscape && _currentPageIndex == 0) ...[
                 Positioned(
                   bottom: 30,
@@ -898,7 +932,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
   void _showShareMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
@@ -927,7 +963,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       isScrollControlled: true,
       backgroundColor: Colors.white,
       useSafeArea: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: 1.0,
         minChildSize: 0.9,
@@ -942,9 +980,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                 onPressed: () => Navigator.pop(context),
               ),
             ),
-            Expanded(
-              child: BlocksScreen(scrollController: scrollController),
-            ),
+            Expanded(child: BlocksScreen(scrollController: scrollController)),
           ],
         ),
       ),
@@ -957,7 +993,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       isScrollControlled: true,
       backgroundColor: Colors.white,
       useSafeArea: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       builder: (modalContext) => StatefulBuilder(
         builder: (context, setModalState) {
           return DraggableScrollableSheet(
@@ -968,7 +1006,14 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
             builder: (context, scrollController) => Column(
               children: [
                 const SizedBox(height: 12),
-                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
                 Expanded(
                   child: HistoryScreen(
                     scrollController: scrollController,
@@ -981,7 +1026,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
               ],
             ),
           );
-        }
+        },
       ),
     );
   }
@@ -1013,23 +1058,70 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+        ),
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(2))),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             const SizedBox(height: 32),
-            _HubTile(icon: Icons.credit_card_outlined, title: 'CARD', onTap: () => jumpTo((w) => w is CardScreen)),
-            _HubTile(icon: Icons.people_outline, title: 'PEOPLE', onTap: () => jumpTo((w) => w is PeopleScreen)),
-            _HubTile(icon: Icons.shield_moon_outlined, title: 'SERVICES', onTap: () => jumpTo((w) => w is DelegatesScreen)),
-            _HubTile(icon: Icons.vpn_key_outlined, title: 'IMPORT / EXPORT', onTap: () => jumpTo((w) => w is ImportExportScreen)),
-            _HubTile(icon: Icons.settings_accessibility_rounded, title: 'ADVANCED', onTap: () => jumpTo((w) => w is AdvancedScreen)),
-            _HubTile(icon: Icons.menu_book_rounded, title: 'INTRO', onTap: () => jumpTo((w) => w is IntroScreen)),
+            _HubTile(
+              icon: Icons.credit_card_outlined,
+              title: 'CARD',
+              onTap: () => jumpTo((w) => w is CardScreen),
+            ),
+            _HubTile(
+              icon: Icons.people_outline,
+              title: 'PEOPLE',
+              onTap: () => jumpTo((w) => w is PeopleScreen),
+            ),
+            _HubTile(
+              icon: Icons.shield_moon_outlined,
+              title: 'SERVICES',
+              onTap: () => jumpTo((w) => w is DelegatesScreen),
+            ),
+            _HubTile(
+              icon: Icons.vpn_key_outlined,
+              title: 'IMPORT / EXPORT',
+              onTap: () => jumpTo((w) => w is ImportExportScreen),
+            ),
+            _HubTile(
+              icon: Icons.settings_accessibility_rounded,
+              title: 'ADVANCED',
+              onTap: () => jumpTo((w) => w is AdvancedScreen),
+            ),
+            _HubTile(
+              icon: Icons.menu_book_rounded,
+              title: 'INTRO',
+              onTap: () => jumpTo((w) => w is IntroScreen),
+            ),
             if (_notifications.isNotEmpty)
-              _HubTile(icon: Icons.notifications_none, title: 'NOTIFICATIONS', onTap: () => jumpTo((w) => w is NotificationsScreen)),
-            _HubTile(icon: Icons.help_outline_rounded, title: 'ABOUT', onTap: () => jumpTo((w) => w is AboutScreen)),
-            if (_isDevMode) _HubTile(icon: Icons.bug_report_outlined, title: 'DEV', onTap: () => jumpTo((w) => w is DevScreen)),
+              _HubTile(
+                icon: Icons.notifications_none,
+                title: 'NOTIFICATIONS',
+                onTap: () => jumpTo((w) => w is NotificationsScreen),
+              ),
+            _HubTile(
+              icon: Icons.help_outline_rounded,
+              title: 'ABOUT',
+              onTap: () => jumpTo((w) => w is AboutScreen),
+            ),
+            if (_isDevMode)
+              _HubTile(
+                icon: Icons.bug_report_outlined,
+                title: 'DEV',
+                onTap: () => jumpTo((w) => w is DevScreen),
+              ),
           ],
         ),
       ),
