@@ -2,7 +2,7 @@ These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
 ## BUGS
-- not always refreshed (stay on main screen? don't allow stuff (modal)?)
+- not always refreshed (stay on main screen? don't allow stuff (modal)?) Fix attempt in place. (singleTask)
 - clicking invitation leaves dialog up. Fix attempt in place.
 - don't always see stuff on card page (used to want to hide that in landscape)  Fix attempt in place.
 
