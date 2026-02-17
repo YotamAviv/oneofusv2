@@ -120,14 +120,6 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       Tester.init(DirectFirestoreWriter(_firestore));
     }
 
-    _pageController.addListener(() {
-      if (_pageController.page?.round() != _currentPageIndex) {
-        setState(() {
-          _currentPageIndex = _pageController.page!.round();
-        });
-      }
-    });
-
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2));
 
     if (!widget.isTesting) {
@@ -748,140 +740,143 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       backgroundColor: const Color(0xFFF2F0EF),
       body: OrientationBuilder(
         builder: (context, orientation) {
-          bool isLandscape = orientation == Orientation.landscape;
+          final bool isLandscape = orientation == Orientation.landscape;
 
           return Stack(
             children: [
               PageView(
                 controller: _pageController,
                 physics: const BouncingScrollPhysics(),
+                onPageChanged: (index) => setState(() => _currentPageIndex = index),
                 children: pages,
               ),
 
-              // Global Header Row
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, _topSafeAreaPadding, 24, 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _currentPageIndex == 0
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Image.asset(
-                                    'assets/oneofus_1024.png',
-                                    height: 32,
-                                    errorBuilder: (context, _, __) => const Icon(
-                                      Icons.shield_rounded,
-                                      size: 32,
-                                      color: Color(0xFF00897B),
+              if (!isLandscape || _currentPageIndex != 0) ...[
+                // Global Header Row
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, _topSafeAreaPadding, 24, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          _currentPageIndex == 0
+                              ? Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                      'assets/oneofus_1024.png',
+                                      height: 32,
+                                      errorBuilder: (context, _, __) => const Icon(
+                                        Icons.shield_rounded,
+                                        size: 32,
+                                        color: Color(0xFF00897B),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'ONE-OF-US.NET',
-                                    style: AppTypography.header.copyWith(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      fontFamily: 'serif',
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'ONE-OF-US.NET',
+                                      style: AppTypography.header.copyWith(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        fontFamily: 'serif',
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              )
-                            : const SizedBox.shrink(),
+                                  ],
+                                )
+                              : const SizedBox.shrink(),
 
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            if (_currentPageIndex != 0) ...[
-                              GestureDetector(
-                                onTap: () => _pageController.animateToPage(
-                                  0,
-                                  duration: const Duration(milliseconds: 500),
-                                  curve: Curves.easeInOut,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              if (_currentPageIndex != 0) ...[
+                                GestureDetector(
+                                  onTap: () => _pageController.animateToPage(
+                                    0,
+                                    duration: const Duration(milliseconds: 500),
+                                    curve: Curves.easeInOut,
+                                  ),
+                                  child: const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: Icon(
+                                      Icons.badge_outlined,
+                                      color: Color(0xFF37474F),
+                                      size: 24,
+                                    ),
+                                  ),
                                 ),
+                                const SizedBox(width: 6),
+                              ],
+                              GestureDetector(
+                                onTap: loadAllData,
                                 child: const SizedBox(
                                   width: 24,
                                   height: 24,
                                   child: Icon(
-                                    Icons.badge_outlined,
-                                    color: Color(0xFF37474F),
+                                    Icons.refresh_rounded,
+                                    color: Color(0xFF00897B),
                                     size: 24,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 6),
-                            ],
-                            GestureDetector(
-                              onTap: loadAllData,
-                              child: const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: Icon(
-                                  Icons.refresh_rounded,
-                                  color: Color(0xFF00897B),
-                                  size: 24,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            GestureDetector(
-                              onTap: () {
-                                if (_notifications.isNotEmpty) {
-                                  final index = pages.indexWhere((p) => p is NotificationsScreen);
-                                  if (index != -1) {
-                                    _pageController.animateToPage(
-                                      index,
-                                      duration: const Duration(milliseconds: 500),
-                                      curve: Curves.easeInOut,
-                                    );
+                              GestureDetector(
+                                onTap: () {
+                                  if (_notifications.isNotEmpty) {
+                                    final index = pages.indexWhere((p) => p is NotificationsScreen);
+                                    if (index != -1) {
+                                      _pageController.animateToPage(
+                                        index,
+                                        duration: const Duration(milliseconds: 500),
+                                        curve: Curves.easeInOut,
+                                      );
+                                    }
                                   }
-                                }
-                              },
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: Center(
-                                  child: (_isRefreshing || _notifications.isNotEmpty)
-                                      ? AnimatedBuilder(
-                                          animation: _pulseAnimation,
-                                          builder: (context, child) {
-                                            return Container(
-                                              width: 10,
-                                              height: 10,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                    (_isRefreshing
-                                                            ? const Color(0xFF00897B)
-                                                            : Colors.redAccent)
-                                                        .withOpacity(
-                                                          0.3 + (0.7 * _pulseAnimation.value),
-                                                        ),
-                                              ),
-                                            );
-                                          },
-                                        )
-                                      : const SizedBox.shrink(),
+                                },
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: Center(
+                                    child: (_isRefreshing || _notifications.isNotEmpty)
+                                        ? AnimatedBuilder(
+                                            animation: _pulseAnimation,
+                                            builder: (context, child) {
+                                              return Container(
+                                                width: 10,
+                                                height: 10,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color:
+                                                      (_isRefreshing
+                                                              ? const Color(0xFF00897B)
+                                                              : Colors.redAccent)
+                                                          .withOpacity(
+                                                            0.3 + (0.7 * _pulseAnimation.value),
+                                                          ),
+                                                ),
+                                              );
+                                            },
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
 
               if (!isLandscape && _currentPageIndex == 0) ...[
                 Positioned(

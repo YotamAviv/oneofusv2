@@ -2,9 +2,9 @@ These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
 ## BUGS
-- clicking invitation leaves dialog up
 - not always refreshed (stay on main screen? don't allow stuff (modal)?)
-- don't always see stuff on card page (used to want to hide that in landscape)
+- clicking invitation leaves dialog up. Fix attempt in place.
+- don't always see stuff on card page (used to want to hide that in landscape)  Fix attempt in place.
 
 ## Nice ones:
 flutter emulators --launch Pixel_7a_API_35
