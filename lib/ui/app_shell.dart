@@ -120,6 +120,17 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       Tester.init(DirectFirestoreWriter(_firestore));
     }
 
+    _pageController.addListener(() {
+      if (_pageController.hasClients && _pageController.page != null) {
+        final int page = _pageController.page!.round();
+        if (page != _currentPageIndex) {
+          setState(() {
+            _currentPageIndex = page;
+          });
+        }
+      }
+    });
+
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2));
 
     if (!widget.isTesting) {
@@ -307,18 +318,6 @@ You can see who those are by looking for the confirmation check mark to the righ
     // We check `mounted` to prevent calling `_handleIncomingLink` if the widget has been disposed
     // (e.g., during navigation or app backgrounding/termination) before the async stream event fires.
     // Calling methods that trigger UI changes (like dialogs) on a disposed widget throws an exception.
-
-    // AI: DO NOT REMOVE MY COMMENT OR THE OLD, COMMNETED OUT CODE BELOW.
-    // There was a bug where the "Edit Statement" dialog would appeare TWICE on cold launch from a link
-    // We assume the stream alone (NEW CODE ABOVE) is sufficient (as per app_links 6+) but this needs verification.
-    // _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
-    //   _handleIncomingLink(uri);
-    // });
-    // _appLinks.getInitialLink().then((uri) {
-    //   if (uri != null) {
-    //     _handleIncomingLink(uri);
-    //   }
-    // });
   }
 
   Future<void> _executeSignIn(String data) async {
