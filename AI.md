@@ -49,23 +49,25 @@ You (the AI) wrote this document to guide your future self so you could do a bet
 
     - Do not promise to change your future behavior or "never" do something again, as you are a stateless model and cannot guarantee future compliance.
 
-12. **Respect Test Failures.**
+12. **Announce changes to previous decisions.**
+
+13. **Respect Test Failures.**
 
     - Do not modify test setup, environment flags, or debug settings solely to make a test pass.
     - Test failures are valuable signal that the code is broken or the test expectation is wrong.
   
-13. **Document Reality.**
+14. **Document Reality.**
 
     - When the human asks you to document how something works, that's the task.
     - If you don't like how it currently works, you can't invent it to work differently and document that instead.
 
-14. **Check for Compile Errors Before Running Tests.**
+15. **Check for Compile Errors Before Running Tests.**
     - Before running tests, always check for compile-time errors using `get_errors`. Running tests on broken code is a waste of time and confuses the user.
 
-15. **Respect Running Processes.**
+16. **Respect Running Processes.**
     - Do not kill or restart long-running processes (like emulators, servers, or databases) without asking the user first.
 
-16. **Avoid Initiatives and Stylistic Choices.**
+17. **Avoid Initiatives and Stylistic Choices.**
     - Do not take any initiatives that weren't explicitly requested.
     - Follow instructions literally and strictly.
     - Avoid adding emphasis, extra styling, or "improvements" that weren't asked for.

@@ -96,5 +96,46 @@ static Future<void> shareIdentityPackage() async {
     *   **Workflow:** User copies image in email app -> Opens Scanner -> Taps "Paste" -> App analyzes clipboard image.
     *   **Feasibility:** Medium/Low. Standard Flutter `Clipboard` API primarily handles text. Accessing image data usually requires additional packages (like `pasteboard` or `super_clipboard`) and handling generic permissions.
 
+## Web Infrastructure Strategy (The Fallback Page)
+
+Currently, `one-of-us.net` is a static HTML site (built from pieces in the `nerdster` repo via `stage_oneofus.sh`) and has no logic to handle dynamic keys.
+
+To support the "Magic Link" fallback (where a user clicks `https://one-of-us.net/vouch#...` on a desktop without the app), we need client-side logic to parse the URL and display a scannable QR code.
+
+### Option 1: Lightweight "Smart" HTML Page (Recommended)
+
+Add a `vouch.html` page to the static site that uses standard JavaScript.
+
+*   **Mechanism:**
+    1.  The link points to `https://one-of-us.net/vouch.html#<key_data>`.
+    2.  The HTML page loads instantly (no Flutter engine download).
+    3.  A small JS script reads the `#hash` data.
+    4.  It uses a lightweight JS library (like `qrcode.js` from a CDN) to render the QR code on a canvas.
+    5.  It displays "Open App" and "Copy Key" buttons.
+*   **Pros:** Instant load time; perfect for a quick "scan this" fallback; easiest to integrate into existing `stage_oneofus.sh` script.
+*   **Cons:** Logic must be written in JS (duplicating Dart).
+
+### Option 2: Full Flutter Web App
+
+Compile the `one_of_us` Flutter app (or a subset) to Web and host it at `one-of-us.net`.
+
+*   **Mechanism:**
+    1.  Link points to `https://one-of-us.net/#/vouch/<key_data>`.
+    2.  Browser downloads the Flutter engine (~2MB).
+    3.  Dart code parses the key and renders the exact `QrWidget` used in the mobile app.
+*   **Pros:** Perfect visual consistency; code reuse (Dart).
+*   **Cons:** Slower initial load; requires configuring the Flutter project for Web support.
+
+### Proposed Plan: "The Hybrid" (Option 1)
+
+Since `stage_oneofus.sh` already builds the site, we can implement Option 1 easily:
+
+1.  **Create `web/vouch.html` in the Nerdster project.**
+    *   This file will contain the layout, CDN link to QR lib, and parsing logic.
+2.  **Update `bin/stage_oneofus.sh`** to copy this file to `build/web/vouch.html`.
+3.  **Deploy** via existing Firebase command.
+
+This aligns with the goal of a robust fallback without over-engineering a full web app for a single feature.
+
 
 

@@ -371,6 +371,24 @@ You can see who those are by looking for the confirmation check mark to the righ
       } else if (dataParam != null) {
         await _executeSignIn(dataParam);
       }
+    } else if (uri.path.contains('vouch')) {
+      // Handle Magic Link (vouch.html#<base64Key>)
+      // The path might be /vouch.html or /vouch
+      final fragment = uri.fragment;
+      if (fragment.isNotEmpty) {
+        try {
+          final jsonStr = utf8.decode(base64Url.decode(fragment));
+          final dynamic json = jsonDecode(jsonStr);
+          if (json is Map<String, dynamic> && isPubKey(json)) {
+            // We need to wait for the UI to be ready
+            if (mounted) {
+              await _handlePublicKeyScan(json);
+            }
+          }
+        } catch (e) {
+          debugPrint('Error parsing vouch link: $e');
+        }
+      }
     }
   }
 
@@ -887,52 +905,62 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('SHARE', style: AppTypography.header),
-              const SizedBox(height: 12),
+              // const Text('SHARE', style: AppTypography.header),
+              // const SizedBox(height: 12),
               
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('MY IDENTITY KEY', style: AppTypography.labelSmall),
-              ),
+              // Padding(
+              //   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              //   child: Text('MY IDENTITY KEY', style: AppTypography.labelSmall),
+              // ),
               ListTile(
-                leading: const Icon(Icons.qr_code_2_rounded),
-                title: const Text('Share as QR Image'),
+                leading: const Icon(Icons.share_rounded),
+                title: const Text('Share Invitation Link'),
+                subtitle: const Text('Includes App Link, key QR code and Text'),
                 onTap: () {
                   Navigator.pop(context);
-                  ShareService.shareIdentityQr();
+                  ShareService.shareIdentityPackage();
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.code_rounded),
-                title: const Text('Share as JSON Text'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ShareService.shareIdentityText();
-                },
-              ),
+              // TEMP: TODO: Remove, also the implementations.
+              // ListTile(
+              //   leading: const Icon(Icons.qr_code_2_rounded),
+              //   title: const Text('Share as QR Image'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     ShareService.shareIdentityQr();
+              //   },
+              // ),
+              // ListTile(
+              //   leading: const Icon(Icons.code_rounded),
+              //   title: const Text('Share as JSON Text'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     ShareService.shareIdentityText();
+              //   },
+              // ),
               
-              const Divider(indent: 24, endIndent: 24),
+              // const Divider(indent: 24, endIndent: 24),
               
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text('ONE-OF-US.NET LINK', style: AppTypography.labelSmall),
-              ),
-              ListTile(
-                leading: const Icon(Icons.qr_code_rounded),
-                title: const Text('Show QR Code'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ShareService.showQrDialog(context, ShareService.homeUrl, 'ONE-OF-US.NET');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.link_rounded),
-                title: const Text('Share Text Link'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ShareService.shareHomeLink();
-                },
-              ),
+              // Padding(
+              //   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              //   child: Text('ONE-OF-US.NET LINK', style: AppTypography.labelSmall),
+              // ),
+              // ListTile(
+              //   leading: const Icon(Icons.qr_code_rounded),
+              //   title: const Text('Show QR Code'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     ShareService.showQrDialog(context, ShareService.homeUrl, 'ONE-OF-US.NET');
+              //   },
+              // ),
+              // ListTile(
+              //   leading: const Icon(Icons.link_rounded),
+              //   title: const Text('Share Text Link'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     ShareService.shareHomeLink();
+              //   },
+              // ),
             ],
           ),
         ),

@@ -33,6 +33,14 @@
                 <data android:scheme="https" android:host="one-of-us.net" android:pathPrefix="/sign-in" />
             </intent-filter>
 
+            <!-- App Links for Vouching (Magic Links) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="one-of-us.net" android:pathPrefix="/vouch" />
+            </intent-filter>
+
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
