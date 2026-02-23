@@ -944,6 +944,15 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                   ShareService.shareIdentityPackage();
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.qr_code_rounded),
+                title: const Text('Show Home link QR Code'),
+                subtitle: const Text(ShareService.homeUrl),
+                onTap: () {
+                  Navigator.pop(context);
+                  ShareService.showQrDialog(context, ShareService.homeUrl, ShareService.homeUrl);
+                },
+              ),
             ],
           ),
         ),
