@@ -1,10 +1,6 @@
-import 'dart:io';
 import 'dart:convert';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'keys.dart';
@@ -15,52 +11,21 @@ class ShareService {
 
   static Future<void> shareIdentityPackage() async {
     final Json pubKeyJson = (await Keys().getIdentityPublicKeyJson())!;
-    final String prettyJson = Jsonish(pubKeyJson).ppJson;
     final String minJson = jsonEncode(Jsonish(pubKeyJson).json);
     final String base64Key = base64Url.encode(utf8.encode(minJson));
-    final String token = Keys().identityToken!;
 
     final String deepLink = "$homeUrl/vouch.html#$base64Key";
 
-    // DEBUG: Print link for easy testing in emulator
-    debugPrint('SHARE LINK: $deepLink');
+    // DEBUG: Print link for testing in emulator
+    debugPrint('deepLink: $deepLink');
 
-    final String message = '''We're building a decentralized identity network.
-Use this link to vouch for my identity: $deepLink
+    final String message =
+        '''We're building a decentralized identity network.
 
-App store links and more at: https://one-of-us.net
-
-In case the link doesn't work, use your ONE-OF-US.NET phone app to scan the QR code or copy/paste the text below:
-
-
-$prettyJson
-
-
+Vouch for me using this link: $deepLink
 ''';
 
-    final Uint8List imageBytes = await _generateQrImage(prettyJson);
-    final directory = await getTemporaryDirectory();
-    final imagePath = '${directory.path}/oneofus_id_$token.png';
-    final imageFile = File(imagePath);
-    await imageFile.writeAsBytes(imageBytes);
-
-    await SharePlus.instance.share(
-      ShareParams(files: [XFile(imagePath)], text: message, subject: 'Vouch for my identity'),
-    );
-  }
-
-  static Future<Uint8List> _generateQrImage(String data) async {
-    final painter = QrPainter(
-      data: data,
-      version: QrVersions.auto,
-      gapless: true,
-      color: const Color(0xFF000000),
-      emptyColor: const Color(0xFFFFFFFF),
-    );
-
-    final ui.Image image = await painter.toImage(1024);
-    final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    return byteData!.buffer.asUint8List();
+    await SharePlus.instance.share(ShareParams(text: message, subject: 'Vouch for my identity'));
   }
 
   static void showQrDialog(BuildContext context, String data, String title) {

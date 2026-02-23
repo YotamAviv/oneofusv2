@@ -354,12 +354,28 @@ You can see who those are by looking for the confirmation check mark to the righ
     if (!mounted || !_hasKey) return;
 
     if (uri.scheme == 'keymeid') {
-      final dataBase64 = uri.queryParameters['parameters'];
-      if (dataBase64 != null) {
+      // Vouch link: keymeid://vouch#<base64key>
+      if (uri.host == 'vouch' && uri.fragment.isNotEmpty) {
         try {
-          final data = utf8.decode(base64Url.decode(dataBase64));
-          await _executeSignIn(data);
-        } catch (e) {}
+          final jsonStr = utf8.decode(base64Url.decode(uri.fragment));
+          final dynamic json = jsonDecode(jsonStr);
+          if (json is Map<String, dynamic> && isPubKey(json)) {
+            if (mounted) {
+              await _handlePublicKeyScan(json);
+            }
+          }
+        } catch (e) {
+          debugPrint('Error parsing keymeid vouch link: $e');
+        }
+      } else {
+        // Sign-in link: keymeid://?parameters=<base64data>
+        final dataBase64 = uri.queryParameters['parameters'];
+        if (dataBase64 != null) {
+          try {
+            final data = utf8.decode(base64Url.decode(dataBase64));
+            await _executeSignIn(data);
+          } catch (e) {}
+        }
       }
     } else if (uri.path.contains('sign-in')) {
       final dataParam = uri.queryParameters['data'];
