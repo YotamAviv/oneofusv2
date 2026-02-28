@@ -71,10 +71,7 @@ class _TextFieldEditorState extends FieldEditorState<TextFieldEditor, String> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.label.toUpperCase(),
-          style: AppTypography.labelSmall,
-        ),
+        Text(widget.label.toUpperCase(), style: AppTypography.labelSmall),
         const SizedBox(height: 8),
         TextField(
           controller: _controller,
@@ -147,10 +144,7 @@ class _TextBoxEditorState extends FieldEditorState<TextBoxEditor, String> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.label.toUpperCase(),
-          style: AppTypography.labelSmall,
-        ),
+        Text(widget.label.toUpperCase(), style: AppTypography.labelSmall),
         const SizedBox(height: 8),
         TextField(
           controller: _controller,
@@ -179,11 +173,7 @@ class _TextBoxEditorState extends FieldEditorState<TextBoxEditor, String> {
 class DelegateRevokeAtEditor extends FieldEditor {
   final String? initialRevokeAt;
 
-  const DelegateRevokeAtEditor({
-    super.key,
-    required this.initialRevokeAt,
-    super.onChanged,
-  });
+  const DelegateRevokeAtEditor({super.key, required this.initialRevokeAt, super.onChanged});
 
   @override
   // ignore: library_private_types_in_public_api
@@ -204,17 +194,17 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
 
   @override
   bool get isValid {
-      const kSinceAlways = '<since always>';
-      final isActive = currentRevokeAt == null;
-      final isFullyRevoked = currentRevokeAt == kSinceAlways;
-      final isPartiallyRevoked = !isActive && !isFullyRevoked;
+    const kSinceAlways = '<since always>';
+    final isActive = currentRevokeAt == null;
+    final isFullyRevoked = currentRevokeAt == kSinceAlways;
+    final isPartiallyRevoked = !isActive && !isFullyRevoked;
 
-      if (isPartiallyRevoked) {
-        if (currentRevokeAt == null || !RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(currentRevokeAt!)) {
-          return false;
-        }
+    if (isPartiallyRevoked) {
+      if (currentRevokeAt == null || !RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(currentRevokeAt!)) {
+        return false;
       }
-      return true;
+    }
+    return true;
   }
 
   void _updateAndNotify() {
@@ -231,10 +221,7 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'STATUS',
-          style: AppTypography.labelSmall,
-        ),
+        Text('STATUS', style: AppTypography.labelSmall),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -272,9 +259,10 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
             onSelected: () {
               if (!isPartiallyRevoked) {
                 setState(() {
-                  currentRevokeAt = (widget.initialRevokeAt != null && widget.initialRevokeAt != kSinceAlways) 
-                    ? widget.initialRevokeAt 
-                    : "";
+                  currentRevokeAt =
+                      (widget.initialRevokeAt != null && widget.initialRevokeAt != kSinceAlways)
+                      ? widget.initialRevokeAt
+                      : "";
                 });
                 _updateAndNotify();
               }
@@ -291,9 +279,10 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('REVOKE AT STATEMENT TOKEN',
-                        style: AppTypography.labelSmall.copyWith(
-                            color: Colors.grey.shade600)),
+                    Text(
+                      'REVOKE AT STATEMENT TOKEN',
+                      style: AppTypography.labelSmall.copyWith(color: Colors.grey.shade600),
+                    ),
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -303,10 +292,15 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
                         border: Border.all(color: Colors.grey.shade300),
                       ),
                       child: SelectableText(
-                        (currentRevokeAt == null || currentRevokeAt!.isEmpty) ? "(Scan Statement or Token)" : currentRevokeAt!,
+                        (currentRevokeAt == null || currentRevokeAt!.isEmpty)
+                            ? "(Scan Statement Token QR Code)"
+                            : currentRevokeAt!,
                         style: AppTypography.mono.copyWith(
-                            fontSize: 10, 
-                            color: (currentRevokeAt == null || currentRevokeAt!.isEmpty) ? Colors.grey : Colors.black87),
+                          fontSize: 10,
+                          color: (currentRevokeAt == null || currentRevokeAt!.isEmpty)
+                              ? Colors.grey
+                              : Colors.black87,
+                        ),
                         maxLines: 1,
                       ),
                     ),
@@ -320,7 +314,8 @@ class _DelegateRevokeAtEditorState extends FieldEditorState<DelegateRevokeAtEdit
                   final scanned = await QrScanner.scan(
                     context,
                     title: 'Scan revokeAt Statement Token',
-                    instruction: 'Scan the token of the last valid statement signed by the key you want to revoke.',
+                    instruction:
+                        'Scan the token of the last valid statement signed by the key you want to revoke.',
                     validator: (code) async => RegExp(r'^[a-fA-F0-9]{40}$').hasMatch(code),
                   );
                   if (scanned != null) {
@@ -401,16 +396,12 @@ class ReplaceRevokeAt extends StatelessWidget {
               children: [
                 Text(
                   'PERMANENT REPLACEMENT',
-                  style: AppTypography.labelSmall.copyWith(
-                    color: Colors.orange.shade900,
-                  ),
+                  style: AppTypography.labelSmall.copyWith(color: Colors.orange.shade900),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Old key revoked <since always>',
-                  style: AppTypography.label.copyWith(
-                    color: Colors.orange.shade800,
-                  ),
+                  style: AppTypography.label.copyWith(color: Colors.orange.shade800),
                 ),
               ],
             ),
