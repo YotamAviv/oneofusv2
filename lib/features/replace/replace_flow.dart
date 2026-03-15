@@ -331,12 +331,17 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
       try {
         final json = jsonDecode(result);
 
-        if (json is Map<String, dynamic> && isPubKey(json)) {
-          final token = getToken(json);
-          setState(() {
-            _oldIdentityToken = token;
-            _oldIdentityPubKeyJson = json;
-          });
+        if (json is Map<String, dynamic>) {
+          final pubKey = extractKeyFromPayload(json);
+          if (pubKey != null) {
+            final token = getToken(pubKey);
+            setState(() {
+              _oldIdentityToken = token;
+              _oldIdentityPubKeyJson = pubKey;
+            });
+          } else {
+            throw Exception('Could not find identity token in the scanned QR code.');
+          }
         } else {
           throw Exception('Could not find identity token in the scanned QR code.');
         }

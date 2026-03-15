@@ -359,10 +359,9 @@ You can see who those are by looking for the confirmation check mark to the righ
         try {
           final jsonStr = utf8.decode(base64Url.decode(uri.fragment));
           final dynamic json = jsonDecode(jsonStr);
-          if (json is Map<String, dynamic> && isPubKey(json)) {
-            if (mounted) {
-              await _handlePublicKeyScan(json);
-            }
+          if (json is Map<String, dynamic>) {
+            final pubKey = extractKeyFromPayload(json);
+            if (pubKey != null && mounted) await _handlePublicKeyScan(pubKey);
           }
         } catch (e) {
           debugPrint('Error parsing keymeid vouch link: $e');
@@ -397,11 +396,9 @@ You can see who those are by looking for the confirmation check mark to the righ
         try {
           final jsonStr = utf8.decode(base64Url.decode(fragment));
           final dynamic json = jsonDecode(jsonStr);
-          if (json is Map<String, dynamic> && isPubKey(json)) {
-            // We need to wait for the UI to be ready
-            if (mounted) {
-              await _handlePublicKeyScan(json);
-            }
+          if (json is Map<String, dynamic>) {
+            final pubKey = extractKeyFromPayload(json);
+            if (pubKey != null && mounted) await _handlePublicKeyScan(pubKey);
           }
         } catch (e) {
           debugPrint('Error parsing vouch link: $e');
@@ -445,7 +442,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           final json = jsonDecode(data);
           if (json is! Map<String, dynamic>) return false;
           if (allowSignIn && await SignInService.validateSignIn(data)) return true;
-          return isPubKey(json);
+          return extractKeyFromPayload(json) != null;
         } catch (_) {
           return false;
         }
@@ -458,8 +455,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
 
         if (allowSignIn && await SignInService.validateSignIn(scanned)) {
           await _executeSignIn(scanned);
-        } else if (isPubKey(json)) {
-          await _handlePublicKeyScan(json, targetVerb: targetVerb);
+        } else {
+          final pubKey = extractKeyFromPayload(json);
+          if (pubKey != null) await _handlePublicKeyScan(pubKey, targetVerb: targetVerb);
         }
       } catch (e) {
         if (mounted) {
