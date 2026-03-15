@@ -81,6 +81,53 @@ organization. See [export_api.yaml](export_api.yaml) for documentation of our ow
 
 ---
 
+## Backward Compatibility
+
+### QR code format
+
+The current QR code contains just the raw public key JSON (`{"crv":...,"kty":...,"x":...}`).
+Changing it to a wrapped object `{"key":..., "home":...}` is a **breaking format change**:
+an old app scanning a new-format QR will fail to parse it as a key.
+
+The rollout must be two-phased:
+- **Phase 1:** Ship a new app version that can *read* both old (bare key) and new (wrapped)
+  formats, but still *writes* the old bare-key format. No user impact.
+- **Phase 2:** Ship a follow-up version that *writes* the new wrapped format.
+
+Phase 2 can only be safe once virtually all users are on Phase 1 or later. The question
+is: **how do you know when that is?**
+
+### The version adoption problem
+
+There is no perfect answer — users who install the app and never update are invisible.
+The practical options:
+
+**App Store / Play Store version distribution**
+Both platforms provide a version breakdown of your active install base in the developer
+console. Monitor the percentage of installs still on pre-Phase-1 versions. When that
+number is negligible (e.g., <1–2%), it is reasonably safe to ship Phase 2.
+
+**Server-side version logging**
+Record the app version on each sign-in (or any server call). This gives you a live view
+of which versions are actively being used, not just installed. Users who never open the
+app aren't a real concern — they won't be scanning QR codes.
+
+**Firebase Remote Config (feature flag)**
+Gate the Phase 2 QR write format behind a remote flag. Leave it off at launch and only
+enable it after version distribution data confirms sufficient adoption. This decouples
+the code change from the rollout decision.
+
+**Minimum version enforcement**
+Optionally configure a minimum supported app version in Firebase Remote Config. Old
+clients are shown "please update to continue." This is heavy-handed but gives a hard
+guarantee. Could be targeted to only users who attempt to scan a QR code.
+
+**Vouch statements are unaffected.** Adding `home` to vouch `with` clauses is purely
+additive — existing signed statements default to `export.one-of-us.net` and remain valid
+indefinitely. No version adoption concern there.
+
+---
+
 ## Work: Protocol Changes *(likely to implement)*
 
 These changes update the protocol to carry home information. If a non-`export.one-of-us.net`
