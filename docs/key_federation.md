@@ -166,4 +166,6 @@ homes and interoperate with third-party organizations.
 
 - [ ] **Document the ONE-OF-US.NET export API** as a reference that third parties may
   optionally follow. This does not make our API a prescribed standard — other organizations
-  may design their own interfaces. See [export_api.md](export_api.md). *(Deferred.)*
+  may design their own interfaces. See [`export_api.yaml`](../../nerdster14/functions/openapi.yaml)
+  (OpenAPI 3.1). Optionally, copy to `nerdster14/web/` to serve statically at
+  `nerdster.org/openapi.yaml` (same mechanism as `vouch.html`).
