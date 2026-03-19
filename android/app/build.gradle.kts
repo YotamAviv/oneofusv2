@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "net.oneofus.app"
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -29,7 +29,7 @@ android {
 
     defaultConfig {
         applicationId = "net.oneofus.app"
-        minSdk = 23 // Required by cloud_firestore
+        minSdk = flutter.minSdkVersion // Required by cloud_firestore
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
