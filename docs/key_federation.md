@@ -77,7 +77,9 @@ a legacy payload that omits `home`.
 The ONE-OF-US.NET phone app publishes to `export.one-of-us.net`. Third-party organizations
 build and operate their own apps and backends. There is no requirement that third parties
 use our API design — the protocol for how a home stores and serves statements is up to each
-organization. See [export_api.yaml](export_api.yaml) for documentation of our own implementation.
+organization. Our own implementation is documented in
+[`openapi.yaml`](../../nerdster14/functions/openapi.yaml), served live at
+[`export.one-of-us.net/openapi.yaml`](https://export.one-of-us.net/openapi.yaml).
 
 ---
 
@@ -152,6 +154,18 @@ implemented"** error is shown. Implementation details are deferred.
 
 ---
 
+## Export API Documentation *(done)*
+
+- [x] **Document the ONE-OF-US.NET export API** as a reference that third parties may
+  optionally follow. This does not make our API a prescribed standard — other organizations
+  may design their own interfaces. [`openapi.yaml`](../../nerdster14/functions/openapi.yaml)
+  (OpenAPI 3.1) is served live at
+  [`export.nerdster.org/openapi.yaml`](https://export.nerdster.org/openapi.yaml) and
+  [`export.one-of-us.net/openapi.yaml`](https://export.one-of-us.net/openapi.yaml)
+  via a path check in the `export` Cloud Function.
+
+---
+
 ## Work: Full Federation Support *(probably not implementing)*
 
 These changes allow the trust pipeline to actually fetch from non-`export.one-of-us.net`
@@ -164,8 +178,36 @@ homes and interoperate with third-party organizations.
   `export.one-of-us.net`. Requires knowing how to read delegate statements from a foreign
   home.
 
-- [ ] **Document the ONE-OF-US.NET export API** as a reference that third parties may
-  optionally follow. This does not make our API a prescribed standard — other organizations
-  may design their own interfaces. See [`export_api.yaml`](../../nerdster14/functions/openapi.yaml)
-  (OpenAPI 3.1). Optionally, copy to `nerdster14/web/` to serve statically at
-  `nerdster.org/openapi.yaml` (same mechanism as `vouch.html`).
+---
+
+## Demo / Marketing: Display-Injected `home`
+
+**Goal:** Make demos and marketing materials look like the Key Federation protocol is
+already live — showing a heterogeneous, decentralized network not owned by one-of-us.net
+— without changing any transmitted data or breaking any old app versions.
+
+**Rule:** Wherever a key or vouch statement is *displayed as text* to the user (not
+transmitted, signed, or scanned), inject `home: "export.one-of-us.net"` into the
+rendered output when the field is absent. Signed data on Firestore is never touched.
+
+**Scope boundary:** QR code content, invitation link payloads, Firestore statement bytes
+are all unchanged. Only on-screen text display is affected.
+
+### Surfaces to change
+
+| Surface | File | Change |
+|---------|------|--------|
+| **vouch.html key textarea** | `nerdster14/web/vouch.html` | Show `{"key": <bareKey>, "home": "export.one-of-us.net"}` in the textarea. QR `text:` is unaffected (built separately). |
+| **Phone app key JSON popup** | `oneofusv22/…/statement_card.dart` `_showJson(context, statement.subject)` | Wrap key JSON to `{"key":…, "home":"export.one-of-us.net"}` before displaying. |
+| **Phone app statement JSON popup** | `oneofusv22/…/statement_card.dart` `_showJson(context, statement.jsonish.json)` | Inject `"home": "export.one-of-us.net"` into the display copy of the `with` sub-map if absent. |
+| **Phone app vouch edit dialog** | `oneofusv22/…/edit_statement_dialog.dart` | Add a read-only HOME row below the other fields for `TrustVerb.trust`. |
+| **Nerdster vouch tiles** | `nerdster14/…/node_details.dart` `_buildStatementTile` | Show home in small text next to moniker, defaulting to `export.one-of-us.net` if absent. |
+
+### Implementation notes
+
+- A small display helper `displayKeyWithHome(Map pubKey)` →
+  `{"key": pubKey, "home": "export.one-of-us.net"}` can be added to `util.dart` for
+  use in display-only contexts.
+- `statement.jsonish['home']` is the field on the statement's `with` clause.  Default
+  to `"export.one-of-us.net"` when null, for display only.
+- No changes to `TrustStatement.make()`, signing, or any transmission path.
