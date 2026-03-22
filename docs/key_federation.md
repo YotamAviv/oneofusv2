@@ -9,16 +9,17 @@ fetched from a different endpoint.
 
 The ONE-OF-US.NET phone app itself will always home to `export.one-of-us.net`. The goal of
 this work is to define a protocol that allows third-party organizations to build their own
-compatible apps and infrastructure, so that ONE-OF-US.NET account holders can vouch for and
-be vouched for by people whose keys are homed elsewhere.
+compatible apps and infrastructure, so that ONE-OF-US.NET account holders can
+- vouch for people whose keys are homed elsewhere
+- be vouched for by people whose keys are homed elsewhere
+- replace their key with a key homed elsewhere
 
 ---
 
 ## Terminology
 
 - **Home**: the identifier of the organization whose infrastructure stores a key's statements.
-  Today this is always `export.one-of-us.net`. Other organizations may use a different
-  identifier format — details TBD (possibly a URI, a domain, or a structured descriptor).
+  Today this is always `export.one-of-us.net`.
 - **Homed key**: an identity key paired with a home identifier.
 - **Native key**: a key homed at `export.one-of-us.net` (the only kind today).
 
@@ -54,7 +55,9 @@ Example:
 ```
 
 **Backward compatibility:** Existing `net.one-of-us` statements without a `home` field
-default to `export.one-of-us.net`. No migration needed.
+default to `export.one-of-us.net`. 
+Migration is not possible as these statements exist and are signed
+by private keys which we don't have. And so we ensure that no migration is needed.
 
 ### QR codes and invitation links carry the home
 
@@ -71,6 +74,9 @@ includes their home alongside the public key:
 **Backward compatibility:** Existing QR codes and invitation links without `home` are treated
 as `export.one-of-us.net`. The ONE-OF-US.NET phone app assumes the default home when scanning
 a legacy payload that omits `home`.
+Examples:
+- old invitation links in people's emails
+- old QR codes distributed in a variety of ways
 
 ### Each organization operates its own infrastructure
 
@@ -81,6 +87,21 @@ organization. Our own implementation is documented in
 [`openapi.yaml`](../../nerdster14/functions/openapi.yaml), served live at
 [`export.one-of-us.net/openapi.yaml`](https://export.one-of-us.net/openapi.yaml).
 
+### Key replacement across homes
+TODO: Clear this up. there is no "transferring" of trust and reputation to yourself.
+
+Key replacement uses the existing `replace` statement: the **new key** signs a statement
+claiming the old key and/or additionally revoking the old key and/or 
+re-sigining statements made by the replaced key.
+How this is done is up to the identity service and/or person.
+How the replace statement is interpreted is up to services.
+The Nerdster and ONE-OF-US.NET describe the semantics of a replace statement in 
+[`trust_statement_semantics.md`](../../nerdster14/docs/trust_statement_semantics.md).
+
+Under Key Federation, the two keys may have different homes. No new protocol is needed
+— the `replace` statement is unchanged. The only requirement is that the trust pipeline
+can fetch statements from the old key's foreign home, which is part of Full Federation Support.
+
 ---
 
 ## Backward Compatibility
@@ -89,36 +110,40 @@ organization. Our own implementation is documented in
 
 The current QR code contains just the raw public key JSON (`{"crv":...,"kty":...,"x":...}`).
 Changing it to a wrapped object `{"key":..., "home":...}` is a **breaking format change**:
-an old app scanning a new-format QR will fail to parse it as a key.
+an old app scanning a new-format QR will fail to parse it as a key. The same applies to
+invitation links.
 
-The rollout must be two-phased:
-- **Phase 1:** Ship a new app version that can *read* both old (bare key) and new (wrapped)
-  formats, but still *writes* the old bare-key format. No user impact.
-- **Phase 2:** Ship a follow-up version that *writes* the new wrapped format.
+The breaking change only occurs when the app **shows** a QR code or **sends** an invitation
+in the new format. Scanning/parsing the new format is always safe to ship first.
 
-Phase 2 can only be safe once virtually all users are on Phase 1 or later. The question
-is: **how do you know when that is?**
+Rollout plan:
+- **Phase 1:** Ship a new app version that can scan both old and new formats, but still
+  shows the old bare-key format. No user impact. A checkbox on the Advanced screen
+  (default off) enables showing the new wrapped format.
+- **Phase 2:** Ship a follow-up version that always shows the new wrapped format. Only
+  safe once virtually all users are on Phase 1 or later.
 
 ### The version adoption problem
 
 There is no perfect answer — users who install the app and never update are invisible.
-The practical options:
 
-**App Store / Play Store version distribution**
-Both platforms provide a version breakdown of your active install base in the developer
-console. Monitor the percentage of installs still on pre-Phase-1 versions. When that
-number is negligible (e.g., <1–2%), it is reasonably safe to ship Phase 2.
+**App Store / Play Store version distribution** — the primary approach. Both platforms
+provide a version breakdown of the active install base. When pre-Phase-1 installs drop to
+negligible (e.g., <1–2%), it is reasonably safe to ship Phase 2.
 
+UNLIKELY:
 **Server-side version logging**
 Record the app version on each sign-in (or any server call). This gives you a live view
 of which versions are actively being used, not just installed. Users who never open the
 app aren't a real concern — they won't be scanning QR codes.
 
+QUESTIONABLE: probably not worth the hassle.
 **Firebase Remote Config (feature flag)**
 Gate the Phase 2 QR write format behind a remote flag. Leave it off at launch and only
 enable it after version distribution data confirms sufficient adoption. This decouples
 the code change from the rollout decision.
 
+DONE: But too late. Versions exist in the wild without this enhancement.
 **Minimum version enforcement**
 Optionally configure a minimum supported app version in Firebase Remote Config. Old
 clients are shown "please update to continue." This is heavy-handed but gives a hard
@@ -166,7 +191,7 @@ implemented"** error is shown. Implementation details are deferred.
 
 ---
 
-## Work: Full Federation Support *(probably not implementing)*
+## Work: Full Federation Support *(UNLIKELY ANYTIME SOON)*
 
 These changes allow the trust pipeline to actually fetch from non-`export.one-of-us.net`
 homes and interoperate with third-party organizations.
@@ -178,9 +203,16 @@ homes and interoperate with third-party organizations.
   `export.one-of-us.net`. Requires knowing how to read delegate statements from a foreign
   home.
 
+  *Note: cross-home key replacement also falls out of this — once the trust pipeline can
+  fetch from any home, `replace` statements work across homes without any protocol change.*
+
 ---
 
-## Demo / Marketing: Display-Injected `home`
+## Demo / Marketing: Display-Injected `home` *(not pursuing)*
+
+> This approach — injecting `home` into display-only text as a cosmetic hack — was
+> abandoned in favor of implementing the real protocol (Phase 1 QR/vouch changes with a
+> demo checkbox). The details below are kept for reference only.
 
 **Goal:** Make demos and marketing materials look like the Key Federation protocol is
 already live — showing a heterogeneous, decentralized network not owned by one-of-us.net
