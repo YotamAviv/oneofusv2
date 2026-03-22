@@ -17,6 +17,7 @@ dependencies:
 
   # V2 Data Layer requirements
   firebase_core: ^4.0.0
+  firebase_remote_config: ^6.2.0
   cloud_firestore: ^6.0.0
   fake_cloud_firestore: ^4.0.1
   flutter_secure_storage: ^9.2.2
