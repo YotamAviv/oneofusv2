@@ -55,9 +55,8 @@ Example:
 ```
 
 **Backward compatibility:** Existing `net.one-of-us` statements without a `home` field
-default to `export.one-of-us.net`. 
-Migration is not possible as these statements exist and are signed
-by private keys which we don't have. And so we ensure that no migration is needed.
+default to `export.one-of-us.net`. Migration is both unnecessary and impossible:
+existing statements are signed by private keys we don't hold.
 
 ### QR codes and invitation links carry the home
 
@@ -74,6 +73,7 @@ includes their home alongside the public key:
 **Backward compatibility:** Existing QR codes and invitation links without `home` are treated
 as `export.one-of-us.net`. The ONE-OF-US.NET phone app assumes the default home when scanning
 a legacy payload that omits `home`.
+
 Examples:
 - old invitation links in people's emails
 - old QR codes distributed in a variety of ways
@@ -88,15 +88,13 @@ organization. Our own implementation is documented in
 [`export.one-of-us.net/openapi.yaml`](https://export.one-of-us.net/openapi.yaml).
 
 ### Key replacement across homes
-TODO: Clear this up. there is no "transferring" of trust and reputation to yourself.
 
 Key replacement uses the existing `replace` statement: the **new key** signs a statement
-claiming the old key and/or additionally revoking the old key and/or 
-re-sigining statements made by the replaced key.
-How this is done is up to the identity service and/or person.
-How the replace statement is interpreted is up to services.
-The Nerdster and ONE-OF-US.NET describe the semantics of a replace statement in 
-[`trust_statement_semantics.md`](../../nerdster14/docs/trust_statement_semantics.md).
+claiming the old key. Depending on implementation, this may also include revoking the old
+key and/or re-signing statements made by the old key. How this is carried out is up to
+the identity service and/or the person. How a `replace` statement is interpreted is up to
+each service. See [`trust_statement_semantics.md`](../../nerdster14/docs/trust_statement_semantics.md)
+for how the Nerdster and ONE-OF-US.NET define these semantics.
 
 Under Key Federation, the two keys may have different homes. No new protocol is needed
 — the `replace` statement is unchanged. The only requirement is that the trust pipeline
