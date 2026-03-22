@@ -153,27 +153,82 @@ indefinitely. No version adoption concern there.
 
 ---
 
-## Work: Protocol Changes *(likely to implement)*
+## Implementation Plan
 
-These changes update the protocol to carry home information. If a non-`export.one-of-us.net`
-home is encountered at runtime, a graceful **"Unsupported: Key Federation not yet
-implemented"** error is shown. Implementation details are deferred.
+**Phase 1 (this sweep) is nearly identical to Phase 2.** The only difference is that the
+QR code / invitation link format checkbox defaults to *off*, so old phone installations
+that cannot parse the wrapped `{key, home}` format continue to work. Phase 2 is a
+one-line change: flip that default to on (or remove the checkbox).
 
-- [ ] **Vouch statement schema**: add optional `home` to the `with` clause. `net.one-of-us`
-  statements without `home` default to `export.one-of-us.net`. Existing signed statements
-  are unaffected.
+Everything else — `home` in statements, `home` in sign-in, Nerdster using the home for
+fetching — ships unconditionally in Phase 1.
 
-- [ ] **QR code / invitation link format**: extend the payload to include `home`. Existing
-  QR codes and links without `home` are treated as `export.one-of-us.net` (backwards
-  compatible).
+Missing `home` in any context always defaults to `export.one-of-us.net`.
 
-- [ ] **ONE-OF-US.NET phone app**: include `home` in vouches, QR codes, and invitation
-  links. Assume `export.one-of-us.net` when parsing legacy payloads that omit `home`.
-  *(Phone app changes are a prerequisite for the Nerdster changes below.)*
+---
 
-- [ ] **Nerdster sign-in**: accept an optional `home` field in the sign-in payload.
-  If absent, default to `export.one-of-us.net`. If present and `home != export.one-of-us.net`,
-  fail with: *"Unsupported: Key Federation not yet implemented."* Details deferred.
+### `oneofus_common` *(changes apply to both repo copies)*
+
+- [x] **Parse `home` from QR / invitation payloads**: exists as `extractKeyFromPayload()`
+  in `util.dart`. Superseded by `HomedKey.fromPayload()` below.
+
+- [ ] **`HomedKey` class** (add to `keys.dart`): `(pubKeyJson: Json, home: String)` pair.
+  - Static registry keyed by token: `HomedKey.find(token) → HomedKey?`.
+  - `HomedKey.fromPayload(json)`: parses old (bare key) and new (`{key, home}`) formats;
+    defaults to `export.one-of-us.net` when `home` absent; rejects unknown homes with
+    `UnsupportedError`.
+  - Constructor auto-registers in registry.
+  - `String get fetchUrl => 'https://$home'` — URL derived naturally from home.
+
+- [ ] **`TrustStatement` changes**:
+  - Add `final String? home` field, parsed from `with.home`.
+  - In factory constructor: if `home` present, register `HomedKey(subject, home)`.
+  - In `make()`: add `String? home` param for `trust` and `replace` only; write to
+    `with` clause. Not valid for `block`, `clear`, `delegate`.
+
+---
+
+### ONE-OF-US.NET phone app (`oneofusv22`)
+
+- [ ] Replace `extractKeyFromPayload()` call sites with `HomedKey.fromPayload()`.
+  Remove old function from `util.dart`.
+
+- [ ] **Vouch / replace creation** (`app_shell.dart`): pass `homedKey.home` to
+  `TrustStatement.make()`. Home flows in from the scanned `HomedKey`.
+
+- [ ] **Sign-in payload** (`sign_in_service.dart`): send
+  `HomedKey(identityPubKeyJson).toPayload()` = `{key, home}` as the `identity` field.
+
+- [ ] **Advanced screen checkbox**: "Show home in QR code / invitations" — default off.
+  Gates the two items below.
+
+- [ ] **QR code format** (`card_screen.dart` / `identity_card_surface.dart`): when
+  checkbox on, encode `HomedKey(myPubKeyJson).toPayload()` as QR content.
+
+- [ ] **Invitation link format** (`share_service.dart`): when checkbox on, base64-encode
+  `HomedKey(myPubKeyJson).toPayload()` in the link.
+
+---
+
+### Nerdster (`nerdster14`)
+
+- [ ] **Sign-in handler** (`sign_in.js` or equivalent): parse `identity` field using
+  `HomedKey.fromPayload()` — accepts both old (bare key JSON) and new (`{key, home}`)
+  formats. Old phone installations continue to work; missing `home` defaults to
+  `export.one-of-us.net`.
+
+- [ ] **`KeyStore`**: store and retrieve `home` alongside the identity public key.
+  If `home` is absent in stored data (old sessions), default to `export.one-of-us.net`.
+
+- [ ] **`main.dart` DEFER resolved** (lines 105-111): read the stored `home` from
+  `KeyStore` on startup; call `FirebaseConfig.registerUrl(kOneofusDomain, homedKey.fetchUrl)`
+  instead of hardcoding `'https://export.one-of-us.net'`.
+
+---
+
+### Phase 2
+
+Remove the checkbox from the Advanced screen (or default it to true). One-line change.
 
 ---
 
