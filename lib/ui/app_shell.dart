@@ -36,7 +36,7 @@ import '../features/people_screen.dart';
 import '../features/replace/replace_flow.dart';
 import '../features/welcome_screen.dart';
 import '../ui/interpreter.dart';
-import 'package:oneofus_common/keys.dart' show HomedKey;
+import 'package:oneofus_common/keys.dart' show FedKey;
 import 'app_typography.dart';
 import 'dialogs/clear_statement_dialog.dart';
 import 'dialogs/edit_statement_dialog.dart';
@@ -361,8 +361,8 @@ You can see who those are by looking for the confirmation check mark to the righ
           final jsonStr = utf8.decode(base64Url.decode(uri.fragment));
           final dynamic json = jsonDecode(jsonStr);
           if (json is Map<String, dynamic>) {
-            final homedKey = HomedKey.fromPayload(json);
-            if (homedKey != null && mounted) await _handlePublicKeyScan(homedKey);
+            final fedKey = FedKey.fromPayload(json);
+            if (fedKey != null && mounted) await _handlePublicKeyScan(fedKey);
           }
         } catch (e) {
           debugPrint('Error parsing keymeid vouch link: $e');
@@ -398,8 +398,8 @@ You can see who those are by looking for the confirmation check mark to the righ
           final jsonStr = utf8.decode(base64Url.decode(fragment));
           final dynamic json = jsonDecode(jsonStr);
           if (json is Map<String, dynamic>) {
-            final homedKey = HomedKey.fromPayload(json);
-            if (homedKey != null && mounted) await _handlePublicKeyScan(homedKey);
+            final fedKey = FedKey.fromPayload(json);
+            if (fedKey != null && mounted) await _handlePublicKeyScan(fedKey);
           }
         } catch (e) {
           debugPrint('Error parsing vouch link: $e');
@@ -443,7 +443,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           final json = jsonDecode(data);
           if (json is! Map<String, dynamic>) return false;
           if (allowSignIn && await SignInService.validateSignIn(data)) return true;
-          return HomedKey.fromPayload(json) != null;
+          return FedKey.fromPayload(json) != null;
         } catch (_) {
           return false;
         }
@@ -457,8 +457,8 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         if (allowSignIn && await SignInService.validateSignIn(scanned)) {
           await _executeSignIn(scanned);
         } else {
-          final homedKey = HomedKey.fromPayload(json);
-          if (homedKey != null) await _handlePublicKeyScan(homedKey, targetVerb: targetVerb);
+          final fedKey = FedKey.fromPayload(json);
+          if (fedKey != null) await _handlePublicKeyScan(fedKey, targetVerb: targetVerb);
         }
       } catch (e) {
         if (mounted) {
@@ -471,11 +471,11 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
   }
 
   Future<void> _handlePublicKeyScan(
-    HomedKey homedKey, {
+    FedKey fedKey, {
     TrustVerb targetVerb = TrustVerb.trust,
   }) async {
     try {
-      final String subjectToken = getToken(homedKey.pubKeyJson);
+      final String subjectToken = getToken(fedKey.pubKeyJson);
 
       if (!mounted) return;
 
@@ -505,9 +505,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
         final json = TrustStatement.make(
           myPubKeyJson!,
-          homedKey.pubKeyJson,
+          fedKey.pubKeyJson,
           targetVerb,
-          endpoint: homedKey.endpoint,
+          endpoint: fedKey.endpoint,
         );
         template = TrustStatement(Jsonish(json));
       }
@@ -516,7 +516,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         context: context,
         statement: template,
         existingStatement: existing,
-        publicKeyJson: homedKey.pubKeyJson,
+        publicKeyJson: fedKey.pubKeyJson,
         isNewScan: true,
         // If we are initiating a Block or Delegate scan, we lock the verb.
         // If Trust, EditStatementDialog logic permits switch to Block if no conflict.

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:oneofus/ui/app_shell.dart';
 import 'package:oneofus_common/clock.dart';
-import 'package:oneofus_common/keys.dart' show HomedKey;
+import 'package:oneofus_common/keys.dart' show FedKey;
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/crypto/crypto.dart';
@@ -332,12 +332,12 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         final json = jsonDecode(result);
 
         if (json is Map<String, dynamic>) {
-          final homedKey = HomedKey.fromPayload(json);
-          if (homedKey != null) {
-            final token = getToken(homedKey.pubKeyJson);
+          final fedKey = FedKey.fromPayload(json);
+          if (fedKey != null) {
+            final token = getToken(fedKey.pubKeyJson);
             setState(() {
               _oldIdentityToken = token;
-              _oldIdentityPubKeyJson = homedKey.pubKeyJson;
+              _oldIdentityPubKeyJson = fedKey.pubKeyJson;
             });
           } else {
             throw Exception('Could not find identity token in the scanned QR code.');

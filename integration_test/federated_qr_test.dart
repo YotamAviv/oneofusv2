@@ -6,7 +6,7 @@ import 'package:oneofus/core/config.dart';
 import 'package:oneofus/core/keys.dart';
 import 'package:oneofus/main.dart' as app;
 import 'package:oneofus/ui/identity_card_surface.dart';
-import 'package:oneofus_common/keys.dart' show HomedKey;
+import 'package:oneofus_common/keys.dart' show FedKey;
 import 'test_utils.dart';
 
 void main() {
@@ -38,7 +38,7 @@ void main() {
       // Get my public key so we can verify QR content
       final myPubKeyJson = (await Keys().getIdentityPublicKeyJson())!;
       final bareKeyStr = jsonEncode(myPubKeyJson);
-      final federatedStr = jsonEncode(HomedKey(myPubKeyJson).toPayload());
+      final federatedStr = jsonEncode(FedKey(myPubKeyJson).toPayload());
 
       debugPrint('TEST: bare QR: $bareKeyStr');
       debugPrint('TEST: fed QR: $federatedStr');

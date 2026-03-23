@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
-import 'package:oneofus_common/keys.dart' show HomedKey;
+import 'package:oneofus_common/keys.dart' show FedKey;
 import 'package:oneofus_common/trust_statement.dart';
 import '../core/keys.dart';
 import '../ui/identity_card_surface.dart';
@@ -35,7 +35,7 @@ class CardScreen extends StatelessWidget {
                 final jsonKey = json == null
                     ? 'no-key'
                     : showFederatedQr
-                        ? jsonEncode(HomedKey(json).toPayload())
+                        ? jsonEncode(FedKey(json).toPayload())
                         : jsonEncode(json);
                 
                 String myMoniker = 'Me';

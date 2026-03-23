@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
-import 'package:oneofus_common/keys.dart' show HomedKey;
+import 'package:oneofus_common/keys.dart' show FedKey;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'keys.dart';
@@ -13,7 +13,7 @@ class ShareService {
   static Future<void> shareIdentityPackage({bool showFederatedQr = false}) async {
     final Json pubKeyJson = (await Keys().getIdentityPublicKeyJson())!;
     final dynamic payload =
-        showFederatedQr ? HomedKey(pubKeyJson).toPayload() : Jsonish(pubKeyJson).json;
+        showFederatedQr ? FedKey(pubKeyJson).toPayload() : Jsonish(pubKeyJson).json;
     final String minJson = jsonEncode(payload);
     final String base64Key = base64Url.encode(utf8.encode(minJson));
 

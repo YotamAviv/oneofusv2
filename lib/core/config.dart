@@ -69,13 +69,13 @@ class Config {
   }
 
 
-  /// Translates a canonical URL (e.g. from [HomedKey.fetchUrl]) to the actual
+  /// Translates a canonical URL (e.g. from [FedKey.fetchUrl]) to the actual
   /// endpoint for the current environment.
   ///
   /// In emulator mode, prod URLs are silently redirected to local equivalents
   /// so call sites never need to know about [fireChoice].
   /// Phase 2 federation code should call [resolveUrl] instead of using
-  /// [HomedKey.fetchUrl] directly.
+  /// [FedKey.fetchUrl] directly.
   static String resolveUrl(String url) {
     if (fireChoice == FireChoice.emulator) {
       return _emulatorRedirects[url] ?? url;
