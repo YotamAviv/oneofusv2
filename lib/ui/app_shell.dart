@@ -507,7 +507,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           myPubKeyJson!,
           homedKey.pubKeyJson,
           targetVerb,
-          home: homedKey.home,
+          endpoint: homedKey.endpoint,
         );
         template = TrustStatement(Jsonish(json));
       }
