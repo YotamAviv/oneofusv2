@@ -80,11 +80,11 @@ class AdvancedScreen extends StatelessWidget {
                   onChanged: (v) => onLgtmChanged(v ?? false),
                 ),
                 CheckboxListTile(
-                  title: Text('Include home in QR / invitation links',
-                      style: AppTypography.label),
+                  title: Text('Federated identity QR / invitations', style: AppTypography.label),
                   subtitle: const Text(
-                      'Emit {key, home} format. Leave off for compatibility with older app versions.',
-                      style: TextStyle(fontSize: 12)),
+                    'Leave off for compatibility with older app versions.',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   value: showFederatedQr,
                   onChanged: (v) => onFederatedQrChanged(v ?? false),
                 ),
