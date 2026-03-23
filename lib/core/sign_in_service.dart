@@ -8,6 +8,7 @@ import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/crypto/crypto.dart';
 import 'package:oneofus_common/crypto/crypto25519.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'package:oneofus_common/keys.dart' show HomedKey;
 import 'package:oneofus_common/direct_firestore_writer.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -149,7 +150,7 @@ class SignInService {
       }
 
       final Map<String, dynamic> send = {
-        'identity': identityPubKeyJson,
+        'identity': HomedKey(identityPubKeyJson).toPayload(),
         'session': session,
         'endpoint': Config.exportUrlForServer,
         'appInfo': {

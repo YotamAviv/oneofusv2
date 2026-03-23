@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/keys.dart' show HomedKey;
 import 'package:oneofus_common/trust_statement.dart';
 import '../core/keys.dart';
 import '../ui/identity_card_surface.dart';
@@ -8,10 +9,12 @@ import '../ui/app_shell.dart';
 
 class CardScreen extends StatelessWidget {
   final GlobalKey<IdentityCardSurfaceState>? cardKey;
+  final bool showFederatedQr;
 
   const CardScreen({
     super.key,
     this.cardKey,
+    this.showFederatedQr = false,
   });
 
   @override
@@ -28,7 +31,12 @@ class CardScreen extends StatelessWidget {
             return FutureBuilder<Json?>(
               future: keys.getIdentityPublicKeyJson(),
               builder: (context, snapshot) {
-                final jsonKey = snapshot.data != null ? jsonEncode(snapshot.data) : 'no-key';
+                final json = snapshot.data;
+                final jsonKey = json == null
+                    ? 'no-key'
+                    : showFederatedQr
+                        ? jsonEncode(HomedKey(json).toPayload())
+                        : jsonEncode(json);
                 
                 String myMoniker = 'Me';
                 

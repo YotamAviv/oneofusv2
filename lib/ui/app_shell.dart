@@ -36,7 +36,7 @@ import '../features/people_screen.dart';
 import '../features/replace/replace_flow.dart';
 import '../features/welcome_screen.dart';
 import '../ui/interpreter.dart';
-import '../util.dart';
+import 'package:oneofus_common/keys.dart' show HomedKey;
 import 'app_typography.dart';
 import 'dialogs/clear_statement_dialog.dart';
 import 'dialogs/edit_statement_dialog.dart';
@@ -77,6 +77,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   // Initialize Dev Mode based on environment; secret tap (AboutScreen) allows override.
   late bool _isDevMode = Config.fireChoice != FireChoice.prod;
   bool _showLgtm = false;
+  bool _showFederatedQr = false;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedSource<TrustStatement> _source;
@@ -360,8 +361,8 @@ You can see who those are by looking for the confirmation check mark to the righ
           final jsonStr = utf8.decode(base64Url.decode(uri.fragment));
           final dynamic json = jsonDecode(jsonStr);
           if (json is Map<String, dynamic>) {
-            final pubKey = extractKeyFromPayload(json);
-            if (pubKey != null && mounted) await _handlePublicKeyScan(pubKey);
+            final homedKey = HomedKey.fromPayload(json);
+            if (homedKey != null && mounted) await _handlePublicKeyScan(homedKey);
           }
         } catch (e) {
           debugPrint('Error parsing keymeid vouch link: $e');
@@ -397,8 +398,8 @@ You can see who those are by looking for the confirmation check mark to the righ
           final jsonStr = utf8.decode(base64Url.decode(fragment));
           final dynamic json = jsonDecode(jsonStr);
           if (json is Map<String, dynamic>) {
-            final pubKey = extractKeyFromPayload(json);
-            if (pubKey != null && mounted) await _handlePublicKeyScan(pubKey);
+            final homedKey = HomedKey.fromPayload(json);
+            if (homedKey != null && mounted) await _handlePublicKeyScan(homedKey);
           }
         } catch (e) {
           debugPrint('Error parsing vouch link: $e');
@@ -442,7 +443,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           final json = jsonDecode(data);
           if (json is! Map<String, dynamic>) return false;
           if (allowSignIn && await SignInService.validateSignIn(data)) return true;
-          return extractKeyFromPayload(json) != null;
+          return HomedKey.fromPayload(json) != null;
         } catch (_) {
           return false;
         }
@@ -456,8 +457,8 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         if (allowSignIn && await SignInService.validateSignIn(scanned)) {
           await _executeSignIn(scanned);
         } else {
-          final pubKey = extractKeyFromPayload(json);
-          if (pubKey != null) await _handlePublicKeyScan(pubKey, targetVerb: targetVerb);
+          final homedKey = HomedKey.fromPayload(json);
+          if (homedKey != null) await _handlePublicKeyScan(homedKey, targetVerb: targetVerb);
         }
       } catch (e) {
         if (mounted) {
@@ -470,11 +471,11 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
   }
 
   Future<void> _handlePublicKeyScan(
-    Map<String, dynamic> publicKeyJson, {
+    HomedKey homedKey, {
     TrustVerb targetVerb = TrustVerb.trust,
   }) async {
     try {
-      final String subjectToken = getToken(publicKeyJson);
+      final String subjectToken = getToken(homedKey.pubKeyJson);
 
       if (!mounted) return;
 
@@ -502,7 +503,12 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         template = existing;
       } else {
         final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
-        final json = TrustStatement.make(myPubKeyJson!, publicKeyJson, targetVerb);
+        final json = TrustStatement.make(
+          myPubKeyJson!,
+          homedKey.pubKeyJson,
+          targetVerb,
+          home: homedKey.home,
+        );
         template = TrustStatement(Jsonish(json));
       }
 
@@ -510,7 +516,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         context: context,
         statement: template,
         existingStatement: existing,
-        publicKeyJson: publicKeyJson,
+        publicKeyJson: homedKey.pubKeyJson,
         isNewScan: true,
         // If we are initiating a Block or Delegate scan, we lock the verb.
         // If Trust, EditStatementDialog logic permits switch to Block if no conflict.
@@ -702,7 +708,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
 
   List<Widget> get _pages {
     return [
-      CardScreen(cardKey: _cardKey),
+      CardScreen(cardKey: _cardKey, showFederatedQr: _showFederatedQr),
       const PeopleScreen(),
       const DelegatesScreen(),
       const ImportExportScreen(),
@@ -712,6 +718,8 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         onReplaceKey: () => _showReplaceKeyDialog(context),
         showLgtm: _showLgtm,
         onLgtmChanged: (v) => setState(() => _showLgtm = v),
+        showFederatedQr: _showFederatedQr,
+        onFederatedQrChanged: (v) => setState(() => _showFederatedQr = v),
       ),
       IntroScreen(
         onShowWelcome: () {
@@ -955,7 +963,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                 subtitle: const Text('Includes App Link, key QR code and Text'),
                 onTap: () {
                   Navigator.pop(context);
-                  ShareService.shareIdentityPackage();
+                  ShareService.shareIdentityPackage(showFederatedQr: _showFederatedQr);
                 },
               ),
               ListTile(

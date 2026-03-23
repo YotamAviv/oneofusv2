@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/keys.dart' show HomedKey;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'keys.dart';
@@ -9,9 +10,11 @@ import '../ui/app_typography.dart';
 class ShareService {
   static const String homeUrl = 'https://one-of-us.net';
 
-  static Future<void> shareIdentityPackage() async {
+  static Future<void> shareIdentityPackage({bool showFederatedQr = false}) async {
     final Json pubKeyJson = (await Keys().getIdentityPublicKeyJson())!;
-    final String minJson = jsonEncode(Jsonish(pubKeyJson).json);
+    final dynamic payload =
+        showFederatedQr ? HomedKey(pubKeyJson).toPayload() : Jsonish(pubKeyJson).json;
+    final String minJson = jsonEncode(payload);
     final String base64Key = base64Url.encode(utf8.encode(minJson));
 
     final String deepLink = "$homeUrl/vouch.html#$base64Key";

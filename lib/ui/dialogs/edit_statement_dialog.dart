@@ -431,6 +431,7 @@ Block: Bots, spammers, bad actors, careless, confused..''',
         comment: comment,
         domain: domain,
         revokeAt: revokeAt,
+        home: widget.proposedStatement.home,
       );
 
       final statement = TrustStatement(Jsonish(json));

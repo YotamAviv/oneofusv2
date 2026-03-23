@@ -68,6 +68,26 @@ class Config {
     return uri.replace(queryParameters: newParams);
   }
 
+
+  /// Translates a canonical URL (e.g. from [HomedKey.fetchUrl]) to the actual
+  /// endpoint for the current environment.
+  ///
+  /// In emulator mode, prod URLs are silently redirected to local equivalents
+  /// so call sites never need to know about [fireChoice].
+  /// Phase 2 federation code should call [resolveUrl] instead of using
+  /// [HomedKey.fetchUrl] directly.
+  static String resolveUrl(String url) {
+    if (fireChoice == FireChoice.emulator) {
+      return _emulatorRedirects[url] ?? url;
+    }
+    return url;
+  }
+
+  static late final Map<String, String> _emulatorRedirects = {
+    'https://export.one-of-us.net':
+        'http://$_emulatorHost:5002/one-of-us-net/us-central1/export',
+  };
+
   // --- Static Named Endpoints ---
   static String get exportUrl {
     switch (fireChoice) {

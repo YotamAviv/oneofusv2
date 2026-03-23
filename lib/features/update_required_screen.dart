@@ -5,12 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 class UpdateRequiredScreen extends StatelessWidget {
   const UpdateRequiredScreen({super.key});
 
-  static const _playStoreUrl =
-      'https://play.google.com/store/apps/details?id=net.oneofus.app';
+  static const _playStoreUrl = 'https://play.google.com/store/apps/details?id=net.oneofus.app';
 
-  // TODO: replace with actual App Store URL once known
-  static const _appStoreUrl =
-      'https://apps.apple.com/app/one-of-us-net/id0000000000';
+  static const _appStoreUrl = 'https://apps.apple.com/us/app/one-of-us-net/id6739090070';
 
   @override
   Widget build(BuildContext context) {
@@ -27,19 +24,11 @@ class UpdateRequiredScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.system_update_rounded,
-                  size: 80,
-                  color: Colors.white,
-                ),
+                const Icon(Icons.system_update_rounded, size: 80, color: Colors.white),
                 const SizedBox(height: 32),
                 const Text(
                   'Update Required',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
@@ -50,27 +39,17 @@ class UpdateRequiredScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 48),
                 ElevatedButton(
-                  onPressed: () => launchUrl(
-                    Uri.parse(storeUrl),
-                    mode: LaunchMode.externalApplication,
-                  ),
+                  onPressed: () =>
+                      launchUrl(Uri.parse(storeUrl), mode: LaunchMode.externalApplication),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF00897B),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 16,
-                      horizontal: 32,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: Text(
                     storeLabel,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
