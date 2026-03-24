@@ -9,7 +9,7 @@ enum FireChoice { fake, emulator, prod }
 
 class Config {
   // --- Hard coded - use for Environment Switch ---
-  static final FireChoice _fireChoice = FireChoice.emulator;
+  static final FireChoice _fireChoice = FireChoice.prod;
 
   static FireChoice get fireChoice => _fireChoice;
 
