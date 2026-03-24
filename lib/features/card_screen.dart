@@ -60,6 +60,7 @@ class CardScreen extends StatelessWidget {
                           isLandscape: isLandscape,
                           jsonKey: jsonKey,
                           moniker: myMoniker,
+                          isVouched: true,
                         );
                       }
                     }

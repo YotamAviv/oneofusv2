@@ -65,7 +65,7 @@ void main() {
         (w) =>
             w is CheckboxListTile &&
             w.title is Text &&
-            ((w.title as Text).data?.contains('home') ?? false),
+            ((w.title as Text).data?.contains('Federated') ?? false),
       );
       expect(federatedCheckbox, findsOneWidget, reason: 'Federated QR checkbox must exist');
 

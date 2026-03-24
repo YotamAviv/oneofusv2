@@ -8,12 +8,14 @@ class IdentityCardSurface extends StatefulWidget {
   final bool isLandscape;
   final String jsonKey;
   final String moniker;
+  final bool isVouched;
 
   const IdentityCardSurface({
     super.key,
     required this.isLandscape,
     required this.jsonKey,
     this.moniker = 'Me',
+    this.isVouched = false,
   });
 
   @override
@@ -172,23 +174,24 @@ class IdentityCardSurfaceState extends State<IdentityCardSurface> with SingleTic
                           ),
                         ),
                         
-                        // Hand-tuned quote text
-                        Positioned(
-                          right: padding,
-                          bottom: padding,
-                          width: cardW * 0.4,
-                          child: Text(
-                            'Human, capable, acting in good faith',
-                            textAlign: TextAlign.right,
-                            style: AppTypography.display.copyWith(
-                              fontSize: cardH * 0.06,
-                              fontWeight: FontWeight.w800,
-                              fontStyle: FontStyle.italic,
-                              color: Colors.black38,
-                              fontFamily: 'serif',
+                        // Quote text — only shown when someone has vouched for you
+                        if (widget.isVouched)
+                          Positioned(
+                            right: padding,
+                            bottom: padding,
+                            width: cardW * 0.4,
+                            child: Text(
+                              'Human, capable, acting in good faith',
+                              textAlign: TextAlign.right,
+                              style: AppTypography.display.copyWith(
+                                fontSize: cardH * 0.06,
+                                fontWeight: FontWeight.w800,
+                                fontStyle: FontStyle.italic,
+                                color: Colors.black38,
+                                fontFamily: 'serif',
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),
