@@ -188,7 +188,7 @@ class IdentityCardSurfaceState extends State<IdentityCardSurface> with SingleTic
                                 fontWeight: FontWeight.w800,
                                 fontStyle: FontStyle.italic,
                                 color: Colors.black38,
-                                fontFamily: 'serif',
+                                fontFamily: 'Georgia',
                               ),
                             ),
                           ),
