@@ -311,8 +311,11 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   void _initDeepLinks() {
+    debugPrint('DEEPLINK: _initDeepLinks called');
+
     // Attach stream listener synchronously to avoid missing early events.
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
+      debugPrint('DEEPLINK: received from uriLinkStream: \$uri');
       if (mounted) {
         _handleIncomingLink(uri);
       }
@@ -321,10 +324,13 @@ You can see who those are by looking for the confirmation check mark to the righ
     // Cold start: get the link that launched the app (needed on iOS if the
     // stream doesn't fire it, depending on plugin version/platform).
     _appLinks.getInitialLink().then((initialLink) {
+      debugPrint('DEEPLINK: received from getInitialLink: \$initialLink');
       if (initialLink != null && mounted) {
         _handleIncomingLink(initialLink);
       }
-    }).catchError((_) {});
+    }).catchError((e) {
+      debugPrint('DEEPLINK: getInitialLink error: \$e');
+    });
   }
 
   Future<void> _executeSignIn(String data) async {
@@ -352,8 +358,13 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   void _handleIncomingLink(Uri uri) async {
+    debugPrint('DEEPLINK: _handleIncomingLink called with uri: \$uri');
+
     // Deduplicate identical links fired in rapid succession (e.g. from both init and stream)
-    if (_lastProcessedLink == uri) return;
+    if (_lastProcessedLink == uri) {
+      debugPrint('DEEPLINK: deduplicated identical link');
+      return;
+    }
     _lastProcessedLink = uri;
     
     // Clear dedupe state after a short delay so the link could be processed again eventually if needed
@@ -363,14 +374,26 @@ You can see who those are by looking for the confirmation check mark to the righ
       }
     });
 
+    debugPrint('DEEPLINK: waiting for _isLoading to finish: \$_isLoading');
+
     // Wait for the app to finish its initial loading sequence (keys + cloud data)
     // to ensure we have the identity token and latest trust statements.
     while (_isLoading && mounted) {
       await Future.delayed(const Duration(milliseconds: 200));
     }
 
-    if (!mounted || !_hasKey) return;
+    if (!mounted) return;
 
+    final isSignIn = (uri.scheme == 'keymeid' && uri.host != 'vouch') || uri.path.contains('sign-in');
+    debugPrint('DEEPLINK: _hasKey=\$_hasKey, isSignIn=\$isSignIn');
+
+    // Sign-in links are meant for users without keys, or users replacing keys.
+    if (!_hasKey && !isSignIn) {
+      debugPrint('DEEPLINK: dropped because !_hasKey and not a sign-in link');
+      return;
+    }
+
+    debugPrint('DEEPLINK: processing link: \$uri');
     if (uri.scheme == 'keymeid') {
       // Vouch link: keymeid://vouch#<base64key>
       if (uri.host == 'vouch' && uri.fragment.isNotEmpty) {
