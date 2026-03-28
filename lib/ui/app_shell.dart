@@ -309,16 +309,22 @@ You can see who those are by looking for the confirmation check mark to the righ
     loadAllData();
   }
 
-  void _initDeepLinks() {
+  void _initDeepLinks() async {
+    // Cold start: get the link that launched the app (needed on iOS;
+    // on Android app_links delivers this via the stream too).
+    try {
+      final initialLink = await AppLinks().getInitialLink();
+      if (initialLink != null && mounted) {
+        _handleIncomingLink(initialLink);
+      }
+    } catch (_) {}
+
+    // Already running: stream fires on new incoming links.
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       if (mounted) {
         _handleIncomingLink(uri);
       }
     });
-
-    // We check `mounted` to prevent calling `_handleIncomingLink` if the widget has been disposed
-    // (e.g., during navigation or app backgrounding/termination) before the async stream event fires.
-    // Calling methods that trigger UI changes (like dialogs) on a disposed widget throws an exception.
   }
 
   Future<void> _executeSignIn(String data) async {
