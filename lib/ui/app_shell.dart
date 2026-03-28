@@ -68,6 +68,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   final Keys _keys = Keys();
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSubscription;
+  Uri? _lastProcessedLink;
 
   int _currentPageIndex = 0;
   bool _isLoading = true;
@@ -309,22 +310,21 @@ You can see who those are by looking for the confirmation check mark to the righ
     loadAllData();
   }
 
-  void _initDeepLinks() async {
-    // Cold start: get the link that launched the app (needed on iOS;
-    // on Android app_links delivers this via the stream too).
-    try {
-      final initialLink = await AppLinks().getInitialLink();
-      if (initialLink != null && mounted) {
-        _handleIncomingLink(initialLink);
-      }
-    } catch (_) {}
-
-    // Already running: stream fires on new incoming links.
+  void _initDeepLinks() {
+    // Attach stream listener synchronously to avoid missing early events.
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       if (mounted) {
         _handleIncomingLink(uri);
       }
     });
+
+    // Cold start: get the link that launched the app (needed on iOS if the
+    // stream doesn't fire it, depending on plugin version/platform).
+    _appLinks.getInitialLink().then((initialLink) {
+      if (initialLink != null && mounted) {
+        _handleIncomingLink(initialLink);
+      }
+    }).catchError((_) {});
   }
 
   Future<void> _executeSignIn(String data) async {
@@ -352,6 +352,17 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   void _handleIncomingLink(Uri uri) async {
+    // Deduplicate identical links fired in rapid succession (e.g. from both init and stream)
+    if (_lastProcessedLink == uri) return;
+    _lastProcessedLink = uri;
+    
+    // Clear dedupe state after a short delay so the link could be processed again eventually if needed
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted && _lastProcessedLink == uri) {
+        _lastProcessedLink = null;
+      }
+    });
+
     // Wait for the app to finish its initial loading sequence (keys + cloud data)
     // to ensure we have the identity token and latest trust statements.
     while (_isLoading && mounted) {
