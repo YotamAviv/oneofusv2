@@ -13,6 +13,8 @@ flutter emulators --launch Pixel_3a_API_35
 adb shell pm clear net.oneofus.app
 flutter run -d emulator-5554
 
+firebase --project=one-of-us-net deploy --only hosting
+
 ## required for launch
 
 scanner camera: Show better instructions 
