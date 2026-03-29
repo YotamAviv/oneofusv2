@@ -315,22 +315,28 @@ You can see who those are by looking for the confirmation check mark to the righ
 
     // Attach stream listener synchronously to avoid missing early events.
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
-      debugPrint('DEEPLINK: received from uriLinkStream: \$uri');
+      debugPrint('DEEPLINK: received from uriLinkStream: $uri');
       if (mounted) {
         _handleIncomingLink(uri);
       }
     });
 
-    // Cold start: get the link that launched the app (needed on iOS if the
-    // stream doesn't fire it, depending on plugin version/platform).
-    _appLinks.getInitialLink().then((initialLink) {
-      debugPrint('DEEPLINK: received from getInitialLink: \$initialLink');
-      if (initialLink != null && mounted) {
-        _handleIncomingLink(initialLink);
-      }
-    }).catchError((e) {
-      debugPrint('DEEPLINK: getInitialLink error: \$e');
-    });
+    // Cold start: Check if main() securely cached the link before initialization 
+    // runaway on iOS. Fallback to plugin if not.
+    if (Config.initialDeepLink != null) {
+      debugPrint('DEEPLINK: received from main() initialDeepLink cache');
+      if (mounted) _handleIncomingLink(Config.initialDeepLink!);
+      Config.initialDeepLink = null;
+    } else {
+      _appLinks.getInitialLink().then((initialLink) {
+        debugPrint('DEEPLINK: received from fallback getInitialLink: $initialLink');
+        if (initialLink != null && mounted) {
+          _handleIncomingLink(initialLink);
+        }
+      }).catchError((e) {
+        debugPrint('DEEPLINK: getInitialLink error: $e');
+      });
+    }
   }
 
   Future<void> _executeSignIn(String data) async {
@@ -358,7 +364,7 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   void _handleIncomingLink(Uri uri) async {
-    debugPrint('DEEPLINK: _handleIncomingLink called with uri: \$uri');
+    debugPrint('DEEPLINK: _handleIncomingLink called with uri: $uri');
 
     // Deduplicate identical links fired in rapid succession (e.g. from both init and stream)
     if (_lastProcessedLink == uri) {
@@ -374,7 +380,7 @@ You can see who those are by looking for the confirmation check mark to the righ
       }
     });
 
-    debugPrint('DEEPLINK: waiting for _isLoading to finish: \$_isLoading');
+    debugPrint('DEEPLINK: waiting for _isLoading to finish: $_isLoading');
 
     // Wait for the app to finish its initial loading sequence (keys + cloud data)
     // to ensure we have the identity token and latest trust statements.
@@ -385,7 +391,7 @@ You can see who those are by looking for the confirmation check mark to the righ
     if (!mounted) return;
 
     final isSignIn = (uri.scheme == 'keymeid' && uri.host != 'vouch') || uri.path.contains('sign-in');
-    debugPrint('DEEPLINK: _hasKey=\$_hasKey, isSignIn=\$isSignIn');
+    debugPrint('DEEPLINK: _hasKey=$_hasKey, isSignIn=$isSignIn');
 
     // Sign-in links are meant for users without keys, or users replacing keys.
     if (!_hasKey && !isSignIn) {
@@ -393,7 +399,7 @@ You can see who those are by looking for the confirmation check mark to the righ
       return;
     }
 
-    debugPrint('DEEPLINK: processing link: \$uri');
+    debugPrint('DEEPLINK: processing link: $uri');
     if (uri.scheme == 'keymeid') {
       // Vouch link: keymeid://vouch#<base64key>
       if (uri.host == 'vouch' && uri.fragment.isNotEmpty) {

@@ -19,6 +19,9 @@ class Config {
     return (defaultTargetPlatform == TargetPlatform.android) ? '10.0.2.2' : 'localhost';
   }
 
+  /// Cached initial deep link from main() to prevent it from being lost during app initialization.
+  static Uri? initialDeepLink;
+
   static Future<void> initFirebase() async {
     if (fireChoice != FireChoice.fake) {
       FirebaseOptions options = DefaultFirebaseOptions.currentPlatform;

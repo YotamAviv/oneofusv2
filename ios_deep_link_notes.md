@@ -1,25 +1,36 @@
-# iOS Cold Start Deep Link Debugging Notes
+# iOS Cold Start Deep Link Fix
 
-## The Issue
-Cold starts from deep links (both Universal Links like `one-of-us.net` and custom schemes like `keymeid://`) are failing to trigger the sign-in/vouch flow on iOS via TestFlight. We already updated the Flutter code in `app_shell.dart` to synchronously attach the `uriLinkStream` listener to ensure events aren't missed during startup, but it still fails.
+## The Problem
+Cold-start deep links (Universal Links like `https://one-of-us.net/sign-in?...`) fail to
+trigger the sign-in flow on iOS via TestFlight. Warm-start (app in background) works fine.
 
-## Hypothesis
-The issue is likely happening at the native iOS layer or within the `app_links` plugin itself before the URL ever reaches Dart code.
+## Root Cause
+The `app_links` Flutter plugin (v6.4.1) only listens for Universal Links via AppDelegate
+callbacks (`application(_:continue:restorationHandler:)`).
 
-## Debugging Steps for the Mac
-1. Plug the iPhone into the Mac via USB.
-2. Open the Xcode workspace: `ios/Runner.xcworkspace`.
-3. Select the physical iPhone as the deployment target and run the app (Product > Run).
-4. Once it launches, **terminate the application** (swipe up from the bottom and swipe the app away).
-5. Open the **Notes** app, **Safari**, or **Messages** and tap one of your sign-in deep links or vouch links to trigger a cold start.
-6. Observe the **Xcode Console Output** at the bottom of the screen.
+Modern Flutter iOS apps use `FlutterSceneDelegate` (configured in Info.plist's
+`UIApplicationSceneManifest`). With the Scene-based lifecycle, iOS delivers cold-start
+Universal Links to `scene(_:willConnectTo:options:)` on the SceneDelegate — NOT to
+the AppDelegate. The plugin never receives the URL, so `getInitialLink()` returns `null`.
 
-## What to Look For in the Console
-- **Native Method Invocations:** Look for the AppDelegate methods that handle deep links. 
-  - For `keymeid://` links, look for `application(_:open:options:)`.
-  - For Universal Links, look for `application(_:continue:restorationHandler:)`.
-- **Plugin Activity:** Look for any output from the `app_links` plugin. Does it receive the URL? Does it report sending it to the Flutter engine?
-- **Flutter Errors:** Are there any Dart exceptions or Flutter Engine errors printing just as the app wakes up?
-- **Timing Issues:** Does the link arrive before the Flutter engine is fully initialized, causing it to be dropped?
+Warm start works because `scene(_:continue:)` gets forwarded differently by the engine.
 
-*(Do not commit this file. Feel free to delete it once you're on the Mac!)*
+## The Fix
+`AppDelegate.swift` defines `AppLinksSceneDelegate`, a subclass of `FlutterSceneDelegate`
+that overrides `scene(_:willConnectTo:options:)` to extract the URL from
+`connectionOptions.userActivities` (Universal Links) and `connectionOptions.urlContexts`
+(custom URL schemes like `keymeid://`) and calls `AppLinks.shared.handleLink(url:)` on
+the plugin singleton.
+
+`Info.plist` references `AppLinksSceneDelegate` instead of `FlutterSceneDelegate`.
+
+### Why this is unusual
+This is a workaround for a gap in the `app_links` plugin's iOS implementation. The plugin
+should handle the Scene lifecycle natively but doesn't as of v6.4.1. If a future version
+of `app_links` adds Scene lifecycle support, this subclass may become unnecessary.
+
+## Supporting Changes
+- `IPHONEOS_DEPLOYMENT_TARGET` raised from 13.0 to 15.5 (required to `import app_links`
+  from Swift; already matched the Podfile)
+- `@objc(AppLinksSceneDelegate)` annotation required so iOS can find the class from
+  Info.plist (Swift classes need explicit ObjC names for plist resolution)
