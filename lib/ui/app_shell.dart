@@ -311,8 +311,6 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   void _initDeepLinks() {
-    debugPrint('DEEPLINK: _initDeepLinks called');
-
     // Attach stream listener synchronously to avoid missing early events.
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
       debugPrint('DEEPLINK: received from uriLinkStream: $uri');
@@ -321,22 +319,18 @@ You can see who those are by looking for the confirmation check mark to the righ
       }
     });
 
-    // Cold start: Check if main() securely cached the link before initialization 
-    // runaway on iOS. Fallback to plugin if not.
-    if (Config.initialDeepLink != null) {
-      debugPrint('DEEPLINK: received from main() initialDeepLink cache');
-      if (mounted) _handleIncomingLink(Config.initialDeepLink!);
-      Config.initialDeepLink = null;
-    } else {
-      _appLinks.getInitialLink().then((initialLink) {
-        debugPrint('DEEPLINK: received from fallback getInitialLink: $initialLink');
-        if (initialLink != null && mounted) {
-          _handleIncomingLink(initialLink);
-        }
-      }).catchError((e) {
-        debugPrint('DEEPLINK: getInitialLink error: $e');
-      });
-    }
+    // Cold start: get the link that launched the app.
+    // On iOS, AppLinksSceneDelegate (in AppDelegate.swift) forwards the URL
+    // from scene(_:willConnectTo:options:) to the app_links plugin singleton,
+    // so getInitialLink() returns the correct value here.
+    _appLinks.getInitialLink().then((initialLink) {
+      debugPrint('DEEPLINK: getInitialLink: $initialLink');
+      if (initialLink != null && mounted) {
+        _handleIncomingLink(initialLink);
+      }
+    }).catchError((e) {
+      debugPrint('DEEPLINK: getInitialLink error: $e');
+    });
   }
 
   Future<void> _executeSignIn(String data) async {
@@ -364,13 +358,8 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   void _handleIncomingLink(Uri uri) async {
-    debugPrint('DEEPLINK: _handleIncomingLink called with uri: $uri');
-
     // Deduplicate identical links fired in rapid succession (e.g. from both init and stream)
-    if (_lastProcessedLink == uri) {
-      debugPrint('DEEPLINK: deduplicated identical link');
-      return;
-    }
+    if (_lastProcessedLink == uri) return;
     _lastProcessedLink = uri;
     
     // Clear dedupe state after a short delay so the link could be processed again eventually if needed
@@ -380,8 +369,6 @@ You can see who those are by looking for the confirmation check mark to the righ
       }
     });
 
-    debugPrint('DEEPLINK: waiting for _isLoading to finish: $_isLoading');
-
     // Wait for the app to finish its initial loading sequence (keys + cloud data)
     // to ensure we have the identity token and latest trust statements.
     while (_isLoading && mounted) {
@@ -390,16 +377,11 @@ You can see who those are by looking for the confirmation check mark to the righ
 
     if (!mounted) return;
 
+    // Sign-in links are allowed even without an identity key (that's the whole point).
     final isSignIn = (uri.scheme == 'keymeid' && uri.host != 'vouch') || uri.path.contains('sign-in');
-    debugPrint('DEEPLINK: _hasKey=$_hasKey, isSignIn=$isSignIn');
+    if (!_hasKey && !isSignIn) return;
 
-    // Sign-in links are meant for users without keys, or users replacing keys.
-    if (!_hasKey && !isSignIn) {
-      debugPrint('DEEPLINK: dropped because !_hasKey and not a sign-in link');
-      return;
-    }
-
-    debugPrint('DEEPLINK: processing link: $uri');
+    debugPrint('DEEPLINK: processing $uri (hasKey=$_hasKey, isSignIn=$isSignIn)');
     if (uri.scheme == 'keymeid') {
       // Vouch link: keymeid://vouch#<base64key>
       if (uri.host == 'vouch' && uri.fragment.isNotEmpty) {
