@@ -42,11 +42,11 @@ class IntroScreen extends StatelessWidget {
                   style: AppTypography.body,
                 ),
                 TextSpan(
-                  text: "https://nerdster.org",
+                  text: "https://nerdster.org/app",
                   style: AppTypography.link,
                   recognizer: TapGestureRecognizer()
                     ..onTap = () => launchUrl(
-                          Uri.parse("https://nerdster.org"),
+                          Uri.parse("https://nerdster.org/app"),
                           mode: LaunchMode.externalApplication,
                         ),
                 ),
