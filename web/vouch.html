@@ -57,27 +57,7 @@
             color: #222;
         }
 
-        .app-links {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin: 16px 0 24px;
-        }
 
-        .app-links a {
-            display: block;
-            background: #0066cc;
-            color: white;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 600;
-            padding: 12px 18px;
-            border-radius: 8px;
-        }
-
-        .app-links a:hover {
-            background: #0052a3;
-        }
 
         #qr-container {
             margin: 16px 0 8px;
@@ -138,13 +118,8 @@
         </ol>
 
         <p class="scenario">On your phone with the app installed?</p>
-        <p>The link you clicked on should have opened up the ONE-OF-US.NET app, but deep links can be finicky; try these
-            alternate links:</p>
-
-        <div class="app-links">
-            <a id="keymeid-link" href="#">→ keymeid://...</a>
-            <a id="universal-link" href="#">→ https://one-of-us.net/...</a>
-        </div>
+        <p>The link you clicked on should have opened up the ONE-OF-US.NET app, but deep links can be finicky; try this
+            <a id="keymeid-link" href="#">alternate link</a>.</p>
 
         <p class="scenario">On a computer or tablet?</p>
         <p>Scan the QR code below with the ONE-OF-US.NET app on your phone (Scan button, bottom center).</p>
@@ -168,13 +143,11 @@
                 if (!hash) {
                     document.getElementById('qr-container').style.display = 'none';
                     document.getElementById('keymeid-link').style.display = 'none';
-                    document.getElementById('universal-link').style.display = 'none';
                     return;
                 }
 
                 // Set keymeid:// and universal links
                 document.getElementById('keymeid-link').href = 'keymeid://vouch#' + hash;
-                document.getElementById('universal-link').href = 'https://one-of-us.net/vouch.html#' + hash;
 
                 // Decode URL-Safe Base64
                 let base64 = hash.replace(/-/g, '+').replace(/_/g, '/');
