@@ -31,6 +31,10 @@
     "appAssociation": "NONE",
     "rewrites": [
       {
+        "source": "/sign-in",
+        "destination": "/sign-in.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
