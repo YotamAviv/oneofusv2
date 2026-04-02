@@ -50,11 +50,17 @@ body {
   background: #FBF5EE;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .header-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  align-items: flex-end;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
 }
 
 /* Stack app store links vertically at the top-right */
@@ -298,37 +304,60 @@ a.man-link:hover {
   text-decoration: none;
 }
 
-/* Video section styles */
+/* Video section */
 .video-container {
   display: flex;
   gap: 20px;
   margin-top: 20px;
   flex-wrap: wrap;
-}
-
-.video-frame {
-  flex: 1;
-  min-width: 300px;
-}
-
-.video-description {
-  flex: 1;
-  min-width: 300px;
-  display: flex;
   align-items: flex-start;
 }
 
-.video-description-content {
-  margin-top: 0;
+.video-frame {
+  min-width: 0;
 }
 
-.video-description-content h4 {
-  margin-top: 0;
+.video-frame-portrait {
+  flex: 0 0 200px;
+  width: 200px;
 }
 
-.video-iframe {
+.video-frame-tv {
+  flex: 1;
+  min-width: 0;
+}
+
+.video-heading {
+  margin: 0 0 6px 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b4f3b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.video-iframe-tv {
   width: 100%;
-  height: 315px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+}
+
+/* Portrait (phone-sized) video wrapper — 9:16 via padding-bottom */
+.video-portrait-wrapper {
+  position: relative;
+  width: 100%;
+  padding-bottom: 177.78%; /* 16/9 * 100% */
+  height: 0;
+  overflow: hidden;
+}
+
+.video-portrait-wrapper iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   border: 0;
 }
 
@@ -353,20 +382,15 @@ a.man-link:hover {
 .code {
   font-family: "Courier Prime", monospace;
   font-weight: 500;
-  /* font-size: 10px; */
-  /* color: #1B5E20; */
 }
 
 .json-text {
   font-family: "Courier Prime", monospace;
   font-weight: 700;
-  /* font-size: 10px; */
-  /* color: #1B5E20; */
 }
 
 .json-highlight {
   font-family: "Courier Prime", monospace;
   font-weight: 700;
-  /* font-size: 10px; */
   color: #2196F3;
 }

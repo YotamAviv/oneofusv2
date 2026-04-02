@@ -25,7 +25,7 @@
 
 <body>
   <header class="site-header container">
-    <div class="left" style="display: flex; align-items: center; gap: 12px">
+    <div class="header-left">
       <img src="img/oneofus_1024.png" alt="ONE-OF-US.NET" class="logo" />
       <div class="brand">
         <h1>ONE-OF-US.NET</h1>
@@ -35,7 +35,7 @@ A network of the people, by the people, for the people.
           </pre>
       </div>
     </div>
-    <div class="header-actions" style="flex-direction: row; align-items: flex-start; gap: 20px">
+    <div class="header-actions">
       <div style="margin-top: 10px">
         <a href="man.html" class="man-link">MANUAL(1)</a>
       </div>
@@ -462,7 +462,7 @@ A network of the people, by the people, for the people.
           <p>
             The same can be said for ratings of Airbnb / VRBO, eBay / Craigslist, Marketface, and many others.
             Having our identities available to us (our likes, our follows) can diminish their silo monopoly power,
-            increase competition, and lead to better <services class=""></services>
+            increase competition, and lead to better <span></span>
           </p>
           <h3>Next: Cultural Shift - Civil Discourse</h3>
           <p>
@@ -563,7 +563,7 @@ A network of the people, by the people, for the people.
   <section class="hero">
     <div class="hero-inner">
       <div class="lead">
-        <h2>1 Paradigm, 2 Demo Apps</h2>
+        <h2>1 Paradigm, 2 Apps</h2>
         <ul>
           <li>
             ONE-OF-US.NET phone app: Simple and complete, capable of building
@@ -577,48 +577,41 @@ A network of the people, by the people, for the people.
         </ul>
 
         <div class="video-container">
-          <div class="video-frame">
-            <iframe width="560" height="315"
+          <div class="video-frame video-frame-portrait">
+            <p class="video-heading">quick phone demo</p>
+            <div class="video-portrait-wrapper">
+              <iframe
+                src="https://www.youtube.com/embed/b9qI0K2ubuk"
+                title="Quick phone demo" frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen></iframe>
+            </div>
+          </div>
+          <div class="video-frame video-frame-tv">
+            <p class="video-heading">TV sized deep dive</p>
+            <iframe
               src="https://www.youtube.com/embed/videoseries?si=6nMzfIhuWnkTfVdW&amp;list=PL6RB74Oj39ErzJ7ae5y02BdQhizEwR-My"
-              title="YouTube video player" frameborder="0" class="video-iframe"
+              title="TV sized deep dive" frameborder="0" class="video-iframe-tv"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowfullscreen></iframe>
             <a href="talk.html" style="display:block; margin-top:0.25rem; text-align:right;"
               onclick="window.open('talk.html','talk','width=420,height=800,left=0,top=0'); return false;">Talk
               teleprompter</a>
           </div>
-          <div class="video-description">
-            <div class="video-description-content">
-              <h4>The phone app</h4>
-              <ul>
-                <li>
-                  Vouch for someone (whoever forwarded this to you): Click the
-                  QR icon on the bottom center of your phone app to scan their
-                  identity key QR code (front and center on the phone app).
-                </li>
-                <li>
-                  Have someone vouch for you (have them scan your phone app
-                  with theirs) or email them your identity public key using
-                  the app's "Share" button.
-                </li>
-              </ul>
-              <h4>
-                Access the Nerdster:
-                <a href="https://nerdster.org/app">https://nerdster.org/app</a>
-              </h4>
-              <ul>
-                <li>
-                  Sign in using your phone app. This is done differently
-                  depending on whether you are using the Nerdster on the same
-                  device as your ONE-OF-US.NET app, iPhone or Android, or a
-                  separate device. The Nerdster should suggest the appropriate
-                  method in first place.
-                </li>
-                <li>Rate, submit, comment, follow, etc...</li>
-              </ul>
-            </div>
-          </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="lead">
+        <h2>Show Support</h2>
+        <ul>
+          <li><strong>Vouch for someone:</strong> Scan their identity QR code with the app, or accept an invitation they've shared with you.</li>
+          <li><strong>Get vouched:</strong> Have someone scan your app, or share your identity public key via the app's "Share" button.</li>
+          <li><strong>Do something on the Nerdster:</strong> <a href="https://nerdster.org/app">nerdster.org/app</a> — rate, submit, comment, follow, on any device.</li>
+        </ul>
       </div>
     </div>
   </section>
