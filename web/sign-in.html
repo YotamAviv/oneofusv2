@@ -66,25 +66,23 @@
 <body>
     <div class="card">
         <h1>Sign In Fallback | ONE-OF-US.NET</h1>
-        <ol>
-            <li>You arrived here because you do not have an Identity App installed to process this login, or your operating system blocked the application launch.</li>
-            <li>Make sure you have the ONE-OF-US.NET phone app installed:
-                <div class="store-links">
-                    <a id="apple-store" href="https://apps.apple.com/us/app/one-of-us/id6739090070" target="_blank" rel="noopener noreferrer">
-                        <img src="common/img/apple.webp" alt="Download on the App Store" />
-                    </a>
-                    <a id="google-store" href="https://play.google.com/store/apps/details?id=net.oneofus.app" target="_blank" rel="noopener noreferrer">
-                        <img src="common/img/google.webp" alt="Get it on Google Play" />
-                    </a>
-                </div>
-            </li>
-        </ol>
+        <p>You arrived here because you do not have the ONE-OF-US.NET identity app installed on this device.
+            <br />Install it here:
+        </p>
+        <div class="store-links">
+            <a id="apple-store" href="https://apps.apple.com/us/app/one-of-us/id6739090070" target="_blank" rel="noopener noreferrer">
+                <img src="common/img/apple.webp" alt="Download on the App Store" />
+            </a>
+            <a id="google-store" href="https://play.google.com/store/apps/details?id=net.oneofus.app" target="_blank" rel="noopener noreferrer">
+                <img src="common/img/google.webp" alt="Get it on Google Play" />
+            </a>
+        </div>
 
         <p class="scenario" id="installed-scenario">On your phone with the app already installed?</p>
-        <p id="installed-text">The link you clicked on should have opened up the ONE-OF-US.NET app, but deep links can be finicky; try this <a id="keymeid-link" href="#">alternate link</a> to force the app to open.</p>
+        <p id="installed-text">Deep links can be finicky; try this <a id="keymeid-link" href="#">alternate link</a></p>
 
         <p class="scenario">On a computer or tablet?</p>
-        <p>Return to the website you were trying to sign in to, select the exact same login option, and scan the QR code using the ONE-OF-US.NET app on your phone instead.</p>
+        <p>Try signing in using the QR code option and scan that code using the ONE-OF-US.NET app on your phone.</p>
 
         <div class="error" id="error-msg">Invalid or missing sign-in data.</div>
     </div>
