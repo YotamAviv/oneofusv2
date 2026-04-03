@@ -307,24 +307,14 @@ a.man-link:hover {
 /* Video section */
 .video-container {
   display: flex;
-  gap: 20px;
+  flex-direction: column;
+  /* stacked by default (mobile) */
+  gap: 16px;
   margin-top: 20px;
-  flex-wrap: wrap;
-  align-items: flex-start;
 }
 
-.video-frame {
-  min-width: 0;
-}
-
-.video-frame-portrait {
-  flex: 0 0 200px;
-  width: 200px;
-}
-
-.video-frame-tv {
-  flex: 1;
-  min-width: 0;
+.video-col {
+  width: 100%;
 }
 
 .video-heading {
@@ -336,29 +326,59 @@ a.man-link:hover {
   letter-spacing: 0.04em;
 }
 
-.video-iframe-tv {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  height: auto;
-  border: 0;
-}
-
-/* Portrait (phone-sized) video wrapper — 9:16 via padding-bottom */
-.video-portrait-wrapper {
+/* Aspect-ratio box using padding-bottom trick (universal browser support) */
+.video-aspect {
   position: relative;
   width: 100%;
-  padding-bottom: 177.78%; /* 16/9 * 100% */
   height: 0;
   overflow: hidden;
 }
 
-.video-portrait-wrapper iframe {
+.portrait-aspect {
+  padding-bottom: calc(100% * 16 / 9);
+}
+
+/* 9:16 */
+.tv-aspect {
+  padding-bottom: calc(100% * 9 / 16);
+}
+
+/* 16:9 */
+
+.video-aspect iframe {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+.teleprompter-link {
+  display: block;
+  margin-top: 0.25rem;
+  text-align: right;
+  font-size: 0.85rem;
+}
+
+/* Side by side on wider screens.
+   flex: 81 and flex: 256 = 9² : 16².
+   This ratio makes portrait (9:16) and TV (16:9) exactly the same height. */
+@media (min-width: 640px) {
+  .video-container {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .video-col-portrait {
+    flex: 81 81 0;
+    width: auto;
+  }
+
+  .video-col-tv {
+    flex: 256 256 0;
+    width: auto;
+  }
 }
 
 /* Iframe styles for modal content */

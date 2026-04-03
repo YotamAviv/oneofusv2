@@ -13,77 +13,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Talk Teleprompter</title>
-  <style>
-    body {
-      background-color: #111;
-      color: #555;
-      font-family: sans-serif;
-      font-size: 18px;
-      line-height: 1.5;
-      margin: 0;
-      padding: 50vh 20px;
-      /* Padding to center content vertically initially */
-      overflow-y: auto;
-      height: 100vh;
-      box-sizing: border-box;
-    }
-
-    .cue {
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 5px;
-      transition: all 0.3s ease;
-      opacity: 0.5;
-    }
-
-    .cue.near {
-      opacity: 0.9;
-    }
-
-    .cue.active {
-      background-color: #222;
-      color: #fff;
-      font-size: 1.2em;
-      opacity: 1;
-      border-left: 4px solid #00ff00;
-      padding-left: 15px;
-    }
-
-    .important {
-      color: #FFA500;
-      font-weight: bold;
-
-    }
-
-    h1,
-    h2,
-    h3 {
-      color: #888;
-      margin-top: 20px;
-      margin-bottom: 10px;
-    }
-
-    .cue.active h1,
-    .cue.active h2,
-    .cue.active h3 {
-      color: #fff;
-    }
-
-    ul {
-      padding-left: 20px;
-      margin: 0;
-    }
-
-    li {
-      margin-bottom: 5px;
-    }
-
-    /* Hide scrollbar for cleaner look */
-    ::-webkit-scrollbar {
-      width: 0px;
-      background: transparent;
-    }
-  </style>
+  <link rel="stylesheet" href="teleprompter.css" />
 </head>
 
 <body>
@@ -427,47 +357,7 @@
     </div>
   </div>
 
-  <script>
-    let currentIndex = -1;
-    const cues = document.querySelectorAll(".cue");
-
-    function setActive(index) {
-      if (index < 0) index = 0;
-      if (index >= cues.length) index = cues.length - 1;
-
-      currentIndex = index;
-
-      cues.forEach((cue, i) => {
-        cue.classList.remove("active", "near");
-
-        if (i === index) {
-          cue.classList.add("active");
-          cue.scrollIntoView({ behavior: "smooth", block: "center" });
-        } else if (Math.abs(i - index) <= 2) {
-          cue.classList.add("near");
-        }
-      });
-    }
-
-    document.addEventListener("keydown", (e) => {
-      if (e.code === "Space" || e.code === "ArrowRight" || e.code === "ArrowDown") {
-        e.preventDefault();
-        setActive(currentIndex + 1);
-      } else if (e.code === "ArrowLeft" || e.code === "ArrowUp") {
-        e.preventDefault();
-        setActive(currentIndex - 1);
-      }
-    });
-
-    // Initialize
-    // setActive(0);
-    // Don't auto-set active so user can start when ready, or click to start.
-
-    // Allow clicking to set active
-    cues.forEach((cue, i) => {
-      cue.addEventListener("click", () => setActive(i));
-    });
-  </script>
+  <script src="teleprompter.js" defer></script>
 </body>
 
 </html>

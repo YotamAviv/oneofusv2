@@ -577,24 +577,28 @@ A network of the people, by the people, for the people.
         </ul>
 
         <div class="video-container">
-          <div class="video-frame video-frame-portrait">
+          <div class="video-col video-col-portrait">
             <p class="video-heading">quick phone demo</p>
-            <div class="video-portrait-wrapper">
+            <div class="video-aspect portrait-aspect">
               <iframe
                 src="https://www.youtube.com/embed/b9qI0K2ubuk"
                 title="Quick phone demo" frameborder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowfullscreen></iframe>
             </div>
+            <a href="phone_talk.html" class="teleprompter-link"
+              onclick="window.open('phone_talk.html','phone_talk','width=420,height=800,left=0,top=0'); return false;">Highlights</a>
           </div>
-          <div class="video-frame video-frame-tv">
+          <div class="video-col video-col-tv">
             <p class="video-heading">TV sized deep dive</p>
-            <iframe
-              src="https://www.youtube.com/embed/videoseries?si=6nMzfIhuWnkTfVdW&amp;list=PL6RB74Oj39ErzJ7ae5y02BdQhizEwR-My"
-              title="TV sized deep dive" frameborder="0" class="video-iframe-tv"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowfullscreen></iframe>
-            <a href="talk.html" style="display:block; margin-top:0.25rem; text-align:right;"
+            <div class="video-aspect tv-aspect">
+              <iframe
+                src="https://www.youtube.com/embed/videoseries?si=6nMzfIhuWnkTfVdW&amp;list=PL6RB74Oj39ErzJ7ae5y02BdQhizEwR-My"
+                title="TV sized deep dive" frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen></iframe>
+            </div>
+            <a href="talk.html" class="teleprompter-link"
               onclick="window.open('talk.html','talk','width=420,height=800,left=0,top=0'); return false;">Talk
               teleprompter</a>
           </div>
