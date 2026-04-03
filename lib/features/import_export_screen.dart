@@ -1,34 +1,21 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:oneofus_common/trust_statement.dart';
+
 import '../../ui/app_typography.dart';
 import '../core/keys.dart';
 
 
 /* 
-"identity" vs "one-of-us.net" Label Swapping
+"identity" vs "one-of-us.net" Label
 
-Initially, the app used "one-of-us.net" as the internal storage key for the 
-primary identity. 
-After I had already launched and had some users, I decided that it's better to display
-a person's identity as "identity" (not as "one-of-us.net").
-This is visible and stored, as it is the exported JSON text.
+Internal storage uses "one-of-us.net" (kOneofusDomain) as the key for the
+primary identity, matching V1 storage format.
 
-To maintain parity with V1 and ensure all legacy backups remain valid:
-1. EXPORT: Swap "one-of-us.net" -> "identity" for display.
-2. IMPORT: Swap "identity" -> "one-of-us.net" for internal storage.
-   Note: We accept both labels on import to support early V1 backups that 
-   may still use the raw domain label.
+Export now shows "one-of-us.net" directly — no label swapping.
 
-Internal storage in V2 continues to use "one-of-us.net" (kOneofusDomain).
-
-In the future, we may want to phase out "one-of-us.net" entirely and store "identity" internally.
-We'll prepare for that now (in case users don't upgrade their phone apps for a long time) by starting
-to accept both labels on import.
-
-TODO: In a future major release, migrate internal storage from "one-of-us.net" to "identity" 
-across all layers (Keys service, Secure Storage) to simplify this mapping.
+Import accepts both "identity" and "one-of-us.net" to support older backups
+that used the swapped label.
 */
 class ImportExportScreen extends StatefulWidget {
   const ImportExportScreen({super.key});
@@ -58,11 +45,10 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
     try {
       final keys = Keys();
       final allKeysJson = await keys.getAllKeyJsons();
-      final displayKeys = _internal2display(allKeysJson);
       const encoder = JsonEncoder.withIndent('  ');
       if (mounted) {
         setState(() {
-          _initialKeysJson = encoder.convert(displayKeys);
+          _initialKeysJson = encoder.convert(allKeysJson);
         });
       }
     } catch (e) {
@@ -131,13 +117,6 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
     }
   }
 
-  Map<String, dynamic> _internal2display(Map<String, dynamic> keys) {
-    final result = Map<String, dynamic>.from(keys);
-    if (result.containsKey(kOneofusDomain)) {
-      result['identity'] = result.remove(kOneofusDomain);
-    }
-    return result;
-  }
 
   @override
   Widget build(BuildContext context) {
