@@ -37,7 +37,9 @@ body {
   font-weight: bold;
 }
 
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   color: #888;
   margin-top: 20px;
   margin-bottom: 10px;
@@ -62,12 +64,4 @@ li {
 ::-webkit-scrollbar {
   width: 0px;
   background: transparent;
-}
-
-a {
-  color: #4fc3f7;
-}
-
-a:hover {
-  color: #fff;
 }
