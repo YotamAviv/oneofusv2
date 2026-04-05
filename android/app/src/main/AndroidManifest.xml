@@ -41,6 +41,30 @@
                 <data android:scheme="https" android:host="one-of-us.net" android:pathPrefix="/vouch" />
             </intent-filter>
 
+            <!-- App Links for Block -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="one-of-us.net" android:pathPrefix="/block" />
+            </intent-filter>
+
+            <!-- App Links for Clear -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="one-of-us.net" android:pathPrefix="/clear" />
+            </intent-filter>
+
+            <!-- App Links for Sign-in (new clean path, no hyphen) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="one-of-us.net" android:pathPrefix="/signin" />
+            </intent-filter>
+
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
