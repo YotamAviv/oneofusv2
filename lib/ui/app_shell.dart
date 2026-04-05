@@ -565,6 +565,31 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           .where((s) => s.subjectToken == subjectToken)
           .firstOrNull;
 
+      // Clear requires an existing statement to clear. If none exists, inform the user.
+      if (targetVerb == TrustVerb.clear) {
+        if (existing == null) {
+          if (mounted) {
+            await showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Nothing to clear'),
+                content: const Text('You have no existing trust or block statement for this identity.'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+                ],
+              ),
+            );
+          }
+          return;
+        }
+        await _showClearStatementDialog(
+          context: context,
+          statement: existing,
+          publicKeyJson: fedKey.pubKeyJson,
+        );
+        return;
+      }
+
       final TrustStatement template;
       if (existing != null && existing.verb == targetVerb) {
         template = existing;
