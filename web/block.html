@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Block Identity | ONE-OF-US.NET</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #fdfdfd;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 24px 16px;
+        }
+        .card {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+            max-width: 520px;
+            width: 100%;
+        }
+        h1 { margin-top: 0; font-size: 22px; }
+        ol {
+            color: #555;
+            margin: 0 0 14px;
+            padding-left: 22px;
+            line-height: 1.6;
+        }
+        p {
+            color: #555;
+            margin: 0 0 14px;
+            line-height: 1.5;
+        }
+        .scenario {
+            margin: 18px 0 6px;
+            font-weight: 600;
+            color: #222;
+        }
+        #qr-container { margin: 16px 0 8px; }
+        .btn {
+            display: inline-block;
+            background: #f0f0f0;
+            color: #333;
+            padding: 10px 18px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        .btn:hover { background: #e0e0e0; }
+        #key-display { display: none; margin-top: 14px; }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-family: monospace;
+            font-size: 12px;
+            resize: none;
+        }
+        .error { color: #d32f2f; display: none; margin-top: 8px; }
+        .store-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .store-links img { height: 40px; width: auto; display: block; }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>Block Identity | ONE-OF-US.NET</h1>
+        <p>You've been asked to block an identity. To do so, you need the ONE-OF-US.NET identity app:</p>
+        <div class="store-links">
+            <a href="https://apps.apple.com/us/app/one-of-us/id6739090070?itscg=30200&itsct=apps_box_badge&mttnsubad=6739090070"
+                target="_blank" rel="noopener noreferrer">
+                <img src="common/img/apple.webp" alt="Download on the App Store" />
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=net.oneofus.app"
+                target="_blank" rel="noopener noreferrer">
+                <img src="common/img/google.webp" alt="Get it on Google Play" />
+            </a>
+        </div>
+
+        <p class="scenario">On your phone with the app installed?</p>
+        <p>The link you clicked should have opened the app, but deep links can be finicky; try this
+            <a id="keymeid-link" href="#">alternate link</a>.</p>
+
+        <p class="scenario">On a computer or tablet?</p>
+        <p>Scan the QR code below with your identity app on your phone (Scan button, bottom center).</p>
+
+        <div id="qr-container"></div>
+        <div class="error" id="error-msg">Invalid or missing key data.</div>
+
+        <p class="scenario">Last resort</p>
+        <button class="btn" onclick="copyKey()">Copy Key Text</button>
+
+        <div id="key-display">
+            <textarea readonly id="key-text"></textarea>
+        </div>
+    </div>
+
+    <script>
+        function init() {
+            try {
+                const hash = window.location.hash.substring(1);
+                if (!hash) {
+                    document.getElementById('qr-container').style.display = 'none';
+                    document.getElementById('keymeid-link').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('keymeid-link').href = 'keymeid://block#' + hash;
+
+                let base64 = hash.replace(/-/g, '+').replace(/_/g, '/');
+                const binaryString = window.atob(base64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                const jsonString = new TextDecoder().decode(bytes);
+                const jsonObj = JSON.parse(jsonString);
+                const prettyJson = JSON.stringify(jsonObj, null, 2);
+
+                new QRCode(document.getElementById("qr-container"), {
+                    text: prettyJson,
+                    width: 256,
+                    height: 256,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+
+                document.getElementById('key-text').value = prettyJson;
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('qr-container').style.display = 'none';
+                document.getElementById('error-msg').style.display = 'block';
+                document.getElementById('error-msg').innerText = "Invalid link: " + e.message;
+            }
+        }
+
+        function copyKey() {
+            const keyDisplay = document.getElementById('key-display');
+            keyDisplay.style.display = 'block';
+            const text = document.getElementById('key-text').value;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Key copied to clipboard!');
+            }).catch(() => {
+                const textarea = document.getElementById('key-text');
+                textarea.select();
+                document.execCommand('copy');
+                alert('Key copied to clipboard!');
+            });
+        }
+
+        window.onload = init;
+    </script>
+</body>
+
+</html>

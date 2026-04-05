@@ -4,11 +4,11 @@
     "details": [
       {
         "appID": "PG2Q5QYA2W.net.oneofus.iapp",
-        "paths": ["/sign-in", "/sign-in/*", "/replace/*", "/vouch.html", "/vouch/*"]
+        "paths": ["/sign-in", "/sign-in/*", "/signin", "/signin/*", "/replace/*", "/vouch.html", "/vouch/*", "/block", "/block/*", "/clear", "/clear/*"]
       },
       {
         "appID": "PG2Q5QYA2W.net.oneofus.app",
-        "paths": ["/sign-in", "/sign-in/*", "/replace/*", "/vouch.html", "/vouch/*"]
+        "paths": ["/sign-in", "/sign-in/*", "/signin", "/signin/*", "/replace/*", "/vouch.html", "/vouch/*", "/block", "/block/*", "/clear", "/clear/*"]
       },
       {
         "appIDs": ["PG2Q5QYA2W.org.nerdster.app"],

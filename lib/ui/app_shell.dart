@@ -378,25 +378,39 @@ You can see who those are by looking for the confirmation check mark to the righ
     if (!mounted) return;
 
     // Sign-in links are allowed even without an identity key (that's the whole point).
-    final isSignIn = (uri.scheme == 'keymeid' && uri.host != 'vouch') || uri.path.contains('sign-in');
+    // New paths: 'signin' (no hyphen). Legacy: 'sign-in'.
+    final isSignIn = (uri.scheme == 'keymeid' && (uri.host == 'signin' || (uri.host != 'vouch' && uri.host != 'block' && uri.host != 'clear'))) ||
+        uri.path.contains('sign-in') || uri.path.contains('/signin');
     if (!_hasKey && !isSignIn) return;
 
     debugPrint('DEEPLINK: processing $uri (hasKey=$_hasKey, isSignIn=$isSignIn)');
+
     if (uri.scheme == 'keymeid') {
-      // Vouch link: keymeid://vouch#<base64key>
-      if (uri.host == 'vouch' && uri.fragment.isNotEmpty) {
+      final host = uri.host;
+
+      if (host == 'vouch' && uri.fragment.isNotEmpty) {
+        // keymeid://vouch#<base64key> — existing, unchanged
+        await _handleKeyFragment(uri.fragment, TrustVerb.trust, 'vouch');
+
+      } else if (host == 'block' && uri.fragment.isNotEmpty) {
+        // keymeid://block#<base64key> — NEW
+        await _handleKeyFragment(uri.fragment, TrustVerb.block, 'block');
+
+      } else if (host == 'clear' && uri.fragment.isNotEmpty) {
+        // keymeid://clear#<base64key> — NEW
+        await _handleKeyFragment(uri.fragment, TrustVerb.clear, 'clear');
+
+      } else if (host == 'signin' && uri.fragment.isNotEmpty) {
+        // keymeid://signin#<base64session> — NEW fragment-based sign-in
         try {
-          final jsonStr = utf8.decode(base64Url.decode(uri.fragment));
-          final dynamic json = jsonDecode(jsonStr);
-          if (json is Map<String, dynamic>) {
-            final fedKey = FedKey.fromPayload(json);
-            if (fedKey != null && mounted) await _handlePublicKeyScan(fedKey);
-          }
+          final data = utf8.decode(base64Url.decode(uri.fragment));
+          await _executeSignIn(data);
         } catch (e) {
-          debugPrint('Error parsing keymeid vouch link: $e');
+          debugPrint('Error parsing keymeid signin# link: $e');
         }
+
       } else {
-        // Sign-in link: keymeid://?parameters=<base64data>
+        // Legacy: keymeid://signin?parameters=<base64> or keymeid://?parameters=<base64>
         final dataBase64 = uri.queryParameters['parameters'];
         if (dataBase64 != null) {
           try {
@@ -405,34 +419,59 @@ You can see who those are by looking for the confirmation check mark to the righ
           } catch (e) {}
         }
       }
-    } else if (uri.path.contains('sign-in')) {
-      final dataParam = uri.queryParameters['data'];
-      final paramsParam = uri.queryParameters['parameters'];
 
-      if (paramsParam != null) {
-        try {
-          final data = utf8.decode(base64Url.decode(paramsParam));
-          await _executeSignIn(data);
-        } catch (e) {}
-      } else if (dataParam != null) {
-        await _executeSignIn(dataParam);
-      }
-    } else if (uri.path.contains('vouch')) {
-      // Handle Magic Link (vouch.html#<base64Key>)
-      // The path might be /vouch.html or /vouch
-      final fragment = uri.fragment;
-      if (fragment.isNotEmpty) {
-        try {
-          final jsonStr = utf8.decode(base64Url.decode(fragment));
-          final dynamic json = jsonDecode(jsonStr);
-          if (json is Map<String, dynamic>) {
-            final fedKey = FedKey.fromPayload(json);
-            if (fedKey != null && mounted) await _handlePublicKeyScan(fedKey);
-          }
-        } catch (e) {
-          debugPrint('Error parsing vouch link: $e');
+    } else {
+      // https:// universal links
+      final path = uri.path;
+
+      if ((path.contains('sign-in') || path.contains('/signin')) && uri.fragment.isEmpty) {
+        // Legacy: https://one-of-us.net/sign-in?parameters=<base64>
+        final dataParam = uri.queryParameters['data'];
+        final paramsParam = uri.queryParameters['parameters'];
+        if (paramsParam != null) {
+          try {
+            final data = utf8.decode(base64Url.decode(paramsParam));
+            await _executeSignIn(data);
+          } catch (e) {}
+        } else if (dataParam != null) {
+          await _executeSignIn(dataParam);
         }
+
+      } else if (path.contains('/signin') && uri.fragment.isNotEmpty) {
+        // NEW: https://one-of-us.net/signin#<base64session>
+        try {
+          final data = utf8.decode(base64Url.decode(uri.fragment));
+          await _executeSignIn(data);
+        } catch (e) {
+          debugPrint('Error parsing signin# link: $e');
+        }
+
+      } else if (path.contains('vouch') && uri.fragment.isNotEmpty) {
+        // Existing: https://one-of-us.net/vouch#<base64key>
+        await _handleKeyFragment(uri.fragment, TrustVerb.trust, 'vouch');
+
+      } else if (path.contains('/block') && uri.fragment.isNotEmpty) {
+        // NEW: https://one-of-us.net/block#<base64key>
+        await _handleKeyFragment(uri.fragment, TrustVerb.block, 'block');
+
+      } else if (path.contains('/clear') && uri.fragment.isNotEmpty) {
+        // NEW: https://one-of-us.net/clear#<base64key>
+        await _handleKeyFragment(uri.fragment, TrustVerb.clear, 'clear');
       }
+    }
+  }
+
+  /// Decode a base64Url fragment to a FedKey and trigger the appropriate scan handler.
+  Future<void> _handleKeyFragment(String fragment, TrustVerb verb, String debugVerb) async {
+    try {
+      final jsonStr = utf8.decode(base64Url.decode(fragment));
+      final dynamic json = jsonDecode(jsonStr);
+      if (json is Map<String, dynamic>) {
+        final fedKey = FedKey.fromPayload(json);
+        if (fedKey != null && mounted) await _handlePublicKeyScan(fedKey, targetVerb: verb);
+      }
+    } catch (e) {
+      debugPrint('Error parsing $debugVerb link: $e');
     }
   }
 
