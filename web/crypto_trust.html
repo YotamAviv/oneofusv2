@@ -81,7 +81,7 @@
         const initialKey = "lisa-trust-mom";
         const initialData = demoData[initialKey];
         iframe.src = IframeHelper.constructUrl({
-          identity: dummy,
+          pov: dummy,
           verify: JSON.stringify(initialData, null, 2),
           verifyImmediately: true,
           verifyFullScreen: true,

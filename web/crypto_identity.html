@@ -98,7 +98,7 @@
         const verify = demoData["bart-follow-milhouse-social"];
 
         iframe.src = IframeHelper.constructUrl({
-          identity: JSON.stringify(identity),
+          pov: JSON.stringify(identity),
           verify: JSON.stringify(verify, null, 2),
           identityPathsReq: "permissive",
           verifyImmediately: true,
