@@ -348,6 +348,19 @@ You can see who those are by looking for the confirmation check mark to the righ
         firestore: _firestore,
         myStatements: _myStatements,
         onSending: () => _cardKey.currentState?.throwQr(),
+        onBeforePublish: _showLgtm
+            ? (statement) async {
+                final Map<String, List<TrustStatement>> combined = {_keys.identityToken!: _myStatements};
+                combined.addAll(_peersStatements);
+                final labeler = Labeler(combined, _keys.identityToken!);
+                final interpreter = OneOfUsInterpreter(labeler);
+                final result = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => LgtmDialog(statement: statement, interpreter: interpreter),
+                );
+                return result == true;
+              }
+            : null,
       );
       if (success && mounted) {
         loadAllData();

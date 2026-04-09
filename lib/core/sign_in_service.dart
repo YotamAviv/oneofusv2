@@ -36,6 +36,7 @@ class SignInService {
     FirebaseFirestore? firestore,
     List<TrustStatement>? myStatements,
     VoidCallback? onSending,
+    Future<bool> Function(TrustStatement)? onBeforePublish,
   }) async {
     try {
       if (!await validateSignIn(scanned)) {
@@ -123,6 +124,12 @@ class SignInService {
 
           final writer = DirectFirestoreWriter(firestore ?? FirebaseFirestore.instance);
           final signer = await OouSigner.make(identity);
+
+          if (onBeforePublish != null) {
+            final confirmed = await onBeforePublish(TrustStatement(Jsonish(statementJson)));
+            if (!confirmed) return false;
+          }
+
           await writer.push(statementJson, signer);
         } else if (proceed == null) {
           // User cancelled
