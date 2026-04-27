@@ -140,6 +140,13 @@ class SignInService {
 
       // 3. Prepare Payload
       final identityPubKeyJson = await (await keys.identity!.publicKey).json;
+      final String identityKeyToken = getToken(identityPubKeyJson);
+      // Services that verify identity ownership (e.g. Hablo) check sessionSignature.
+      // Services that don't (e.g. Nerdster) ignore these fields.
+      final String sessionTime = DateTime.now().toUtc().toIso8601String();
+      final String sessionString = '$domain-$identityKeyToken-$sessionTime';
+      final String sessionSignature = await keys.identity!.sign(sessionString);
+
 
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
       final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
@@ -167,6 +174,8 @@ class SignInService {
           'version': packageInfo.version,
           'buildNumber': packageInfo.buildNumber,
         },
+        'sessionTime': sessionTime,
+        'sessionSignature': sessionSignature,
         'deviceInfo': {
           'device': deviceName,
           'os': osVersion,
