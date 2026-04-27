@@ -1,12 +1,15 @@
 /**
- * ONE-OF-US.NET Cloud Functions (emulator copy)
+ * ONE-OF-US.NET Cloud Functions
  *
- * In production, functions are deployed from the nerdster14/ directory:
+ * Deploy:
  *   firebase --project=one-of-us-net deploy --only functions:export
  *
- * This copy exists solely for the local emulator. Only the export function
- * is needed here — nerdster-only functions (fetchImages, magicPaste, signin)
- * are not included.
+ * Only the export function is needed here. Nerdster-specific functions
+ * (fetchImages, magicPaste, signin) live in nerdster14/functions/.
+ *
+ * Code duplication: statement_fetcher.js and jsonish_util.js are copied across
+ * nerdster14/, oneofusv22/, and hablotengo/functions/. Changes must be applied
+ * to all three manually until a shared library is introduced.
  */
 
 const { onRequest } = require("firebase-functions/v2/https");
