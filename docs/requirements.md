@@ -43,7 +43,7 @@ The app must provide a comprehensive interface for managing existing statements 
 1.  The user must be able to initiate the key replacement process.
 2.  The app must generate a new Identity Key Pair.
 3.  The app must require the user to provide the public key of the old key being replaced.
-4.  The app must require a `revokeAt` token. This token identifies the last statement that should be considered valid. Statements made by the old key after this token should be considered invalid. If the token does not match any past statement (e.g., using the convention `<since always>`), the old key should be considered entirely and retroactively revoked.
+4.  The user selects their last valid statement. The app re-signs all distinct statements up to that point using the new key, then publishes a `replace` statement with `revokeAt: "<since always>"`, revoking the entire history of the old key.
 5.  Upon confirmation, the app must sign the `replace` statement with the *new* identity key and publish it.
 
 **Use Case: Revoking a Delegate Key**

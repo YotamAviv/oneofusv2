@@ -113,8 +113,13 @@ Any service or user can now recognize that content signed by this delegate key t
   ```
   - **`<verb>`**: The action: `trust`, `block`, `replace`, `delegate`, or `clear`.
   - **`with`**: Optional metadata. `domain` is required for `delegate`
-    statements. `revokeAt` is required for `replace` statements and optional
-    for `delegate` statements.
+    statements. `revokeAt` is optional for `delegate` statements (to revoke at a
+    point in time). For `replace` statements, `revokeAt` is always `"<since always>"`.
+    > **Note:** Earlier versions of the ONE-OF-US.NET identity app and Nerdster allowed `revokeAt` on `replace` statements
+    > to be a specific statement token, preserving the old key's history up to that point.
+    > Both the ONE-OF-US.NET app and the Nerdster dropped this: the app always publishes
+    > `"<since always>"` and the Nerdster throws `UnimplementedError` if it encounters any
+    > other value. The user re-signs whatever they want to carry forward using the new key.
 
 ### 5.2. The Token
 
