@@ -9,9 +9,8 @@ enum FireChoice { fake, emulator, prod }
 
 class Config {
   // --- Hard coded - use for Environment Switch ---
-  // TEMP: static final FireChoice _fireChoice = FireChoice.prod;
-  static final FireChoice _fireChoice = FireChoice.emulator;
-
+  static final FireChoice _fireChoice = FireChoice.prod;
+  
   static FireChoice get fireChoice => _fireChoice;
 
   static String get _emulatorHost {
@@ -109,6 +108,16 @@ class Config {
       case FireChoice.prod:
       default:
         return 'https://export.one-of-us.net';
+    }
+  }
+
+  static String get writeFunctionsUrl {
+    switch (fireChoice) {
+      case FireChoice.emulator:
+        return 'http://$_emulatorHost:5002/one-of-us-net/us-central1';
+      case FireChoice.prod:
+      default:
+        return 'https://us-central1-one-of-us-net.cloudfunctions.net';
     }
   }
 

@@ -9,7 +9,7 @@ import 'package:oneofus_common/crypto/crypto.dart';
 import 'package:oneofus_common/crypto/crypto25519.dart';
 import 'package:oneofus_common/trust_statement.dart';
 
-import 'package:oneofus_common/direct_firestore_writer.dart';
+import 'package:oneofus_common/cloud_functions_writer.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'config.dart';
@@ -122,7 +122,7 @@ class SignInService {
             domain: domain,
           );
 
-          final writer = DirectFirestoreWriter(firestore ?? FirebaseFirestore.instance);
+          final writer = CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements');
           final signer = await OouSigner.make(identity);
 
           if (onBeforePublish != null) {

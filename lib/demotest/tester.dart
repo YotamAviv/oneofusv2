@@ -2,8 +2,7 @@ import 'dart:convert';
 
 import 'package:oneofus_common/crypto/crypto.dart';
 import 'package:oneofus_common/crypto/crypto25519.dart';
-import 'package:oneofus_common/statement_writer.dart';
-import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/statement_source.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import '../core/keys.dart';

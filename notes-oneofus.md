@@ -14,6 +14,7 @@ adb shell pm clear net.oneofus.app
 flutter run -d emulator-5554
 
 firebase --project=one-of-us-net deploy --only hosting
+firebase --project=one-of-us-net deploy --only functions
 
 ## required for launch
 

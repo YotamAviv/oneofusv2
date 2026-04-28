@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:oneofus_common/cached_source.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
 import 'package:oneofus_common/direct_firestore_source.dart';
-import 'package:oneofus_common/direct_firestore_writer.dart';
+import 'package:oneofus_common/cloud_functions_writer.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/oou_verifier.dart';
 import 'package:oneofus_common/statement.dart';
@@ -119,7 +119,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     _source = CachedSource<TrustStatement>(baseSource);
 
     if (_isDevMode) {
-      Tester.init(DirectFirestoreWriter(_firestore));
+      Tester.init(CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements'));
     }
 
     _pageController.addListener(() {
@@ -766,7 +766,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     bool isClearing,
     String token,
   ) async {
-    final writer = DirectFirestoreWriter(_firestore);
+    final writer = CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements');
     final identity = _keys.identity!; // Checked in caller
     final signer = await OouSigner.make(identity);
 
@@ -800,7 +800,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     _devClickCount++;
     if (_devClickCount >= 3 && !_isDevMode) {
       if (Tester.writer == null) {
-        Tester.init(DirectFirestoreWriter(_firestore));
+        Tester.init(CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements'));
       }
       setState(() {
         _isDevMode = true;

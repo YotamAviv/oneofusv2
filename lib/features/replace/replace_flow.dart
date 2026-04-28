@@ -9,7 +9,7 @@ import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/crypto/crypto.dart';
 import 'package:oneofus_common/crypto/crypto25519.dart';
 import 'package:oneofus_common/oou_signer.dart';
-import 'package:oneofus_common/direct_firestore_writer.dart';
+import 'package:oneofus_common/cloud_functions_writer.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
 import 'package:oneofus_common/oou_verifier.dart';
 import '../../ui/app_typography.dart';
@@ -555,7 +555,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         signer = await OouSigner.make(newKeyPair);
       }
 
-      final writer = DirectFirestoreWriter(widget.firestore);
+      final writer = CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements');
 
       // 2. Filter valid statements and re-publish
       final validStatements = _allStatements!
