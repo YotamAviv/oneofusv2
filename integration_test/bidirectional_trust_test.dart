@@ -111,6 +111,43 @@ void main() {
     expect(find.byIcon(Icons.check_circle_outline_rounded), findsOneWidget);
     debugPrint("TEST: Bo found, check is outline.");
 
+    // 5b. Update Bo's vouch: add a comment (no refresh in between).
+    // This exercises _executePush with CloudFunctionsWriter for an issuer that already has statements.
+    debugPrint("TEST: Tapping edit on Bo's statement.");
+    await tester.tap(find.byIcon(Icons.edit_outlined).first);
+    await tester.pumpAndSettle();
+
+    debugPrint("TEST: Entering comment.");
+    await tester.enterText(find.widgetWithText(TextField, 'E.g. "Colleague from work", "Met at conference"'), 'Test comment');
+    await tester.pumpAndSettle();
+
+    debugPrint("TEST: Tapping PUBLISH.");
+    await tester.tap(find.text('PUBLISH'));
+    await tester.pump(const Duration(seconds: 3));
+
+    debugPrint("TEST: Verifying no error snackbar.");
+    expect(find.textContaining('Error'), findsNothing);
+
+    // 5c. Same again, but with a refresh first.
+    debugPrint("TEST: Tapping Refresh before second update.");
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    await tester.pump(const Duration(seconds: 2));
+
+    debugPrint("TEST: Tapping edit on Bo's statement again.");
+    await tester.tap(find.byIcon(Icons.edit_outlined).first);
+    await tester.pumpAndSettle();
+
+    debugPrint("TEST: Entering updated comment.");
+    await tester.enterText(find.widgetWithText(TextField, 'E.g. "Colleague from work", "Met at conference"'), 'Updated comment');
+    await tester.pumpAndSettle();
+
+    debugPrint("TEST: Tapping PUBLISH.");
+    await tester.tap(find.text('PUBLISH'));
+    await tester.pump(const Duration(seconds: 3));
+
+    debugPrint("TEST: Verifying no error snackbar.");
+    expect(find.textContaining('Error'), findsNothing);
+
     // 6. "Bo" trusts "me" as "Luke" (code: state: Bo.trust(me) moniker:"Luke")
     final boWriter = DirectFirestoreWriter(db);
     final boSigner = await OouSigner.make(boKeyPair);
@@ -134,6 +171,9 @@ void main() {
     debugPrint("TEST: Verifying check is filled in.");
     expect(find.byIcon(Icons.check_circle), findsOneWidget);
     debugPrint("TEST: Check is now filled in.");
+
+    // Let any success snackbars from previous publishes clear before navigating.
+    await tester.pump(const Duration(seconds: 5));
 
     // 9. Go back to Home
     debugPrint("TEST: Navigating back to ID screen.");

@@ -9,6 +9,7 @@ import 'package:oneofus_common/cached_source.dart';
 import 'package:oneofus_common/cloud_functions_source.dart';
 import 'package:oneofus_common/direct_firestore_source.dart';
 import 'package:oneofus_common/cloud_functions_writer.dart';
+import 'package:oneofus_common/direct_firestore_writer.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/oou_verifier.dart';
 import 'package:oneofus_common/statement.dart';
@@ -108,15 +109,18 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
             : FirebaseFirestore.instance);
 
     StatementSource<TrustStatement> baseSource;
+    StatementWriter<TrustStatement> writer;
     if (Config.fireChoice != FireChoice.fake) {
       baseSource = CloudFunctionsSource<TrustStatement>(
         baseUrl: Config.exportUrl,
         verifier: OouVerifier(),
       );
+      writer = CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements');
     } else {
       baseSource = DirectFirestoreSource<TrustStatement>(_firestore);
+      writer = DirectFirestoreWriter<TrustStatement>(_firestore);
     }
-    _source = CachedSource<TrustStatement>(baseSource);
+    _source = CachedSource<TrustStatement>(baseSource, writer);
 
     if (_isDevMode) {
       Tester.init(CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements'));
@@ -766,12 +770,11 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     bool isClearing,
     String token,
   ) async {
-    final writer = CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements');
     final identity = _keys.identity!; // Checked in caller
     final signer = await OouSigner.make(identity);
 
     final mutableJson = Map<String, dynamic>.from(statement.json);
-    await writer.push(mutableJson, signer);
+    await _source.push(mutableJson, signer);
 
     if (isMyDelegate && (isRevoking || isClearing)) {
       await _keys.removeDelegateByToken(token);
