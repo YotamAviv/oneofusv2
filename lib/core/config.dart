@@ -111,6 +111,16 @@ class Config {
     }
   }
 
+  static String get writeFunctionsUrl {
+    switch (fireChoice) {
+      case FireChoice.emulator:
+        return 'http://$_emulatorHost:5002/one-of-us-net/us-central1';
+      case FireChoice.prod:
+      default:
+        return 'https://us-central1-one-of-us-net.cloudfunctions.net';
+    }
+  }
+
   static String get signInUrl {
     switch (fireChoice) {
       case FireChoice.emulator:
