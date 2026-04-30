@@ -338,6 +338,7 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   Future<void> _executeSignIn(String data) async {
+    debugPrint('_executeSignIn: data=$data');
     try {
       // 1. Ensure we are on the Card Screen (Page 0) so the user sees the animation
       if (mounted && _pageController.hasClients) {
@@ -351,6 +352,7 @@ You can see who those are by looking for the confirmation check mark to the righ
         context,
         firestore: _firestore,
         myStatements: _myStatements,
+        channel: _source,
         onSending: () => _cardKey.currentState?.throwQr(),
         onBeforePublish: _showLgtm
             ? (statement) async {
@@ -369,8 +371,8 @@ You can see who those are by looking for the confirmation check mark to the righ
       if (success && mounted) {
         loadAllData();
       }
-    } catch (e) {
-      // Logic might catch errors during sign-in
+    } catch (e, st) {
+      debugPrint('_executeSignIn error: $e\n$st');
     }
   }
 
@@ -433,7 +435,9 @@ You can see who those are by looking for the confirmation check mark to the righ
           try {
             final data = utf8.decode(base64Url.decode(dataBase64));
             await _executeSignIn(data);
-          } catch (e) {}
+          } catch (e, st) {
+            debugPrint('DEEPLINK: error parsing legacy keymeid parameters: $e\n$st');
+          }
         }
       }
 
@@ -449,7 +453,9 @@ You can see who those are by looking for the confirmation check mark to the righ
           try {
             final data = utf8.decode(base64Url.decode(paramsParam));
             await _executeSignIn(data);
-          } catch (e) {}
+          } catch (e, st) {
+            debugPrint('DEEPLINK: error parsing https sign-in parameters: $e\n$st');
+          }
         } else if (dataParam != null) {
           await _executeSignIn(dataParam);
         }

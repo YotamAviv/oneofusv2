@@ -9,8 +9,8 @@ import 'package:oneofus_common/crypto/crypto.dart';
 import 'package:oneofus_common/crypto/crypto25519.dart';
 import 'package:oneofus_common/trust_statement.dart';
 
-import 'package:oneofus_common/cloud_functions_writer.dart';
 import 'package:oneofus_common/oou_signer.dart';
+import 'package:oneofus_common/statement_source.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'config.dart';
 import 'keys.dart';
@@ -35,11 +35,14 @@ class SignInService {
   static Future<bool> signIn(String scanned, BuildContext context, {
     FirebaseFirestore? firestore,
     List<TrustStatement>? myStatements,
+    required StatementChannel<TrustStatement> channel,
     VoidCallback? onSending,
     Future<bool> Function(TrustStatement)? onBeforePublish,
   }) async {
     try {
+      debugPrint('SignInService.signIn: scanned=$scanned');
       if (!await validateSignIn(scanned)) {
+        debugPrint('SignInService.signIn: validateSignIn failed');
         if (context.mounted) {
           ScaffoldMessenger.of(
             context,
@@ -52,6 +55,7 @@ class SignInService {
       final String domain = received['domain']!;
       final String urlKey = 'url';
       final String urlString = received[urlKey]!;
+      debugPrint('SignInService.signIn: domain=$domain url=$urlString');
       final String encryptionPkKey = 'encryptionPk';
 
       // 1. Verify that the URL matches the domain specified.
@@ -79,6 +83,7 @@ class SignInService {
 
       // 2. Get or Create Delegate Key
       OouKeyPair? delegateKeyPair = keys.delegate(domain);
+      debugPrint('SignInService.signIn: session=$session delegateKeyPair=${delegateKeyPair != null}');
       if (delegateKeyPair == null) {
         final bool? proceed = await _showCreateDelegateDialog(context, domain);
         if (proceed == true) {
@@ -122,7 +127,6 @@ class SignInService {
             domain: domain,
           );
 
-          final writer = CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements');
           final signer = await OouSigner.make(identity);
 
           if (onBeforePublish != null) {
@@ -130,7 +134,7 @@ class SignInService {
             if (!confirmed) return false;
           }
 
-          await writer.push(statementJson, signer);
+          await channel.push(statementJson, signer);
         } else if (proceed == null) {
           // User cancelled
           return false;
@@ -204,7 +208,9 @@ class SignInService {
           postUri = postUri.replace(host: '10.0.2.2');
         }
 
+        debugPrint('SignInService.signIn: POSTing to $postUri');
         final response = await http.post(postUri, headers: _headers, body: jsonEncode(send));
+        debugPrint('SignInService.signIn: response status=${response.statusCode} body=${response.body}');
 
         if (onSending != null) onSending();
 
@@ -218,6 +224,7 @@ class SignInService {
           ).showSnackBar(SnackBar(content: Text(message)));
           return true;
         } else {
+          debugPrint('SignInService.signIn: FAILED status=${response.statusCode} body=${response.body}');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Sign in failed: ${response.statusCode} - ${response.body}')),
           );
@@ -225,7 +232,8 @@ class SignInService {
         }
       }
       return false;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('SignInService.signIn: exception: $e\n$st');
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
