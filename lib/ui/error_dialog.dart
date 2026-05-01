@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app_typography.dart';
 
 class ErrorDialog {
   static void show(BuildContext context, String title, Object error, [StackTrace? stackTrace]) {
+    final String details = stackTrace != null
+        ? 'Error: $error\n\nStack trace:\n$stackTrace'
+        : 'Error: $error';
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -25,6 +29,10 @@ class ErrorDialog {
           ),
         ),
         actions: [
+          TextButton(
+            onPressed: () => Clipboard.setData(ClipboardData(text: details)),
+            child: const Text('COPY'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('OKAY'),

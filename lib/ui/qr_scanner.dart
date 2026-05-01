@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'app_typography.dart';
+import 'error_dialog.dart';
 
 class QrScanner extends StatefulWidget {
   final String title;
@@ -62,9 +63,7 @@ class _QrScannerState extends State<QrScanner> {
         _isHandled = true;
         Navigator.of(context).pop(text);
       } else if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Invalid data in clipboard')));
+        ErrorDialog.show(context, 'Invalid Clipboard Data', 'The clipboard does not contain valid scan data');
       }
     }
   }

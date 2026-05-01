@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../ui/app_typography.dart';
 import '../demotest/tester.dart';
+import '../ui/error_dialog.dart';
 
 class DevScreen extends StatelessWidget {
   final VoidCallback onRefresh;
@@ -33,11 +34,9 @@ class DevScreen extends StatelessWidget {
                     SnackBar(content: Text('Test "${entry.key}" completed and identity imported.')),
                   );
                 }
-              } catch (e) {
+              } catch (e, st) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error running ${entry.key}: $e')),
-                  );
+                  ErrorDialog.show(context, 'Error Running ${entry.key}', e, st);
                 }
               }
             },
@@ -60,11 +59,9 @@ class DevScreen extends StatelessWidget {
                       SnackBar(content: Text('Switched to key: $name')),
                     );
                   }
-                } catch (e) {
+                } catch (e, st) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error switching to $name: $e')),
-                    );
+                    ErrorDialog.show(context, 'Error Switching Key', e, st);
                   }
                 }
               },

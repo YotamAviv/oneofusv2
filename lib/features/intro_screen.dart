@@ -51,6 +51,19 @@ class IntroScreen extends StatelessWidget {
                         ),
                 ),
                 const TextSpan(
+                  text: ") or HabloTengo (",
+                  style: AppTypography.body,
+                ),
+                TextSpan(
+                  text: "https://hablotengo.com/app",
+                  style: AppTypography.link,
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => launchUrl(
+                          Uri.parse("https://hablotengo.com/app"),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                ),
+                const TextSpan(
                   text: ") and see.",
                   style: AppTypography.body,
                 ),

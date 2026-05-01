@@ -550,11 +550,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
           final fedKey = FedKey.fromPayload(json);
           if (fedKey != null) await _handlePublicKeyScan(fedKey, targetVerb: targetVerb);
         }
-      } catch (e) {
+      } catch (e, st) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Invalid scan data: $e')));
+          ErrorDialog.show(context, 'Invalid Scan Data', e, st);
         }
       }
     }
@@ -637,11 +635,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         // If Trust, EditStatementDialog logic permits switch to Block if no conflict.
         lockedVerb: targetVerb == TrustVerb.trust ? null : targetVerb,
       );
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error parsing scanned key: $e')));
+        ErrorDialog.show(context, 'Error Parsing Scanned Key', e, st);
       }
     }
   }

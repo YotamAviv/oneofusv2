@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
 import '../app_typography.dart';
+import '../error_dialog.dart';
 
 /// The ClearStatementDialog handles the 'nullification' of a previous stance.
 /// In a singular disposition model, pushing a "clear" statement effectively
@@ -96,9 +97,7 @@ class _ClearStatementDialogState extends State<ClearStatementDialog> {
                     if (mounted) {
                       setState(() => _isSaving = false);
                       if (!e.toString().contains("UserCancelled")) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        ErrorDialog.show(context, 'Error', e);
                       }
                     }
                   }

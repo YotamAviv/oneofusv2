@@ -6,6 +6,7 @@ import '../../ui/app_typography.dart';
 import '../../core/keys.dart';
 import '../widgets/editors.dart';
 import '../widgets/verb_conflict_warning.dart';
+import '../error_dialog.dart';
 
 class EditStatementDialog extends StatefulWidget {
   final TrustStatement proposedStatement;
@@ -442,7 +443,7 @@ Block: Bots, spammers, bad actors, careless, confused..''',
       if (mounted) {
         setState(() => _isSaving = false);
         if (!e.toString().contains("UserCancelled")) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+          ErrorDialog.show(context, 'Error', e);
         }
       }
     }

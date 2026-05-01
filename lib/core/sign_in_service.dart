@@ -14,6 +14,7 @@ import 'package:oneofus_common/statement_source.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'config.dart';
 import 'keys.dart';
+import '../ui/error_dialog.dart';
 
 class SignInService {
   static const Map<String, String> _headers = {'Content-Type': 'application/json; charset=UTF-8'};
@@ -44,9 +45,7 @@ class SignInService {
       if (!await validateSignIn(scanned)) {
         debugPrint('SignInService.signIn: validateSignIn failed');
         if (context.mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Invalid sign-in data')));
+          ErrorDialog.show(context, 'Sign-In Error', 'Invalid sign-in data');
         }
         return false;
       }
@@ -225,9 +224,7 @@ class SignInService {
           return true;
         } else {
           debugPrint('SignInService.signIn: FAILED status=${response.statusCode} body=${response.body}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Sign in failed: ${response.statusCode} - ${response.body}')),
-          );
+          ErrorDialog.show(context, 'Sign-In Failed', '${response.statusCode} - ${response.body}');
           return false;
         }
       }
@@ -235,9 +232,7 @@ class SignInService {
     } catch (e, st) {
       debugPrint('SignInService.signIn: exception: $e\n$st');
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error during sign in: $e')));
+        ErrorDialog.show(context, 'Sign-In Error', e, st);
       }
       return false;
     }
