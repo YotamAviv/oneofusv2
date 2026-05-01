@@ -83,6 +83,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final CachedSource<TrustStatement> _source;
+  String? _loadedIdentityToken;
 
   // Data State
   final ValueNotifier<List<TrustStatement>> myStatements = ValueNotifier([]);
@@ -164,6 +165,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   Future<void> _initIdentityAndLoadData() async {
     try {
       final found = await _keys.load();
+      final newToken = found ? _keys.identityToken : null;
 
       if (mounted) {
         setState(() {
@@ -172,7 +174,8 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
         });
       }
 
-      if (found) {
+      if (found && newToken != _loadedIdentityToken) {
+        _loadedIdentityToken = newToken;
         await loadAllData();
       }
     } catch (e, stackTrace) {

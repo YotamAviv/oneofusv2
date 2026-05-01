@@ -64,7 +64,8 @@ class CachedSource<T extends Statement> implements StatementChannel<T> {
     final Future<void> prev = _pushQueues[issuerId] ?? Future.value();
     _pushQueues[issuerId] = prev.catchError((_) {}).then((_) async {
       try {
-        assert(_fullCache.containsKey(issuerId), 'fetch before push');
+        assert(_fullCache.containsKey(issuerId),
+            '''issuer chain not loaded — optimistic concurrency means something - do not write when you're not caught up; writing to an uninitialized chain is not allowed (this is not a retry scenario)''');
         final ExpectedPrevious head = _fullCache[issuerId]!.isEmpty
             ? const ExpectedPrevious(null)
             : ExpectedPrevious(_fullCache[issuerId]!.first.token);
