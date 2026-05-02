@@ -16,11 +16,11 @@ else
     echo "No PID file found. Is the emulator running?"
 fi
 
-# Kill any stale java processes holding our ports (8081, 9151)
-for PORT in 8081 9151; do
-    JAVA_PID=$(lsof -ti :"$PORT" 2>/dev/null)
-    if [ -n "$JAVA_PID" ]; then
-        echo "Killing stale process on port $PORT (PID $JAVA_PID)..."
-        kill "$JAVA_PID" 2>/dev/null
+# Kill any stale processes holding emulator ports
+for PORT in 5002 8081 9151; do
+    PID=$(lsof -ti :"$PORT" 2>/dev/null)
+    if [ -n "$PID" ]; then
+        echo "Killing stale process on port $PORT (PID $PID)..."
+        kill "$PID" 2>/dev/null
     fi
 done
