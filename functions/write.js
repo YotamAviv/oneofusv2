@@ -1,13 +1,6 @@
 /**
  * write — HTTP POST endpoint
  *
- * TODO: Transition to Hablo's write approach (hablotengo/functions/hablo_write.js):
- * use a Firestore transaction + head field instead of the non-transactional
- * orderBy query. The current approach has a TOCTOU race: two concurrent writers
- * can both read the same latestToken and both succeed, forking the chain.
- * CloudFunctionsWriter's client-side queue prevents this in practice for a single
- * client, but not across multiple devices or sessions.
- *
  * Appends a signed statement to an issuer's statement stream in Firestore.
  *
  * ─────────────────────────────────────────────────────────────────────────────
@@ -25,62 +18,15 @@
  * }
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * STATEMENT FORMAT
- * ─────────────────────────────────────────────────────────────────────────────
- * A statement is a JSON object with the following fields:
- *
- * {
- *   "I":         <PublicKey>,   // issuer's public key (JSON object, canonically ordered)
- *   "time":      <ISO 8601>,    // statement timestamp
- *   "previous":  <token>,       // optional — token of the previous statement in this stream
- *                               //            omit (or null) for the first statement
- *   ...                         // verb-specific fields (verb, subject, object, etc.)
- *   "signature": <base64>       // Ed25519 signature over the canonically ordered statement
- *                               //   (excluding the "signature" field itself)
- * }
- *
- * The token of a statement is the SHA-1 of its canonical JSON representation
- * (all fields including signature, keys ordered deterministically).
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * CHAIN INTEGRITY (previous + time)
- * ─────────────────────────────────────────────────────────────────────────────
- * Each issuer maintains an append-only chain per collection.
- * The server enforces:
- *   - First write: "previous" must be absent or null.
- *   - Subsequent writes: "previous" must equal the token of the latest statement
- *     currently in the stream (ordered by "time" desc).
- *   - "time" must be strictly greater than the latest statement's time, so the
- *     stream can always be fetched in strict descending order.
- * Concurrent writes by the same issuer are serialized by the client-side write
- * queue in CloudFunctionsWriter.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * SECURITY
- * ─────────────────────────────────────────────────────────────────────────────
- * No Firebase Auth or App Check is required — the endpoint is publicly callable.
- * Authorization is provided entirely by the Ed25519 signature: the server verifies
- * the signature before writing, so only the holder of the private key can append
- * to a given issuer's stream.
- *
- * ─────────────────────────────────────────────────────────────────────────────
  * FIRESTORE PATH
  * ─────────────────────────────────────────────────────────────────────────────
  * {token(I)} / {collection} / statements / {token(statement)}
- *
- * The issuer token scopes each write to the issuer's own subtree.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * RESPONSE
  * ─────────────────────────────────────────────────────────────────────────────
  * 200 OK: { "result": { "token": <statementToken> } }
  * Error: HTTP 500, body contains error message (previous mismatch, bad signature, etc.)
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * EMULATOR BASE URLs
- * ─────────────────────────────────────────────────────────────────────────────
- * Nerdster:    http://127.0.0.1:5001/nerdster/us-central1
- * ONE-OF-US:  http://127.0.0.1:5002/one-of-us-net/us-central1
  */
 
 const admin = require('firebase-admin');

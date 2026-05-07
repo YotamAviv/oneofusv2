@@ -18,6 +18,9 @@ if (admin.apps.length === 0) {
 }
 
 const { handleWrite } = require('./write');
+const { makeWrite2Handler } = require('./write2');
+const { auth: oneofusAuth } = require('./auth_oneofus');
+const handleWrite2 = makeWrite2Handler(oneofusAuth);
 const { handleExport } = require('./export');
 
 exports.write = onCall(async (request) => {
@@ -26,6 +29,10 @@ exports.write = onCall(async (request) => {
   } catch (e) {
     throw new HttpsError('internal', e.message);
   }
+});
+
+exports.write2 = onRequest({ cors: true }, async (req, res) => {
+  await handleWrite2(req, res);
 });
 
 exports.export = onRequest({ cors: true, minInstances: 1 }, async (req, res) => {
