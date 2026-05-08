@@ -3,15 +3,9 @@ import 'dart:convert';
 
 import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:oneofus_common/cached_source.dart';
-import 'package:oneofus_common/cloud_functions_source.dart';
-import 'package:oneofus_common/direct_firestore_source.dart';
-import 'package:oneofus_common/cloud_functions_writer.dart';
-import 'package:oneofus_common/direct_firestore_writer.dart';
+import 'package:oneofus_common/channel_factory.dart';
 import 'package:oneofus_common/oou_signer.dart';
-import 'package:oneofus_common/oou_verifier.dart';
 import 'package:oneofus_common/statement.dart';
 import 'package:oneofus_common/statement_source.dart';
 import 'package:oneofus_common/trust_statement.dart';
@@ -82,7 +76,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   bool _showFederatedQr = false;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
-  late final CachedSource<TrustStatement> _source;
+  late final StatementChannel<TrustStatement> _source;
   String? _loadedIdentityToken;
 
   // Data State
@@ -102,29 +96,11 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     _instance = this;
     TrustStatement.init();
 
-    // Initialize the statement source based on the environment
-    _firestore =
-        widget.firestore ??
-        (Config.fireChoice == FireChoice.fake
-            ? FakeFirebaseFirestore()
-            : FirebaseFirestore.instance);
-
-    StatementSource<TrustStatement> baseSource;
-    StatementWriter<TrustStatement> writer;
-    if (Config.fireChoice != FireChoice.fake) {
-      baseSource = CloudFunctionsSource<TrustStatement>(
-        baseUrl: Config.exportUrl,
-        verifier: OouVerifier(),
-      );
-      writer = CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements');
-    } else {
-      baseSource = DirectFirestoreSource<TrustStatement>(_firestore);
-      writer = DirectFirestoreWriter<TrustStatement>(_firestore);
-    }
-    _source = CachedSource<TrustStatement>(baseSource, writer);
+    _source = channelFactory.getChannel<TrustStatement>(kOneofusDomain, 'statements');
+    _firestore = channelFactory.firestoreFor(kOneofusDomain) ?? FirebaseFirestore.instance;
 
     if (_isDevMode) {
-      Tester.init(CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements'));
+      Tester.init(_source);
     }
 
     _pageController.addListener(() {
@@ -808,7 +784,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     _devClickCount++;
     if (_devClickCount >= 3 && !_isDevMode) {
       if (Tester.writer == null) {
-        Tester.init(CloudFunctionsWriter<TrustStatement>(Config.writeFunctionsUrl, 'statements'));
+        Tester.init(_source);
       }
       setState(() {
         _isDevMode = true;

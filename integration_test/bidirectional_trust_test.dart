@@ -24,6 +24,7 @@ void main() {
 
     // Initialize Firebase correctly (handles Fake/Emulator/Prod logic)
     await Config.initFirebase();
+    Config.initChannelFactory();
 
     // 0. Wipe existing keys to ensure we start at the onboarding screen
     await Keys().clearAll();

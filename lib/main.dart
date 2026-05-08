@@ -11,6 +11,7 @@ import 'ui/app_typography.dart'; // import typography
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Config.initFirebase();
+  Config.initChannelFactory();
 
   // Configure Global JsonDisplay Defaults
   JsonDisplay.defaultTextStyle = AppTypography.mono;

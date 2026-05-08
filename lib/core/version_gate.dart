@@ -2,6 +2,7 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'package:oneofus_common/channel_factory.dart' show FireChoice;
 import 'config.dart';
 
 class VersionGate {

@@ -3,14 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:oneofus_common/channel_factory.dart';
+import 'package:oneofus_common/trust_statement.dart' show kOneofusDomain;
 import '../firebase_options.dart';
-
-enum FireChoice { fake, emulator, prod }
 
 class Config {
   // --- Hard coded - use for Environment Switch ---
   static final FireChoice _fireChoice = FireChoice.prod;
-  
+
   static FireChoice get fireChoice => _fireChoice;
 
   static String get _emulatorHost {
@@ -27,6 +27,18 @@ class Config {
         FirebaseFirestore.instance.useFirestoreEmulator(_emulatorHost, 8081);
       }
     }
+  }
+
+  static void initChannelFactory() {
+    channelFactory = ChannelFactory(fireChoice);
+    channelFactory.register(
+      kOneofusDomain,
+      exportUrl: 'https://export.one-of-us.net',
+      functionsUrl: 'https://us-central1-one-of-us-net.cloudfunctions.net',
+      emulatorExportUrl: 'http://$_emulatorHost:5002/one-of-us-net/us-central1/export',
+      emulatorFunctionsUrl: 'http://$_emulatorHost:5002/one-of-us-net/us-central1',
+      firestore: fireChoice == FireChoice.fake ? db : null,
+    );
   }
 
   static FirebaseFirestore? _db;
@@ -68,14 +80,11 @@ class Config {
     return uri.replace(queryParameters: newParams);
   }
 
-
   /// Translates a canonical URL (e.g. from [FedKey.fetchUrl]) to the actual
   /// endpoint for the current environment.
   ///
   /// In emulator mode, prod URLs are silently redirected to local equivalents
   /// so call sites never need to know about [fireChoice].
-  /// Phase 2 federation code should call [resolveUrl] instead of using
-  /// [FedKey.fetchUrl] directly.
   static String resolveUrl(String url) {
     if (fireChoice == FireChoice.emulator) {
       return _emulatorRedirects[url] ?? url;

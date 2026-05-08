@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:oneofus/core/config.dart';
+import 'package:oneofus_common/channel_factory.dart' show FireChoice;
 import 'package:oneofus/core/keys.dart';
 import 'package:oneofus/main.dart' as app;
 import 'test_utils.dart';
@@ -15,6 +16,7 @@ void main() {
     Set<FireChoice> supported = {FireChoice.emulator, FireChoice.prod};
     assert(supported.contains(Config.fireChoice), "Not supported: ${Config.fireChoice.name}.");
     await Config.initFirebase();
+    Config.initChannelFactory();
 
     // 1. Define Lisa's private key.
     debugPrint("TEST: Defining Lisa's private key.");

@@ -69,8 +69,9 @@ class TrustStatement extends Statement {
     dynamic subject;
     for (verb in TrustVerb.values) {
       subject = jsonish[verb.label];
-      if (subject != null)
+      if (subject != null) {
         break; // could continue to loop to assert that there isn't a second subject
+      }
     }
     assert(subject != null);
 
@@ -134,7 +135,10 @@ class TrustStatement extends Statement {
   // strings like 'revokeAt' all over the code, and this avoids most of it.
   // CONSIDER: A fancy StatementBuilder.
   static Json make(Json iJson, Json subject, TrustVerb verb,
-      {String? revokeAt, String? moniker, String? domain, String? comment,
+      {String? revokeAt,
+      String? moniker,
+      String? domain,
+      String? comment,
       Map<String, dynamic>? endpoint}) {
     assertValid(verb, revokeAt, moniker, comment, domain);
 

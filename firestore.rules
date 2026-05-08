@@ -1,0 +1,14 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // All writes go through Cloud Functions (Admin SDK bypasses these rules).
+    // My plan is to (one of these days, if necessary):
+    // - sweep the data and delete data from authors not in the one-of-us.net network.
+    match /{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

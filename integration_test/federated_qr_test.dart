@@ -17,6 +17,7 @@ void main() {
     (WidgetTester tester) async {
       Config.ensureNotProd();
       await Config.initFirebase();
+      Config.initChannelFactory();
       await Keys().clearAll();
 
       final db = Config.db;
