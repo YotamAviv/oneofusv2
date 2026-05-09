@@ -7,18 +7,21 @@ if [ -f "$PIDFILE" ]; then
     PID=$(cat "$PIDFILE")
     if kill -0 "$PID" 2>/dev/null; then
         echo "Stopping one-of-us-net emulator (PID $PID)..."
-        # Kill the process group to catch child java/node processes
         kill -- -$(ps -o pgid= -p "$PID" 2>/dev/null | tr -d ' ') 2>/dev/null || kill "$PID"
-        sleep 2
+        for i in {1..5}; do
+            if ! kill -0 "$PID" 2>/dev/null; then break; fi
+            sleep 1
+        done
+        if kill -0 "$PID" 2>/dev/null; then kill -9 "$PID"; fi
     fi
     rm "$PIDFILE"
 else
     echo "No PID file found. Is the emulator running?"
 fi
 
-# Kill any stale processes holding emulator ports
+# Kill any stale processes listening on emulator ports (not clients)
 for PORT in 5002 8081 9151; do
-    PID=$(lsof -ti :"$PORT" 2>/dev/null)
+    PID=$(lsof -ti :"$PORT" -s TCP:LISTEN 2>/dev/null)
     if [ -n "$PID" ]; then
         echo "Killing stale process on port $PORT (PID $PID)..."
         kill "$PID" 2>/dev/null

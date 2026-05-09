@@ -45,3 +45,16 @@ echo $! > "$REPO_DIR/.oneofus_emulator.pid"
 echo "Started. Log: oneofus_emulator.log"
 echo "UI: http://localhost:4001"
 echo "Stop with: ./bin/stop_emulator.sh"
+
+echo "Waiting for emulator to be ready..."
+for i in $(seq 1 90); do
+    if grep -q "All emulators ready" "$REPO_DIR/oneofus_emulator.log" 2>/dev/null; then
+        echo "Emulator ready! (${i}s)"
+        break
+    fi
+    if [ "$i" -eq 90 ]; then
+        echo "ERROR: Emulator did not become ready within 90s. Check oneofus_emulator.log"
+        exit 1
+    fi
+    sleep 1
+done
