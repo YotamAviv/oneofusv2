@@ -1,7 +1,7 @@
 /**
  * ONE-OF-US write auth.
  *
- * Ed25519 signature verification (handled in write.js) is the only
+ * Ed25519 signature verification (handled in write2.js) is the only
  * authorization ONE-OF-US needs. No session credential required.
  */
 

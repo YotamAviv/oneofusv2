@@ -19,8 +19,8 @@ if (admin.apps.length === 0) {
 
 const { handleWrite } = require('./write');
 const { makeWrite2Handler } = require('./write2');
-const { auth: oneofusAuth } = require('./auth_oneofus');
-const handleWrite2 = makeWrite2Handler(oneofusAuth);
+const { auth: writeAuth } = require('./write_auth');
+const handleWrite2 = makeWrite2Handler(writeAuth);
 const { handleExport } = require('./export');
 
 exports.write = onCall(async (request) => {
