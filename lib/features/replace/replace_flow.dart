@@ -345,8 +345,8 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         } else {
           throw Exception('Could not find identity token in the scanned QR code.');
         }
-      } catch (e) {
-        if (mounted) ErrorDialog.show(context, 'Identification Error', e, null);
+      } catch (e, st) {
+        if (mounted) ErrorDialog.show(context, 'Identification Error', e, st);
       }
     }
   }
@@ -397,11 +397,11 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
           _isLoadingHistory = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
       debugPrint('[ReplaceFlow] _fetchHistory ERROR: $e');
       if (mounted) {
         setState(() => _isLoadingHistory = false);
-        ErrorDialog.show(context, 'Error fetching history', e, null);
+        ErrorDialog.show(context, 'Error fetching history', e, st);
       }
     }
   }
@@ -556,6 +556,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
       }
 
       final writer = channelFactory.getChannel<TrustStatement>(kOneofusDomain, 'statements');
+      await writer.fetch({getToken(newPubKeyJson): null});
 
       // 2. Filter valid statements and re-publish
       final validStatements = _allStatements!
@@ -631,13 +632,13 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
       }
 
       await AppShell.instance.loadAllData();
-    } catch (e) {
+    } catch (e, st) {
       if (mounted) {
         setState(() {
           _isProcessing = false;
           _processingStatus = 'Error: $e';
         });
-        ErrorDialog.show(context, 'Recovery Failed', e, null);
+        ErrorDialog.show(context, 'Recovery Failed', e, st);
       }
     }
   }
