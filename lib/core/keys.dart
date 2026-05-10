@@ -55,6 +55,12 @@ class Keys extends ChangeNotifier {
     return _identityToken;
   }
 
+  /// Returns all delegate key pairs keyed by domain (excludes the identity key).
+  Map<String, OouKeyPair> get delegates => Map.unmodifiable({
+    for (final e in _keys.entries)
+      if (e.key != kOneofusDomain) e.key: e.value,
+  });
+
   /// Retrieves the delegate key pair for a specific service domain.
   OouKeyPair? delegate(String domain) {
     if (domain == kOneofusDomain) {

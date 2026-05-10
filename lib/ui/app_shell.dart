@@ -54,7 +54,7 @@ class AppShell extends StatefulWidget {
 // Padding to ensure the top content clears the status bar/notch nicely.
 const double _topSafeAreaPadding = 20;
 
-class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin {
+class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   static AppShellState? _instance;
   static AppShellState get instance => _instance!;
 
@@ -74,6 +74,9 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
   late bool _isDevMode = Config.fireChoice != FireChoice.prod;
   bool _showLgtm = false;
   bool _showFederatedQr = false;
+  List<String> _orphanedDelegateDomains = [];
+  final ValueNotifier<bool> isLoadingData = ValueNotifier(false);
+  late AnimationController _refreshRotationController;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
   late final StatementChannel<TrustStatement> _source;
@@ -115,6 +118,7 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     });
 
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2));
+    _refreshRotationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
 
     if (!widget.isTesting) {
       _pulseController.repeat(reverse: true);
@@ -134,6 +138,8 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     _keys.removeListener(_initIdentityAndLoadData);
     _linkSubscription?.cancel();
     _pulseController.dispose();
+    _refreshRotationController.dispose();
+    isLoadingData.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -143,19 +149,23 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       final found = await _keys.load();
       final newToken = found ? _keys.identityToken : null;
 
-      if (mounted) {
-        setState(() {
-          _hasKey = found;
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
 
       if (found && newToken != _loadedIdentityToken) {
         _loadedIdentityToken = newToken;
+        setState(() => _hasKey = found);
+        // Keep _isLoading = true; loadAllData() owns that transition.
         await loadAllData();
+      } else {
+        setState(() {
+          _hasKey = found;
+          // Only clear the loading screen if no data fetch is already in progress.
+          if (!isLoadingData.value) _isLoading = false;
+        });
       }
     } catch (e, stackTrace) {
       if (mounted) {
+        isLoadingData.value = false;
         setState(() => _isLoading = false);
         ErrorDialog.show(context, "Identity Error", e, stackTrace);
       }
@@ -174,10 +184,12 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
     // If we're already displaying things, just set _isRefreshing.
     final bool showFullLoader = _myStatements.isEmpty && !_isRefreshing;
     if (showFullLoader) {
+      isLoadingData.value = true;
       setState(() => _isLoading = true);
     } else {
       setState(() => _isRefreshing = true);
     }
+    _refreshRotationController.repeat();
 
     _source.clear();
 
@@ -190,6 +202,17 @@ class AppShellState extends State<AppShell> with SingleTickerProviderStateMixin 
       final List<TrustStatement> newMyStatements = List.from(myStatementsMap[myToken] ?? []);
 
       newMyStatements.removeWhere((s) => s.verb == TrustVerb.clear);
+
+      // Rep invariant: every local delegate key must have an active delegate statement.
+      final List<String> orphaned = [];
+      for (final entry in _keys.delegates.entries) {
+        final domain = entry.key;
+        final token = getToken(await (await entry.value.publicKey).json);
+        final hasStatement = newMyStatements.any(
+          (s) => s.verb == TrustVerb.delegate && s.domain == domain && s.subjectToken == token,
+        );
+        if (!hasStatement) orphaned.add(domain);
+      }
 
       // Identify direct contacts (identities trusted by the user)
       final Set<String> directContacts = newMyStatements
@@ -250,6 +273,7 @@ You can see who those are by looking for the confirmation check mark to the righ
           myStatements.value = newMyStatements;
           peersStatements.value = newPeersStatements;
           _notifications = activeNotifications;
+          _orphanedDelegateDomains = orphaned;
 
           assert(() {
             Statement.validateOrderTypes(_myStatements);
@@ -261,9 +285,15 @@ You can see who those are by looking for the confirmation check mark to the righ
           _isLoading = false;
           _isRefreshing = false;
         });
+        isLoadingData.value = false;
+        _refreshRotationController.stop();
+        _refreshRotationController.reset();
       }
     } catch (e) {
       if (mounted) {
+        isLoadingData.value = false;
+        _refreshRotationController.stop();
+        _refreshRotationController.reset();
         setState(() {
           _isLoading = false;
           _isRefreshing = false;
@@ -780,6 +810,100 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     ).showSnackBar(SnackBar(content: Text('$label: Success'), backgroundColor: color));
   }
 
+  Widget _buildRepInvariantViolationScreen() {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'Unregistered Delegate Key',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'The following local delegate keys have no active delegate statement in ONE-OF-US.NET. '
+                'Claim each key to register it, or delete it to start fresh.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              for (final domain in _orphanedDelegateDomains) ...[
+                Text(domain, style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => _claimDelegate(domain),
+                      child: const Text('CLAIM'),
+                    ),
+                    const SizedBox(width: 16),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                      onPressed: () => _deleteOrphanedDelegate(domain),
+                      child: const Text('DELETE'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+              TextButton.icon(
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh'),
+                onPressed: loadAllData,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _claimDelegate(String domain) async {
+    try {
+      final keyPair = _keys.delegates[domain]!;
+      final identityPubKeyJson = await (await _keys.identity!.publicKey).json;
+      final delegatePubKeyJson = await (await keyPair.publicKey).json;
+      final statementJson = TrustStatement.make(
+        identityPubKeyJson,
+        delegatePubKeyJson,
+        TrustVerb.delegate,
+        domain: domain,
+      );
+      await _pushTrustStatement(TrustStatement(Jsonish(statementJson)));
+    } catch (e) {
+      if (mounted && e.toString() != 'Exception: UserCancelled') {
+        ErrorDialog.show(context, 'Claim Failed', e);
+      }
+    }
+  }
+
+  Future<void> _deleteOrphanedDelegate(String domain) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Delegate Key?'),
+        content: Text('This will permanently delete the local delegate key for $domain. You can create a new one next time you sign in.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    ) ?? false;
+    if (!confirmed) return;
+    await _keys.removeDelegate(domain);
+    await loadAllData();
+  }
+
   void _handleDevClick() {
     _devClickCount++;
     if (_devClickCount >= 3 && !_isDevMode) {
@@ -842,6 +966,10 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
 
     if (_showCongrats) {
       return CongratulationsScreen(onContinue: () => setState(() => _showCongrats = false));
+    }
+
+    if (_orphanedDelegateDomains.isNotEmpty) {
+      return _buildRepInvariantViolationScreen();
     }
 
     final pages = _pages;
@@ -926,14 +1054,17 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                                 const SizedBox(width: 6),
                               ],
                               GestureDetector(
-                                onTap: loadAllData,
-                                child: const SizedBox(
+                                onTap: (_isRefreshing || isLoadingData.value) ? null : loadAllData,
+                                child: SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: Icon(
-                                    Icons.refresh_rounded,
-                                    color: Color(0xFF00897B),
-                                    size: 24,
+                                  child: RotationTransition(
+                                    turns: _refreshRotationController,
+                                    child: const Icon(
+                                      Icons.refresh_rounded,
+                                      color: Color(0xFF00897B),
+                                      size: 24,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -955,7 +1086,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                                   width: 20,
                                   height: 20,
                                   child: Center(
-                                    child: (_isRefreshing || _notifications.isNotEmpty)
+                                    child: _notifications.isNotEmpty
                                         ? AnimatedBuilder(
                                             animation: _pulseAnimation,
                                             builder: (context, child) {
@@ -964,13 +1095,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                                                 height: 10,
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
-                                                  color:
-                                                      (_isRefreshing
-                                                              ? const Color(0xFF00897B)
-                                                              : Colors.redAccent)
-                                                          .withOpacity(
-                                                            0.3 + (0.7 * _pulseAnimation.value),
-                                                          ),
+                                                  color: Colors.redAccent.withValues(
+                                                    alpha: 0.3 + (0.7 * _pulseAnimation.value),
+                                                  ),
                                                 ),
                                               );
                                             },
