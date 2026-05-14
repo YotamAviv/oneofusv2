@@ -13,7 +13,7 @@ nohup firebase --project=karennet --config=firebase_karennet.json emulators:star
 echo $! > "$ONEOFUS_DIR/.karennet_emulator.pid"
 echo "Started. Log: $ONEOFUS_DIR/karennet_emulator.log"
 echo "UI: http://localhost:4003"
-echo "Stop with: (from nerdster) ./bin/stop_karennet_emulator.sh"
+echo "Stop with: ./bin/stop_karennet_emulator.sh"
 
 echo "Waiting for emulator to be ready..."
 for i in $(seq 1 90); do
