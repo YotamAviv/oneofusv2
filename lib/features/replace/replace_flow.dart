@@ -555,7 +555,7 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         signer = await OouSigner.make(newKeyPair);
       }
 
-      final writer = channelFactory.getChannel<TrustStatement>(kOneofusDomain, 'statements');
+      final writer = channelFactory.getChannel<TrustStatement>(kNativeUrl, 'statements');
       await writer.fetch({getToken(newPubKeyJson): null});
 
       // 2. Filter valid statements and re-publish

@@ -99,8 +99,8 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _instance = this;
     TrustStatement.init();
 
-    _source = channelFactory.getChannel<TrustStatement>(kOneofusDomain, 'statements');
-    _firestore = channelFactory.firestoreFor(kOneofusDomain) ?? FirebaseFirestore.instance;
+    _source = channelFactory.getChannel<TrustStatement>(kNativeUrl, 'statements');
+    _firestore = channelFactory.firestoreFor(kNativeUrl) ?? FirebaseFirestore.instance;
 
     if (_isDevMode) {
       Tester.init(_source);

@@ -4,7 +4,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:oneofus_common/channel_factory.dart';
-import 'package:oneofus_common/trust_statement.dart' show kOneofusDomain;
 import '../firebase_options.dart';
 
 class Config {
@@ -32,7 +31,6 @@ class Config {
   static void initChannelFactory() {
     channelFactory = ChannelFactory(fireChoice);
     channelFactory.register(
-      kOneofusDomain,
       exportUrl: 'https://export.one-of-us.net',
       functionsUrl: 'https://us-central1-one-of-us-net.cloudfunctions.net',
       emulatorExportUrl: 'http://$_emulatorHost:5002/one-of-us-net/us-central1/export',
