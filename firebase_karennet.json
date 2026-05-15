@@ -24,6 +24,12 @@
     "ui": {
       "enabled": true,
       "port": 4003
+    },
+    "eventarc": {
+      "port": 9303
+    },
+    "tasks": {
+      "port": 9503
     }
   }
 }
