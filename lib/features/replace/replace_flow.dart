@@ -10,10 +10,7 @@ import 'package:oneofus_common/crypto/crypto.dart';
 import 'package:oneofus_common/crypto/crypto25519.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/channel_factory.dart';
-import 'package:oneofus_common/cloud_functions_source.dart';
-import 'package:oneofus_common/oou_verifier.dart';
 import '../../ui/app_typography.dart';
-import '../../core/config.dart';
 import '../../core/keys.dart';
 import '../../ui/error_dialog.dart';
 import '../../ui/qr_scanner.dart';
@@ -367,21 +364,22 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
     });
 
     try {
-      final source = CloudFunctionsSource<TrustStatement>(
-        baseUrl: Config.exportUrl,
-        verifier: OouVerifier(),
-        paramsOverride: {
-          "distinct": "false",
-          "includeId": "false",
-          "checkPrevious": "false",
-          "omit": [], // Don't omit anything so we can see full records in logs
-        },
+      // distinct: false — fetch the full history including superseded statements,
+      // so the user can pick their last valid statement before a possible compromise.
+      // Note: if a stream is genuinely corrupt (hasn't happened), it might be useful
+      // to pass checkPrevious: false to recover statements despite a broken chain —
+      // but that's an advanced case only a very sophisticated user would be able to
+      // use, not worth implementing now.
+      final channel = channelFactory.getChannel<TrustStatement>(
+        kNativeUrl,
+        'statements',
+        distinct: false,
       );
 
       debugPrint(
-        '[ReplaceFlow] Executing HTTP fetch via CloudFunctionsSource for $_oldIdentityToken',
+        '[ReplaceFlow] Executing HTTP fetch for $_oldIdentityToken',
       );
-      final results = await source.fetch({_oldIdentityToken!: null});
+      final results = await channel.fetch({_oldIdentityToken!: null});
       // Ensure the list is mutable
       final List<TrustStatement> statements = (results[_oldIdentityToken!] ?? []).toList();
 
