@@ -73,7 +73,6 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   // Initialize Dev Mode based on environment; secret tap (AboutScreen) allows override.
   late bool _isDevMode = Config.fireChoice != FireChoice.prod;
   bool _showLgtm = false;
-  bool _showFederatedQr = false;
   List<String> _orphanedDelegateDomains = [];
   final ValueNotifier<bool> isLoadingData = ValueNotifier(false);
   late AnimationController _refreshRotationController;
@@ -921,7 +920,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
 
   List<Widget> get _pages {
     return [
-      CardScreen(cardKey: _cardKey, showFederatedQr: _showFederatedQr),
+      CardScreen(cardKey: _cardKey),
       const PeopleScreen(),
       const DelegatesScreen(),
       const ImportExportScreen(),
@@ -931,8 +930,6 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         onReplaceKey: () => _showReplaceKeyDialog(context),
         showLgtm: _showLgtm,
         onLgtmChanged: (v) => setState(() => _showLgtm = v),
-        showFederatedQr: _showFederatedQr,
-        onFederatedQrChanged: (v) => setState(() => _showFederatedQr = v),
       ),
       IntroScreen(
         onShowWelcome: () {
@@ -1179,7 +1176,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                 subtitle: const Text('Includes App Link, key QR code and Text'),
                 onTap: () {
                   Navigator.pop(context);
-                  ShareService.shareIdentityPackage(showFederatedQr: _showFederatedQr);
+                  ShareService.shareIdentityPackage();
                 },
               ),
               ListTile(

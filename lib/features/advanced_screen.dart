@@ -7,9 +7,6 @@ class AdvancedScreen extends StatelessWidget {
   final VoidCallback onReplaceKey;
   final bool showLgtm;
   final ValueChanged<bool> onLgtmChanged;
-  final bool showFederatedQr;
-  final ValueChanged<bool> onFederatedQrChanged;
-
   const AdvancedScreen({
     super.key,
     required this.onShowBlocks,
@@ -17,8 +14,6 @@ class AdvancedScreen extends StatelessWidget {
     required this.onReplaceKey,
     required this.showLgtm,
     required this.onLgtmChanged,
-    required this.showFederatedQr,
-    required this.onFederatedQrChanged,
   });
 
   @override
@@ -78,15 +73,6 @@ class AdvancedScreen extends StatelessWidget {
                   title: Text('FYI', style: AppTypography.label),
                   value: showLgtm,
                   onChanged: (v) => onLgtmChanged(v ?? false),
-                ),
-                CheckboxListTile(
-                  title: Text('Federated identity QR / invitations', style: AppTypography.label),
-                  subtitle: const Text(
-                    'Leave off for compatibility with older app versions.',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  value: showFederatedQr,
-                  onChanged: (v) => onFederatedQrChanged(v ?? false),
                 ),
               ],
             ),

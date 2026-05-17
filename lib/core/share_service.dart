@@ -10,11 +10,9 @@ import '../ui/app_typography.dart';
 class ShareService {
   static const String homeUrl = 'https://one-of-us.net';
 
-  static Future<void> shareIdentityPackage({bool showFederatedQr = false}) async {
+  static Future<void> shareIdentityPackage() async {
     final Json pubKeyJson = (await Keys().getIdentityPublicKeyJson())!;
-    final dynamic payload =
-        showFederatedQr ? FedKey(pubKeyJson).toPayload() : Jsonish(pubKeyJson).json;
-    final String minJson = jsonEncode(payload);
+    final String minJson = jsonEncode(FedKey(pubKeyJson).toPayload());
     final String base64Key = base64Url.encode(utf8.encode(minJson));
 
     final String deepLink = "$homeUrl/vouch.html#$base64Key";

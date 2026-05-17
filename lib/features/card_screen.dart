@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/keys.dart' show FedKey;
 import 'package:oneofus_common/trust_statement.dart';
 import '../core/keys.dart';
@@ -9,12 +8,10 @@ import '../ui/app_shell.dart';
 
 class CardScreen extends StatelessWidget {
   final GlobalKey<IdentityCardSurfaceState>? cardKey;
-  final bool showFederatedQr;
 
   const CardScreen({
     super.key,
     this.cardKey,
-    this.showFederatedQr = false,
   });
 
   @override
@@ -34,12 +31,9 @@ class CardScreen extends StatelessWidget {
                 return FutureBuilder<Json?>(
                   future: keys.getIdentityPublicKeyJson(),
                   builder: (context, snapshot) {
-                    final json = snapshot.data;
-                    final jsonKey = json == null
-                        ? 'no-key'
-                        : showFederatedQr
-                            ? jsonEncode(FedKey(json).toPayload())
-                            : jsonEncode(json);
+                    final Json? json = snapshot.data;
+                    if (json == null) return const SizedBox.shrink();
+                    final String jsonKey = jsonEncode(FedKey(json).toPayload());
 
                     if (isLoadingData) {
                       return IdentityCardSurface(
