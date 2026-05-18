@@ -31,12 +31,14 @@ class Config {
   static void initChannelFactory() {
     channelFactory = ChannelFactory(fireChoice);
     channelFactory.register(
-      exportUrl: 'https://export.one-of-us.net',
-      functionsUrl: 'https://us-central1-one-of-us-net.cloudfunctions.net',
-      emulatorExportUrl: 'http://$_emulatorHost:5002/one-of-us-net/us-central1/export',
-      emulatorFunctionsUrl: 'http://$_emulatorHost:5002/one-of-us-net/us-central1',
+      'one-of-us.net',
       firestore: fireChoice == FireChoice.fake ? db : null,
     );
+    if (fireChoice == FireChoice.emulator) {
+      channelFactory.registerRedirect('https://export.one-of-us.net', 'http://$_emulatorHost:5002/one-of-us-net/us-central1/export');
+      channelFactory.registerRedirect('https://write.one-of-us.net', 'http://$_emulatorHost:5002/one-of-us-net/us-central1/write2');
+      channelFactory.registerRedirect('https://export.karennet.net', 'http://$_emulatorHost:5004/karennet/us-central1/export');
+    }
   }
 
   static FirebaseFirestore? _db;

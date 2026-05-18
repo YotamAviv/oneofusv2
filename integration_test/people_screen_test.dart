@@ -22,9 +22,9 @@ void main() {
     debugPrint("TEST: Defining Lisa's private key.");
     final lisaPrivateKey = {
       "crv": "Ed25519",
-      "d": "WCtPGxyJ9dL6qP3eEuuOCxLHgTZjbbdofge3j6c85vo",
+      "d": "exxnTyTmLBDjJtxENrJ8XIb6sEJUcBfArV3EjEwwZrs",
       "kty": "OKP",
-      "x": "D6oXiGksgfL4AP6lf2vXnAoq54_t1p8k-3SXs1Bgm8g"
+      "x": "rHXS7lSfhpsDsjNxZcLzuyjuBNlaEQ8aXduRgLsNAXI"
     };
 
     // 2. Load Lisa's key BEFORE the app starts.
@@ -57,6 +57,14 @@ void main() {
     expect(find.text('Maggie'), findsOneWidget);
     expect(find.text('Mom'), findsOneWidget);
     expect(find.text('Homer'), findsOneWidget);
+
+    // 7. Verify Marge's vouch back for Lisa (from karennet.net).
+    //    The check-circle tooltip confirms the peer statement resolved correctly.
+    debugPrint("TEST: Waiting for Marge's vouch-back tooltip to appear.");
+    for (int i = 0; i < 30 && !tester.any(find.byTooltip('Mom has vouched for you as Lisa')); i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    expect(find.byTooltip('Mom has vouched for you as Lisa'), findsOneWidget);
     debugPrint("TEST: PASSED, SUCCESS.");
   });
 }

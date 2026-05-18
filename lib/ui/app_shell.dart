@@ -78,7 +78,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   late AnimationController _refreshRotationController;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
-  late final StatementChannel<TrustStatement> _source;
+  StatementChannel<TrustStatement> get _source => channelFactory.getChannel<TrustStatement>(kNativeUrl, 'statements');
   String? _loadedIdentityToken;
 
   // Data State
@@ -98,7 +98,6 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     _instance = this;
     TrustStatement.init();
 
-    _source = channelFactory.getChannel<TrustStatement>(kNativeUrl, 'statements');
     _firestore = channelFactory.firestoreFor(kNativeUrl) ?? FirebaseFirestore.instance;
 
     if (_isDevMode) {
@@ -190,7 +189,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
     _refreshRotationController.repeat();
 
-    _source.clear();
+    channelFactory.clearCache();
 
     try {
       // Fetch statements authored by the current user
@@ -221,19 +220,28 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
       directContacts.remove(myToken);
 
-      Map<String, List<TrustStatement>> newPeersStatements = {};
-      if (directContacts.isNotEmpty) {
-        // Fetch statements from all direct contacts
-        final Map<String, String?> keysToFetch = {
-          for (final String token in directContacts) token: null,
-        };
-        // Fetch checks out immutable lists. We need to replace them with mutable ones.
-        final rawPeersStatements = await _source.fetch(keysToFetch);
-        newPeersStatements = rawPeersStatements.map((key, value) {
+      // Group contacts by their declared endpoint so federated keys are fetched
+      // from the correct domain (e.g. karennet.net rather than one-of-us.net).
+      final Map<String, Set<String>> tokensByEndpoint = {};
+      for (final token in directContacts) {
+        final stmt = newMyStatements
+            .where((s) => s.verb == TrustVerb.trust && s.subjectToken == token)
+            .firstOrNull;
+        final endpointUrl = (stmt?.endpoint?['url'] as String?) ?? kNativeUrl;
+        tokensByEndpoint.putIfAbsent(endpointUrl, () => {}).add(token);
+      }
+
+      final fetchResults = await Future.wait(tokensByEndpoint.entries.map((entry) {
+        final keysToFetch = {for (final token in entry.value) token: null};
+        return channelFactory.getChannel<TrustStatement>(entry.key, 'statements').fetch(keysToFetch);
+      }));
+      final Map<String, List<TrustStatement>> newPeersStatements = {};
+      for (final fetched in fetchResults) {
+        newPeersStatements.addAll(fetched.map((key, value) {
           final mutableList = List<TrustStatement>.from(value);
           mutableList.removeWhere((s) => s.verb == TrustVerb.clear);
           return MapEntry(key, mutableList);
-        });
+        }));
       }
 
       if (mounted) {
