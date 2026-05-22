@@ -189,7 +189,7 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
     }
     _refreshRotationController.repeat();
 
-    channelFactory.clearCache();
+    await channelFactory.clearCache();
 
     try {
       // Fetch statements authored by the current user
