@@ -12,6 +12,7 @@ const { statementsRef } = require('./schema');
 const verbs = [
   'trust', 'delegate', 'clear', 'rate', 'follow', 'censor',
   'relate', 'dontRelate', 'equate', 'dontEquate', 'replace', 'block',
+  'set',
 ];
 
 /**
