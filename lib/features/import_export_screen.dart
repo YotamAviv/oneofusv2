@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../ui/app_typography.dart';
+import '../../ui/error_dialog.dart';
 import '../core/keys.dart';
 
 
@@ -51,8 +52,8 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
           _initialKeysJson = encoder.convert(allKeysJson);
         });
       }
-    } catch (e) {
-      _showError(e.toString());
+    } catch (e, st) {
+      if (mounted) ErrorDialog.show(context, 'Operation Failed', e, st);
     }
   }
 
@@ -92,8 +93,8 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
       await _loadInitialKeys();
       _textController.clear();
       _showSnackbar('Import successful!');
-    } catch (e) {
-      _showError(e.toString());
+    } catch (e, st) {
+      if (mounted) ErrorDialog.show(context, 'Operation Failed', e, st);
     } finally {
       if (mounted) setState(() { _isImporting = false; });
     }
@@ -102,21 +103,6 @@ class _ImportExportScreenState extends State<ImportExportScreen> {
   void _showSnackbar(String message) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
-
-  void _showError(String message) {
-    debugPrint('OPERATION FAILED: $message');
-    if (mounted) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Operation Failed'),
-          content: const Text('See the debug console for details.'),
-          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
-        ),
-      );
-    }
-  }
-
 
   @override
   Widget build(BuildContext context) {
