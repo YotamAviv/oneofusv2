@@ -1,8 +1,5 @@
 # TODO
 
-## DONE: Check statement type
-
-write2.js now validates that the statement type is or starts with the project's statementPrefix (defined in schema.js).
 
 ## Bugs
 
