@@ -16,7 +16,7 @@
 # mine
 builds/
 .firebase/
-.oneofus_emulator.pid
+*.pid
 exports/
 
 # IntelliJ related
