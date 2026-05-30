@@ -389,6 +389,7 @@ You can see who those are by looking for the confirmation check mark to the righ
       }
     } catch (e, st) {
       debugPrint('_executeSignIn error: $e\n$st');
+      if (mounted) ErrorDialog.show(context, 'Sign-in failed', e, st);
     }
   }
 

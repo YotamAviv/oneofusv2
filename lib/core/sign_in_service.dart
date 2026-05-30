@@ -144,11 +144,27 @@ class SignInService {
       // 3. Prepare Payload
       final identityPubKeyJson = await (await keys.identity!.publicKey).json;
       final String identityKeyToken = getToken(identityPubKeyJson);
-      // Services that verify identity ownership (e.g. Hablo) check sessionSignature.
-      // Services that don't (e.g. Nerdster) ignore these fields.
-      final String sessionTime = DateTime.now().toUtc().toIso8601String();
-      final String sessionString = '$domain-$identityKeyToken-$sessionTime';
-      final String sessionSignature = await keys.identity!.sign(sessionString);
+
+      // Auth2: new services include servicePk in the QR.
+      // Auth1: fallback for old services that don't include servicePk.
+      final Json? servicePkJson = received['servicePk'] as Json?;
+      String? sessionExpiration;
+      String? sessionSignature2;
+      String? sessionTime;
+      String? sessionSignature;
+
+      if (servicePkJson != null) {
+        // Auth2
+        final String serviceKeyToken = getToken(servicePkJson);
+        sessionExpiration = DateTime.now().toUtc().add(const Duration(days: 7)).toIso8601String();
+        final String sig2String = '$domain-$identityKeyToken-$serviceKeyToken-$sessionExpiration';
+        sessionSignature2 = await keys.identity!.sign(sig2String);
+      } else {
+        // Auth1 fallback for old services
+        sessionTime = DateTime.now().toUtc().toIso8601String();
+        final String sessionString = '$domain-$identityKeyToken-$sessionTime';
+        sessionSignature = await keys.identity!.sign(sessionString);
+      }
 
 
       final PackageInfo packageInfo = await PackageInfo.fromPlatform();
@@ -177,8 +193,11 @@ class SignInService {
           'version': packageInfo.version,
           'buildNumber': packageInfo.buildNumber,
         },
-        'sessionTime': sessionTime,
-        'sessionSignature': sessionSignature,
+        if (servicePkJson != null) 'servicePk': servicePkJson,
+        if (sessionExpiration != null) 'sessionExpiration': sessionExpiration,
+        if (sessionSignature2 != null) 'sessionSignature2': sessionSignature2,
+        if (sessionTime != null) 'sessionTime': sessionTime,
+        if (sessionSignature != null) 'sessionSignature': sessionSignature,
         'deviceInfo': {
           'device': deviceName,
           'os': osVersion,
