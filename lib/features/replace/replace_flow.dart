@@ -6,6 +6,7 @@ import 'package:oneofus_common/clock.dart';
 import 'package:oneofus_common/keys.dart' show FedKey;
 import 'package:oneofus_common/jsonish.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'package:oneofus_common/statement.dart';
 import 'package:oneofus_common/crypto/crypto.dart';
 import 'package:oneofus_common/crypto/crypto25519.dart';
 import 'package:oneofus_common/oou_signer.dart';
@@ -380,13 +381,11 @@ class _ReplaceFlowState extends State<ReplaceFlow> {
         '[ReplaceFlow] Executing HTTP fetch for $_oldIdentityToken',
       );
       final results = await channel.fetch({_oldIdentityToken!: null});
-      // Ensure the list is mutable
+      // Server returns statements descending (newest first) — already correct for display.
       final List<TrustStatement> statements = (results[_oldIdentityToken!] ?? []).toList();
+      Statement.validateOrderTypes(statements);
 
       debugPrint('[ReplaceFlow] _fetchHistory: statements=${statements.length}');
-
-      // Sort manually to ensure descending order by time
-      statements.sort((a, b) => b.time.compareTo(a.time));
 
       if (mounted) {
         setState(() {

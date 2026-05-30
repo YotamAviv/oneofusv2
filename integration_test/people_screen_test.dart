@@ -22,9 +22,9 @@ void main() {
     debugPrint("TEST: Defining Lisa's private key.");
     final lisaPrivateKey = {
       "crv": "Ed25519",
-      "d": "PRCF966wWz3HSeNV6542k0-EpNtvOiOF3s1-0XMHg9M",
+      "d": "owetY9yLgh6M3TtFFOUoSGQCiKQN2MK0KyjdxOBE9Go",
       "kty": "OKP",
-      "x": "b-L2iq0eURr174i52nZx67sBrVTXXNfzQ9SFFNFbo2Q"
+      "x": "aYPcagxNBn2ajVo6BmcHBAkFQxCckYJgVlCt7vYfI_0"
     };
 
     // 2. Load Lisa's key BEFORE the app starts.

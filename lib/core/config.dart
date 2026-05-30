@@ -8,7 +8,7 @@ import '../firebase_options.dart';
 
 class Config {
   // --- Hard coded - use for Environment Switch ---
-  static final FireChoice _fireChoice = FireChoice.prod;
+  static final FireChoice _fireChoice = FireChoice.emulator;
 
   static FireChoice get fireChoice => _fireChoice;
 

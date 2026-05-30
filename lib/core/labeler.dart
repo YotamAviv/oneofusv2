@@ -1,5 +1,6 @@
 import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/statement.dart';
 
 class Labeler {
   final Map<String, List<TrustStatement>> statementsByIssuer;
@@ -62,12 +63,12 @@ class Labeler {
     if (matchingDelegate != null) {
       final domain = matchingDelegate.domain!;
       
-      // Calculate counter based on other delegates for this domain
+      // Server returns descending (newest first). Newest delegate = primary (index 0).
+      Statement.validateOrderTypes(delegateStmts);
       final siblings = delegateStmts
           .where((s) => s.domain == domain)
-          .toList()
-          ..sort((a, b) => a.time.compareTo(b.time));
-      
+          .toList();
+
       final index = siblings.indexWhere((s) => s.subjectToken == token);
       if (index == 0) {
         return '$myMoniker@$domain';
@@ -83,9 +84,7 @@ class Labeler {
         .firstOrNull;
     
     if (matchingReplace != null) {
-      // Calculate counter based on all replaced keys
-      replaceStmts.sort((a, b) => a.time.compareTo(b.time));
-      
+      // Server returns descending (newest first). Most recently replaced key = primary (index 0).
       final index = replaceStmts.indexWhere((s) => s.subjectToken == token);
       return '$myMoniker (${index + 2})';
     }
