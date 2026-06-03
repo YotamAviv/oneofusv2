@@ -8,6 +8,8 @@ flutter emulators --launch Pixel_3a_API_35
 adb shell pm clear net.oneofus.app
 flutter run -d emulator-5554
 
+python3 -m http.server 8766 --directory web
+
 firebase --project=one-of-us-net deploy --only hosting
 firebase --project=one-of-us-net deploy --only functions
 firebase --project=one-of-us-net deploy --only firestore:rules
