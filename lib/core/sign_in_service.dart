@@ -39,6 +39,7 @@ class SignInService {
     required StatementChannel<TrustStatement> channel,
     VoidCallback? onSending,
     Future<bool> Function(TrustStatement)? onBeforePublish,
+    Future<void> Function(TrustStatement)? onAfterPublish,
   }) async {
     try {
       debugPrint('SignInService.signIn: scanned=$scanned');
@@ -133,7 +134,10 @@ class SignInService {
             if (!confirmed) return false;
           }
 
-          await channel.push(statementJson, signer);
+          final published = await channel.push(statementJson, signer);
+          if (onAfterPublish != null) {
+            await onAfterPublish(published);
+          }
         } else if (proceed == null) {
           // User cancelled
           return false;

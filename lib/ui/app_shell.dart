@@ -376,11 +376,34 @@ You can see who those are by looking for the confirmation check mark to the righ
                 combined.addAll(_peersStatements);
                 final labeler = Labeler(combined, _keys.identityToken!);
                 final interpreter = OneOfUsInterpreter(labeler);
-                final result = await showDialog<bool>(
+                final spec = _keys.identityToken!;
+                final uri = Uri.parse(Config.exportUrl).replace(queryParameters: {'spec': spec});
+                final result = await showModalBottomSheet<bool>(
                   context: context,
-                  builder: (context) => LgtmDialog(statement: statement, interpreter: interpreter),
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  barrierColor: Colors.black45,
+                  builder: (context) => LgtmDialog(statement: statement, interpreter: interpreter, uri: uri),
                 );
                 return result == true;
+              }
+            : null,
+        onAfterPublish: _showLgtm
+            ? (statement) async {
+                if (!mounted) return;
+                final Map<String, List<TrustStatement>> combined = {_keys.identityToken!: _myStatements};
+                combined.addAll(_peersStatements);
+                final labeler = Labeler(combined, _keys.identityToken!);
+                final interpreter = OneOfUsInterpreter(labeler);
+                final spec = _keys.identityToken!;
+                final uri = Uri.parse(Config.exportUrl).replace(queryParameters: {'spec': spec});
+                await showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  barrierColor: Colors.black45,
+                  builder: (context) => LgtmPublishedDialog(statement: statement, interpreter: interpreter, uri: uri),
+                );
               }
             : null,
       );
@@ -714,11 +737,14 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       final labeler = Labeler(combined, _keys.identityToken!);
       final interpreter = OneOfUsInterpreter(labeler);
       // Show LGTM confirmation
-      final result = await showDialog<bool>(
+      final spec = _keys.identityToken!;
+      final uri = Uri.parse(Config.exportUrl).replace(queryParameters: {'spec': spec});
+      final result = await showModalBottomSheet<bool>(
         context: context,
-        builder: (context) {
-          return LgtmDialog(statement: statement, interpreter: interpreter);
-        },
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        barrierColor: Colors.black45,
+        builder: (context) => LgtmDialog(statement: statement, interpreter: interpreter, uri: uri),
       );
       confirmed = result == true;
     }
@@ -739,7 +765,23 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     }
 
     try {
-      await _executePush(statement, isMyDelegate, isRevoking, isClearing, token);
+      final published = await _executePush(statement, isMyDelegate, isRevoking, isClearing, token);
+
+      if (mounted && _showLgtm) {
+        final Map<String, List<TrustStatement>> combined = {_keys.identityToken!: _myStatements};
+        combined.addAll(_peersStatements);
+        final labeler = Labeler(combined, _keys.identityToken!);
+        final interpreter = OneOfUsInterpreter(labeler);
+        final spec = _keys.identityToken!;
+        final uri = Uri.parse(Config.exportUrl).replace(queryParameters: {'spec': spec});
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          barrierColor: Colors.black45,
+          builder: (context) => LgtmPublishedDialog(statement: published, interpreter: interpreter, uri: uri),
+        );
+      }
 
       if (mounted) {
         _showSuccessSnackBar(statement);
@@ -782,7 +824,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         false;
   }
 
-  Future<void> _executePush(
+  Future<TrustStatement> _executePush(
     TrustStatement statement,
     bool isMyDelegate,
     bool isRevoking,
@@ -793,11 +835,12 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     final signer = await OouSigner.make(identity);
 
     final mutableJson = Map<String, dynamic>.from(statement.json);
-    await _source.push(mutableJson, signer);
+    final published = await _source.push(mutableJson, signer);
 
     if (isMyDelegate && (isRevoking || isClearing)) {
       await _keys.removeDelegateByToken(token);
     }
+    return published;
   }
 
   void _showSuccessSnackBar(TrustStatement statement) {
