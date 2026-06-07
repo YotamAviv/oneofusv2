@@ -89,14 +89,32 @@ Create the script in your user binary directory at `~/.local/bin/oneofus-forward
 
 ```bash
 #!/bin/bash
-# Receives a URL (keymeid://...) as $1 and forwards it to the Android Emulator via ADB
+# Forward 'keymeid://' links to the Android Emulator via ADB
 
 URL="$1"
-# Verify ADB is available and an emulator is connected
-if command -v adb &> /dev/null; then
-    # Use -e to target the only running emulator, avoiding ambiguity if physical devices are also connected.
-    adb -e shell am start -a android.intent.action.VIEW -d "$URL"
+LOGFILE="/tmp/oneofus_link_debug.log"
+
+echo "$(date): Received $URL" >> "$LOGFILE"
+
+ADB=""
+if [ -x "/home/aviv/Android/Sdk/platform-tools/adb" ]; then
+    ADB="/home/aviv/Android/Sdk/platform-tools/adb"
+elif command -v adb &> /dev/null; then
+    ADB=$(command -v adb)
+else
+    echo "$(date): ADB not found." >> "$LOGFILE"
+    exit 1
 fi
+
+# Find the first running emulator serial (emulator-XXXX).
+# Use -s <serial> rather than -e: the -e flag fails with "more than one emulator"
+# if a physical device is also connected via ADB at the same time.
+EMULATOR=$("$ADB" devices | grep '^emulator-' | awk '{print $1}' | head -1)
+if [ -z "$EMULATOR" ]; then
+    echo "$(date): No emulator found." >> "$LOGFILE"
+    exit 1
+fi
+"$ADB" -s "$EMULATOR" shell am start -a android.intent.action.VIEW -d "$URL" >> "$LOGFILE" 2>&1
 ```
 
 Make it executable: `chmod +x ~/.local/bin/oneofus-forward-link.sh`
