@@ -6,6 +6,8 @@ flutter emulators --launch Pixel_7a_API_35
 flutter emulators --launch Pixel_7
 flutter emulators --launch Pixel_3a_API_35
 
+git rev-list --count HEAD
+
 adb shell pm clear net.oneofus.app
 
 flutter run -d emulator-5554
