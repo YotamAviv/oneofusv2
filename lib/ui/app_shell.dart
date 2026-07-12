@@ -1347,13 +1347,14 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-        ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
-        child: Column(
+      builder: (context) => Material(
+        color: Colors.white,
+        elevation: 0,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
@@ -1413,6 +1414,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                 onTap: () => jumpTo((w) => w is DevScreen),
               ),
           ],
+          ),
         ),
       ),
     );
