@@ -198,6 +198,21 @@ and Comic Neue are embedded, so a different typeface means adding the file too
 
 Don't put a zoom over a beat — see the note at the top of `annotate.js`.
 
+## Assembling a review copy — `./assemble.sh`
+
+Joins the finished takes into one file with a music bed, crossfaded, encoded the
+way YouTube wants it (H.264 High, yuv420p, AAC 48k stereo, faststart). With no
+arguments it takes `out/music.m4a` and the newest annotated take of each kind.
+
+The takes are 1080x2220 — the emulator's screen, taller than 9:16 — and are kept
+that way. Fitting them to 9:16 means scaling down until there are pillars down
+both sides, and small text is already this material's main problem.
+
+**The music is the part to think about before anything is published.** Nothing
+about the pipeline establishes that a track can be used; that is a question for
+whoever uploads, and Content ID answers it in its own way. `out/` is gitignored,
+so no audio file lands in the repo.
+
 ## Requires
 
 Node with `playwright` and `firebase-admin` (`npm install`), `adb`, `ffmpeg`, a
