@@ -142,6 +142,40 @@ Three things this cost, worth not rediscovering:
   version of the swipe check waited for something that never happened. Watch the
   top of the feed instead.
 
+# Prototypes
+
+Rough, and meant to be. They exist to show what the finished thing could look
+like, so the ideas can be judged before anything is built properly.
+
+## The signature chain — `node shoot_crypto.js`
+
+Somebody in the feed who is neither me nor the identity this phone vouched for →
+their node in the graph → the delegate key their statements are signed with →
+those statements, published on the web, in Chrome with Pretty-print on → their
+like → the Nerdster's own Verify dialog → **✔ VERIFIED!**
+
+About 25 seconds. It publishes nothing, so there is no reset and it can be
+re-run at will. Two things it does that are worth keeping: it pinch-zooms the
+statements page, because a page of JSON at phone size is not readable at video
+size, and it ends on the verdict with the signer's name interpreted back out of
+the key.
+
+## Annotation — `node annotate.js cues/<name>.json out/<take>_taps.mp4`
+
+Three treatments, from one cue file:
+
+| | |
+| --- | --- |
+| **prompter** | a band along the bottom that scrolls as the take goes, current line lit, the one before it receding |
+| **beats** | the video *stops* — freeze frame, pause bars, everything blurred and dimmed except one spotlit thing, and a bubble with a tail pointing at it |
+| **zooms** | a punch-in and back out, for the moments made of small text |
+
+Cue times are written against the take as shot; a beat that stops the video for
+three seconds pushes everything after it three seconds later, and the tool does
+that arithmetic. `cues/nerdster.json` and `cues/crypto.json` are worked examples.
+
+Don't put a zoom over a beat — see the note at the top of `annotate.js`.
+
 ## Requires
 
 Node with `playwright` and `firebase-admin` (`npm install`), `adb`, `ffmpeg`, a
