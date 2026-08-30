@@ -6,6 +6,12 @@
  *   node bin/truncate_statements.js --token <T> --keep <statementToken>
  *   node bin/truncate_statements.js --token <T> --all
  *
+ * A delegate can be named by who delegated it rather than by its own token,
+ * which changes every time sign-in is reshot:
+ *
+ *   node truncate_statements.js --delegate-of <identityToken> --domain nerdster.org \
+ *     --project nerdster --prod --all
+ *
  * Defaults to the emulator. Add --prod to hit production, --dry-run to see what
  * would go without deleting.
  *
@@ -57,6 +63,46 @@ function assertDemoOwned(token) {
   return name;
 }
 
+/**
+ * The token of a public key: SHA1 of its pretty-printed canonical JSON.
+ *
+ * Canonical order is defined in packages/oneofus_common/lib/jsonish.dart, but a
+ * bare JWK holds none of the keys that file positions, so plain alphabetical --
+ * crv, kty, x -- is the canonical order for these. Two-space indent: the
+ * compact form hashes to a token matching nothing.
+ */
+function keyToken(key) {
+  const ordered = {};
+  for (const k of Object.keys(key).sort()) ordered[k] = key[k];
+  return require('crypto').createHash('sha1')
+    .update(JSON.stringify(ordered, null, 2)).digest('hex');
+}
+
+/**
+ * The delegate keys an identity has published for a domain, newest first.
+ *
+ * Named this way because a delegate's token changes every time the sign-in
+ * sequence is reshot, so nothing can hardcode it. The allowlist still holds:
+ * the IDENTITY must be demo-owned, and the delegates come from that identity's
+ * own signed statements, so this can only ever reach keys the demo identity
+ * delegated itself.
+ */
+async function delegatesOf(identityToken, domain) {
+  const url = `https://export.one-of-us.net/?spec=${identityToken}&includeId=true`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`export.one-of-us.net returned ${res.status}`);
+  const body = await res.json();
+  const statements = body[identityToken] || [];
+  const found = [];
+  for (const s of statements.sort((a, b) => String(b.time).localeCompare(String(a.time)))) {
+    if (!s.delegate) continue;
+    if (domain && s.with?.domain !== domain) continue;
+    const token = keyToken(s.delegate);
+    if (!found.includes(token)) found.push(token);
+  }
+  return found;
+}
+
 const PROJECTS = {
   nerdster: { prod: 'nerdster', emulatorPort: 8080 },
   oneofus: { prod: 'one-of-us-net', emulatorPort: 8081 },
@@ -70,22 +116,35 @@ function arg(name, fallback) {
 const has = name => process.argv.includes('--' + name);
 
 async function main() {
-  const token = arg('token');
   const which = arg('project', 'oneofus');
   const stream = arg('stream', 'statements');
   const after = arg('after');
   const keep = arg('keep');
+  const delegateOf = arg('delegate-of');
+  const domain = arg('domain');
   const all = has('all');
   const prod = has('prod');
   const dry = has('dry-run');
 
-  if (!token) throw new Error('--token <issuer key token> is required');
+  if (!arg('token') && !delegateOf) {
+    throw new Error('--token <issuer key token> or --delegate-of <identity token> is required');
+  }
   if (!all && !after && !keep) throw new Error('one of --after <ISO>, --keep <token>, --all');
   const proj = PROJECTS[which];
   if (!proj) throw new Error(`--project must be one of ${Object.keys(PROJECTS).join(', ')}`);
 
-  const owner = assertDemoOwned(token);   // before any connection is opened
-  console.log(`token belongs to demo identity '${owner}'`);
+  let tokens;
+  if (delegateOf) {
+    const owner = assertDemoOwned(delegateOf);   // before any connection is opened
+    tokens = await delegatesOf(delegateOf, domain);
+    console.log(`demo identity '${owner}' has ${tokens.length} delegate(s)` +
+                `${domain ? ` for ${domain}` : ''}: ${tokens.map(t => t.slice(0, 12)).join(', ') || '(none)'}`);
+    if (!tokens.length) { console.log('nothing to do'); return; }
+  } else {
+    const owner = assertDemoOwned(arg('token'));
+    console.log(`token belongs to demo identity '${owner}'`);
+    tokens = [arg('token')];
+  }
 
   if (prod) {
     delete process.env.FIRESTORE_EMULATOR_HOST;
@@ -95,7 +154,12 @@ async function main() {
     admin.initializeApp({ projectId: proj.prod });
   }
   const db = admin.firestore();
+  for (const token of tokens) {
+    await truncate(db, token, { which, stream, all, keep, after, prod, dry });
+  }
+}
 
+async function truncate(db, token, { which, stream, all, keep, after, prod, dry }) {
   const streamRef = db.collection(token).doc(stream);
   const stmtsRef = streamRef.collection('statements');
 
@@ -154,4 +218,10 @@ async function main() {
   console.log(`  deleted ${doomed.length}; head is now ${head ? head.token.slice(0, 12) + ' @ ' + head.time : 'null (empty chain)'}`);
 }
 
-main().then(() => process.exit(0)).catch(e => { console.error(String(e.message || e)); process.exit(1); });
+if (require.main === module) {
+  main().then(() => process.exit(0)).catch(e => { console.error(String(e.message || e)); process.exit(1); });
+}
+
+// Exported so a shoot script can check its own work against the same idea of
+// which key published what, rather than a second copy of the derivation.
+module.exports = { keyToken, delegatesOf };

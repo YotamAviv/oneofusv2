@@ -27,7 +27,11 @@ window.__sem = () => [...document.querySelectorAll('flt-semantics')].map(e => {
   const r = e.getBoundingClientRect();
   return {
     role: e.getAttribute('role'),
-    text: (e.textContent || '').replace(/\\s+/g, ' ').trim(),
+    // Flutter puts a node's label in the element text for most widgets, but on
+    // an aria-label for others -- menu items among them, which read as blank
+    // without this fallback and can't be tapped by name.
+    text: ((e.textContent || '').trim() || e.getAttribute('aria-label') || '')
+      .replace(/\\s+/g, ' ').trim(),
     x: r.x + r.width / 2, y: r.y + r.height / 2,
     w: r.width, h: r.height,
   };
@@ -81,6 +85,18 @@ async function find(page, re, { role = null } = {}) {
   }, [re.source, re.flags, role]);
 }
 
+/// Every match, smallest first. For controls that share a label -- a feed of
+/// cards each with its own "React" -- where the one you want is picked by
+/// position rather than by name.
+async function findAll(page, re, { role = null } = {}) {
+  return page.evaluate(([src, flags, role]) => {
+    const rx = new RegExp(src, flags);
+    return (window.__sem ? window.__sem() : [])
+      .filter(n => rx.test(n.text) && (!role || n.role === role))
+      .sort((a, b) => a.w * a.h - b.w * b.h);
+  }, [re.source, re.flags, role]);
+}
+
 /// Wait until it exists. Replaces sleeps that were guesses.
 async function waitFor(page, re, opts = {}, timeout = 30000) {
   const t0 = Date.now();
@@ -113,28 +129,83 @@ async function assertAbsent(page, re, opts = {}) {
   if (n) throw new Error(`ASSERT FAILED: did not expect ${re} (found "${n.text}")`);
 }
 
-/// Tap a node by what it says. Waits for it first, so this also removes the
-/// sleep that used to precede every tap. Returns the node, for logging the
-/// coordinate a post-production tap indicator needs.
-async function tapNamed(page, cdp, re, opts = {}) {
+/// Wait until a node exists AND has stopped moving.
+///
+/// waitFor returns the instant the node exists, which can be mid-animation while
+/// a dialog is still sliding in -- tapping then lands where the control was, not
+/// where it is. That put a tap on "QR Code" instead of the sign-in link directly
+/// above it, and later missed a thumbs-up in a sheet still on its way up.
+async function findStill(page, re, opts = {}) {
   let n = await waitFor(page, re, opts);
-  // Wait for it to STOP MOVING. waitFor returns as soon as the node exists, which
-  // can be mid-animation while a dialog is still sliding in -- tapping then lands
-  // at where the control was, not where it is. That put a tap on "QR Code"
-  // instead of the sign-in link directly above it.
   for (let i = 0; i < 25; i++) {
     await sleep(120);
     const again = await find(page, re, opts);
     if (!again) continue;
-    if (Math.abs(again.x - n.x) < 1.5 && Math.abs(again.y - n.y) < 1.5) { n = again; break; }
+    if (Math.abs(again.x - n.x) < 1.5 && Math.abs(again.y - n.y) < 1.5) return again;
     n = again;
   }
+  return n;
+}
+
+/// Tap a node by what it says. Waits for it first, so this also removes the
+/// sleep that used to precede every tap. Returns the node, for logging the
+/// coordinate a post-production tap indicator needs.
+async function tapNamed(page, cdp, re, opts = {}) {
+  const n = await findStill(page, re, opts);
   const pt = { x: Math.round(n.x), y: Math.round(n.y), radiusX: 20, radiusY: 20, force: 1 };
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt] });
   await sleep(110);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await sleep(80);
   return n;
+}
+
+/// Tap a point. The same real touch every other tap uses, for the controls that
+/// can't be addressed by name -- an icon button whose label sits on a wrapper.
+async function tapAt(cdp, x, y) {
+  const pt = { x: Math.round(x), y: Math.round(y), radiusX: 20, radiusY: 20, force: 1 };
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt] });
+  await sleep(110);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(80);
+  return { x: pt.x, y: pt.y };
+}
+
+/// Horizontal drag, for Dismissible cards.
+///
+/// Not the same gesture as a scroll fling: Flutter decides a Dismissible by how
+/// far the drag got, so this travels a real distance and PAUSES at the far end
+/// before releasing. Letting go mid-stroke reads as a flick and the card springs
+/// back -- which looks, on video, exactly like a dismiss that silently failed.
+async function drag(cdp, x, y, dx, { dy = 0, ms = 420, steps = 30, holdMs = 260 } = {}) {
+  const P = (px, py) => ({ x: Math.round(px), y: Math.round(py), radiusX: 20, radiusY: 20, force: 1 });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [P(x, y)] });
+  await sleep(70);                                   // contact before travel
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const ease = t < 0.25 ? 2 * t * t : 1 - Math.pow(1 - t, 2);
+    await cdp.send('Input.dispatchTouchEvent',
+      { type: 'touchMove', touchPoints: [P(x + dx * ease, y + dy * ease)] });
+    await sleep(ms / steps);
+  }
+  await sleep(holdMs);                               // settle, then release
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  return { from: { x: Math.round(x), y: Math.round(y) },
+           to: { x: Math.round(x + dx), y: Math.round(y + dy) }, ms: ms + holdMs };
+}
+
+/// Type into the focused Flutter text field, one character at a time, so it
+/// reads as typing rather than a paste.
+///
+/// insertText per character, not key events: Flutter web owns a hidden textarea
+/// and takes its value from that, and synthesised keyDown/keyUp never reach it.
+/// They also fail silently -- the take runs to the end and publishes a statement
+/// with no comment on it, which is how this was found.
+async function typeText(cdp, text, perCharMs = 55) {
+  for (const ch of text) {
+    await cdp.send('Input.insertText', { text: ch });
+    await sleep(perCharMs);
+  }
 }
 
 /// Attach to Chrome running inside the Android emulator, so in-device takes get
@@ -154,6 +225,6 @@ async function attachToAvdChrome(chromium, port = 9222) {
 }
 
 module.exports = {
-  SEMANTICS_PROBE, sleep, enableSemantics, find, waitFor,
-  assertVisible, assertAbsent, tapNamed, attachToAvdChrome,
+  SEMANTICS_PROBE, sleep, enableSemantics, find, findAll, findStill, waitFor,
+  assertVisible, assertAbsent, tapNamed, tapAt, drag, typeText, attachToAvdChrome,
 };

@@ -42,6 +42,44 @@ marks.taps.forEach((t, i) => {
              `enable='between(t,${tt},${(tt + DUR).toFixed(2)})'[${out}]`);
   prev = out;
 });
+// Swipes get the same indicator, moving. The overlay x is an expression in t
+// rather than a constant, so one input draws the whole stroke -- a start blob
+// and an end blob would read as two taps, which is the opposite of the point.
+//
+// LAG, not LEAD. A tap indicator is backed up so contact lands on the tap; a
+// swipe has to travel WITH the card, and the card starts moving a beat after
+// the touch events go in -- the emulator's own pipeline. Anchored on the script
+// clock alone, the indicator finishes its stroke before the card has begun.
+// The tap animation is press-then-ripple over 16 frames, which is wrong for a
+// drag: run it along the stroke and the finger has already let go halfway
+// across. A swipe is the press frame HELD for the travel, and the ripple at the
+// far end where the release actually happened -- two inputs, one gesture.
+const LAG = 0.45;
+let idx = marks.taps.length;
+(marks.swipes || []).forEach(s => {
+  const travel = (s.ms || 600) / 1000;
+  const t1 = +(s.t + OFFSET - LEAD + LAG - (OFFSET + 0.55)).toFixed(3);
+  const release = +(t1 + LEAD + travel).toFixed(3);
+
+  const hold = ++idx;
+  // -t bounds the looped still. Without it the input never ends and ffmpeg sits
+  // there generating frames forever.
+  inputs.push('-loop', '1', '-framerate', '25', '-t', (LEAD + travel + 0.1).toFixed(2),
+              '-itsoffset', String(t1), '-i', 'tapfx/t02.png');
+  const x = `${s.from.x - R}+(${s.to.x - s.from.x})*` +
+            `min(1,max(0,(t-${(t1 + LEAD).toFixed(3)})/${travel}))`;
+  chain.push(`[${prev}][${hold}:v]overlay=x='${x}':y=${s.from.y - R}:` +
+             `enable='between(t,${t1},${release})'[v${hold}]`);
+  prev = `v${hold}`;
+
+  const ripple = ++idx;
+  inputs.push('-itsoffset', String(release), '-framerate', '25',
+              '-start_number', '8', '-i', 'tapfx/t%02d.png');
+  chain.push(`[${prev}][${ripple}:v]overlay=${s.to.x - R}:${s.to.y - R}:` +
+             `enable='between(t,${release},${(release + 0.32).toFixed(2)})'[v${ripple}]`);
+  prev = `v${ripple}`;
+});
+
 const filter = [last, ...chain].join(';').replace(new RegExp(`\\[${prev}\\]$`), '');
 // Trim everything before the sync flash: that head is staging -- app launches,
 // the white flash itself -- not part of the video. Taps are already expressed in
@@ -51,4 +89,5 @@ const HEAD = OFFSET + 0.55;              // past the flash and its fade
 execFileSync('ffmpeg', ['-y', '-v', 'error', '-ss', HEAD.toFixed(3), '-i', src, ...inputs,
   '-filter_complex', filter, '-an', '-c:v', 'libx264', '-crf', '20',
   '-preset', 'medium', '-pix_fmt', 'yuv420p', out], { stdio: 'inherit' });
-console.log(out, `(${marks.taps.length} taps, trimmed ${HEAD.toFixed(2)}s of head)`);
+console.log(out, `(${marks.taps.length} taps, ${(marks.swipes || []).length} swipes, ` +
+                 `trimmed ${HEAD.toFixed(2)}s of head)`);
