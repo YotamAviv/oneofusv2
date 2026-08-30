@@ -147,20 +147,26 @@ Three things this cost, worth not rediscovering:
 Rough, and meant to be. They exist to show what the finished thing could look
 like, so the ideas can be judged before anything is built properly.
 
-## The signature chain — `node shoot_crypto.js`
+## The signature chain — `./shoot_crypto.sh`
 
 Somebody in the feed who is neither me nor the identity this phone vouched for →
 their node in the graph → the delegate key their statements are signed with →
 those statements, published on the web, in Chrome with Pretty-print on → their
 like → the Nerdster's own Verify dialog → **✔ VERIFIED!**
 
-About 25 seconds. It publishes nothing, so there is no reset and it can be
-re-run at will. Two things it does that are worth keeping: it pinch-zooms the
+About 25 seconds, and the script carries it through touch indicators and
+annotation to a finished video. It publishes nothing, so there is no reset and
+it can be re-run at will. Two things it does that are worth keeping: it pinch-zooms the
 statements page, because a page of JSON at phone size is not readable at video
 size, and it ends on the verdict with the signer's name interpreted back out of
 the key.
 
 ## Annotation — `node annotate.js cues/<name>.json out/<take>_taps.mp4`
+
+Both shoot scripts end with this step, so one command gets from nothing to the
+finished video. Run it on its own to re-annotate a take that already exists,
+which is what a change of copy or styling needs — no reshoot, a couple of
+minutes.
 
 Three treatments, from one cue file:
 
@@ -170,9 +176,25 @@ Three treatments, from one cue file:
 | **beats** | the video *stops* — freeze frame, pause bars, everything blurred and dimmed except one spotlit thing, and a bubble with a tail pointing at it |
 | **zooms** | a punch-in and back out, for the moments made of small text |
 
-Cue times are written against the take as shot; a beat that stops the video for
-three seconds pushes everything after it three seconds later, and the tool does
-that arithmetic. `cues/nerdster.json` and `cues/crypto.json` are worked examples.
+A cue says *when* by naming a moment the take itself recorded — `"at":
+"tap_publish"`, `"after": 0.3` — not by a number of seconds. Reshooting is the
+normal cost of changing a word of copy and it moves every number in the file;
+the names survive it. What a take names is in its `out/<stamp>.marks.json`, and
+a cue naming something that isn't there fails with the list of what is. A plain
+`"t"` still works where nothing suitable is named.
+
+Coordinates are a different matter. `anchor` and `spotlight` are frame pixels
+and they do **not** survive a reshoot that moves the layout — the app is more
+stable than the timing, but not perfectly.
+
+A beat that stops the video for three seconds pushes everything after it three
+seconds later, and the tool does that arithmetic. `cues/nerdster.json` and
+`cues/crypto.json` are worked examples.
+
+Styling lives in two places: bubbles in `STYLES` in `lib/bubble.js`, prompter
+font and band height in `stripPage()` and `BAND_H` in `annotate.js`. Only Inter
+and Comic Neue are embedded, so a different typeface means adding the file too
+(`fontFaces`).
 
 Don't put a zoom over a beat — see the note at the top of `annotate.js`.
 

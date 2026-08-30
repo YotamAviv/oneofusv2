@@ -16,27 +16,37 @@
 // the bubble ends up half off the edge. A beat is already a way of pointing at
 // one thing; it doesn't need the other.
 //
+// A cue says WHEN by naming a moment the take itself recorded -- "at":
+// "tap_publish" -- rather than by a number of seconds. Reshooting is the normal
+// cost of changing a word of copy, and it moves every number in the file; the
+// names survive it. `after` offsets from the mark, and a plain "t" still works
+// where nothing suitable is named (see lib/marks.js).
+//
 // The cue file is authored against the ORIGINAL timeline; a beat that stops the
 // video for three seconds pushes everything after it three seconds later, and
 // this does that arithmetic so the file doesn't have to.
 //
 //   {
-//     "prompter": [ { "t": 1.2, "text": "Filtering the feed down to books." } ],
-//     "zooms": [ { "t": 10, "in": 0.6, "hold": 5, "out": 0.6,
+//     "prompter": [ { "at": "tap_type_menu", "text": "Filter it down to books." } ],
+//     "zooms": [ { "at": "statement_selected", "in": 0.6, "hold": 5, "out": 0.6,
 //                  "to": [430, 900, 760] } ],   // centre x, centre y, width
 //     "beats": [ {
-//        "t": 14.9, "hold": 3.0, "text": "Tom liked it too.",
+//        "at": "published", "after": 0.2, "hold": 3.0, "text": "Tom liked it too.",
 //        "anchor": [300, 1180],            // what the tail points at
 //        "spotlight": [40, 1090, 1000, 180],  // x, y, w, h -- what stays sharp
 //        "y": 700                          // bubble's top edge; x optional
 //     } ]
 //   }
+//
+// What a take names is in its out/<stamp>.marks.json; a cue naming something
+// that isn't there fails with the list of what is.
 
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
 const bubble = require('./lib/bubble');
+const { loadMarks, timeOf } = require('./lib/marks');
 
 const FONTS = path.join(__dirname, 'fonts');
 const BAND_H = 300;                 // prompter band, along the bottom
@@ -45,8 +55,18 @@ const SCROLL = 0.45;                // seconds a line takes to slide into place
 const [cueFile, inVideo] = process.argv.slice(2);
 if (!inVideo) { console.error('usage: annotate.js <cues.json> <in.mp4>'); process.exit(1); }
 const cues = JSON.parse(fs.readFileSync(cueFile, 'utf8'));
-const beats = (cues.beats || []).slice().sort((a, b) => a.t - b.t);
-const lines = (cues.prompter || []).slice().sort((a, b) => a.t - b.t);
+
+// Resolve every cue's time once, up front, so the rest of this works in
+// seconds. A cue that names a mark is resolved against the take's own marks
+// file; one that gives a number is taken as it is.
+const marks = loadMarks(inVideo);
+const resolve = (list, what) => (list || []).map(c => ({ ...c, t: timeOf(c, marks, what) }))
+  .sort((a, b) => a.t - b.t);
+const beats = resolve(cues.beats, 'beat');
+const lines = resolve(cues.prompter, 'prompter line');
+const zooms = resolve(cues.zooms, 'zoom');
+console.log(marks ? `marks: ${path.basename(inVideo)} → ${Object.keys(marks).length} entries`
+                  : `no marks file for ${path.basename(inVideo)} — cues must give "t"`);
 
 const probe = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v',
   '-show_entries', 'stream=width,height', '-show_entries', 'format=duration',
@@ -197,7 +217,6 @@ function spliceInPauses(out) {
 /// per frame; crop's are evaluated once, at init. Its clock is the frame number,
 /// hence on/25 rather than t.
 function punchIn(src, out) {
-  const zooms = (cues.zooms || []).slice().sort((a, b) => a.t - b.t);
   if (!zooms.length) { fs.copyFileSync(src, out); return; }
 
   // Nested ifs, innermost last: outside every cue's window the zoom is 1, which

@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { TRIM_PAD } = require('./lib/marks');
 
 const src = process.argv[2];
 if (!src) { console.error('usage: overlay_taps.js out/signin_<stamp>.mp4'); process.exit(1); }
@@ -35,7 +36,7 @@ const LEAD = 0.24;
 const inputs = [], chain = [];
 let last = '[0:v]fps=25[v0]', prev = 'v0';
 marks.taps.forEach((t, i) => {
-  const tt = +(t.t + OFFSET - LEAD - (OFFSET + 0.55)).toFixed(3);
+  const tt = +(t.t + OFFSET - LEAD - (OFFSET + TRIM_PAD)).toFixed(3);
   inputs.push('-itsoffset', String(tt), '-framerate', '25', '-i', 'tapfx/t%02d.png');
   const out = `v${i + 1}`;
   chain.push(`[${prev}][${i + 1}:v]overlay=${t.x - R}:${t.y - R}:` +
@@ -58,7 +59,7 @@ const LAG = 0.45;
 let idx = marks.taps.length;
 (marks.swipes || []).forEach(s => {
   const travel = (s.ms || 600) / 1000;
-  const t1 = +(s.t + OFFSET - LEAD + LAG - (OFFSET + 0.55)).toFixed(3);
+  const t1 = +(s.t + OFFSET - LEAD + LAG - (OFFSET + TRIM_PAD)).toFixed(3);
   const release = +(t1 + LEAD + travel).toFixed(3);
 
   const hold = ++idx;
@@ -85,7 +86,7 @@ const filter = [last, ...chain].join(';').replace(new RegExp(`\\[${prev}\\]$`), 
 // the white flash itself -- not part of the video. Taps are already expressed in
 // video time, so shift them back by the same amount after trimming.
 const out = src.replace(/\.mp4$/, '_taps.mp4');
-const HEAD = OFFSET + 0.55;              // past the flash and its fade
+const HEAD = OFFSET + TRIM_PAD;          // past the flash and its fade
 execFileSync('ffmpeg', ['-y', '-v', 'error', '-ss', HEAD.toFixed(3), '-i', src, ...inputs,
   '-filter_complex', filter, '-an', '-c:v', 'libx264', '-crf', '20',
   '-preset', 'medium', '-pix_fmt', 'yuv420p', out], { stdio: 'inherit' });

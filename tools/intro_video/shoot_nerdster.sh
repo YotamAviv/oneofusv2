@@ -9,25 +9,35 @@
 # delegate key. This script deliberately does NOT touch either: it clears
 # nerdster.org statements only, so reshooting this costs one command and does
 # not cost a reshoot of the sign-in take.
+#
+# Ends with the annotation pass, so one command gets from nothing to the
+# finished video. To re-annotate without reshooting -- after changing the copy,
+# or the bubble and prompter styling -- run just that step against a take that
+# already exists:
+#
+#   node annotate.js cues/nerdster.json out/nerdster_<stamp>_taps.mp4
 set -euo pipefail
 cd "$(dirname "$0")"
 
 SERIAL="${AVD:-emulator-5554}"
 TOKEN=$(node -e "console.log(Object.values(require('./demo_identity.json').demoTokens)[0])")
 
-echo "== 1/3  clearing what the last take published to nerdster.org =="
+echo "== 1/4  clearing what the last take published to nerdster.org =="
 # Named by who delegated it, not by its own token: the delegate key is minted
 # fresh every time sign-in is reshot, so nothing can hardcode it.
 I_MEAN_IT=yes node truncate_statements.js \
   --delegate-of "$TOKEN" --domain nerdster.org --project nerdster --prod --all | tail -2
 
-echo "== 2/3  connecting to Chrome on the device =="
+echo "== 2/4  connecting to Chrome on the device =="
 # Re-establish the forward each run: it goes stale whenever Chrome restarts, and
 # the failure surfaces later as an unhelpful "socket hang up".
 adb -s "$SERIAL" forward --remove-all >/dev/null 2>&1 || true
 adb -s "$SERIAL" forward tcp:9222 localabstract:chrome_devtools_remote >/dev/null
 until curl -s --max-time 3 http://localhost:9222/json/version >/dev/null; do sleep 1; done
 
-echo "== 3/3  recording the take =="
+echo "== 3/4  recording the take =="
 TAKE=$(node shoot_nerdster.js | tail -2 | head -1 | tr -d ' ')
-node overlay_taps.js "$TAKE" | tail -1
+TAPS=$(node overlay_taps.js "$TAKE" | tail -1 | cut -d' ' -f1)
+
+echo "== 4/4  prompter, bubbles and zooms =="
+node annotate.js cues/nerdster.json "$TAPS" | tail -1

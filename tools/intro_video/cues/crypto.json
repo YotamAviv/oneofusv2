@@ -1,31 +1,32 @@
 {
   "_comment": [
-    "Cues for the signature-chain take. Times are against the trimmed take,",
-    "which runs about half a second behind the script clock in its marks file.",
-    "Coordinates are frame pixels, 1080x2220."
+    "Cues for the signature-chain take. Times name moments the take recorded, so",
+    "they survive a reshoot -- see out/crypto_<stamp>.marks.json for what a take",
+    "names. Coordinates are frame pixels, 1080x2220, and those do NOT survive a",
+    "reshoot that moves the layout."
   ],
 
   "prompter": [
-    { "t": 0.4,  "text": "Somebody I've never met liked this." },
-    { "t": 1.6,  "text": "Their name is a link. Follow it into the network." },
-    { "t": 3.0,  "text": "Here they are. My vouch reaches them in a few hops." },
-    { "t": 4.3,  "text": "This is the key their Nerdster statements are signed with." },
-    { "t": 7.0,  "text": "The statements themselves are just published on the web." },
-    { "t": 9.0,  "text": "Pretty-print it. Every one is signed, and each names the one before." },
-    { "t": 12.2, "text": "Take their like." },
-    { "t": 19.0, "text": "Paste it into the Nerdster's verifier." },
-    { "t": 22.0, "text": "Verified. Their key, their signature, their words." },
-    { "t": 24.0, "text": "A chain of signatures, all the way back to me\nvouching for somebody I know." }
+    { "t": 0.4,                             "text": "Somebody I've never met liked this." },
+    { "at": "tap_moniker",                  "text": "Their name is a link. Follow it into the network." },
+    { "at": "tap_node",                     "text": "Here they are. My vouch reaches them in a few hops." },
+    { "at": "tap_delegate_key",             "text": "This is the key their Nerdster statements are signed with." },
+    { "at": "tap_published_statements",     "text": "The statements themselves are just published on the web." },
+    { "at": "tap_pretty_print",             "text": "Pretty-print it. Every one is signed, and each names the one before." },
+    { "at": "zoomed",                       "text": "Take their like." },
+    { "at": "tap_just_verify",              "text": "Paste it into the Nerdster's verifier." },
+    { "at": "tap_verify",                   "text": "Verified. Their key, their signature, their words." },
+    { "at": "verified",                     "text": "A chain of signatures, all the way back to me\nvouching for somebody I know." }
   ],
 
   "zooms": [
-    { "t": 5.0,  "in": 0.5, "hold": 1.6, "out": 0.5, "to": [540, 1180, 620] },
-    { "t": 10.0, "in": 0.6, "hold": 5.5, "out": 0.6, "to": [430, 900, 760] }
+    { "at": "delegate_key_shown",   "in": 0.5, "hold": 1.6, "out": 0.5, "to": [540, 1180, 620] },
+    { "at": "statement_selected",   "in": 0.6, "hold": 5.5, "out": 0.6, "to": [430, 900, 760] }
   ],
 
   "beats": [
     {
-      "t": 6.6,
+      "at": "delegate_key_shown", "after": 2.1,
       "hold": 2.6,
       "text": "Their delegate key.\nNot an account — a key.",
       "anchor": [540, 1150],
@@ -33,7 +34,7 @@
       "y": 380
     },
     {
-      "t": 24.2,
+      "at": "verified", "after": 0.3,
       "hold": 3.2,
       "text": "Signature verified,\nagainst the key we just looked at.",
       "anchor": [540, 380],
