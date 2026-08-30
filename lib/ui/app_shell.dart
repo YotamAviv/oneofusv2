@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:app_links/app_links.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:oneofus_common/channel_factory.dart';
 import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/statement.dart';
@@ -438,7 +440,23 @@ You can see who those are by looking for the confirmation check mark to the righ
 
     // Sign-in links are allowed even without an identity key (that's the whole point).
     // New paths: 'signin' (no hyphen). Legacy: 'sign-in'.
-    final isSignIn = (uri.scheme == 'keymeid' && (uri.host == 'signin' || (uri.host != 'vouch' && uri.host != 'block' && uri.host != 'clear'))) ||
+    // FILMING ONLY: keymeid://deletekey?domain=<d>. Compiled out unless
+    // Config.filmTools; see Config.filmTools for why it exists.
+    final isDeleteKey = Config.filmTools && uri.scheme == 'keymeid' && uri.host == 'deletekey';
+    if (isDeleteKey) {
+      await _handleDeleteKey(uri);
+      return;
+    }
+
+    // FILMING ONLY: keymeid://importkey — load a keyring pushed to the app's own
+    // external files dir. Keeps private keys out of the URL.
+    final isImportKey = Config.filmTools && uri.scheme == 'keymeid' && uri.host == 'importkey';
+    if (isImportKey) {
+      await _handleImportKey();
+      return;
+    }
+
+    final isSignIn = (uri.scheme == 'keymeid' && (uri.host == 'signin' || (uri.host != 'vouch' && uri.host != 'block' && uri.host != 'clear' && uri.host != 'deletekey' && uri.host != 'importkey'))) ||
         uri.path.contains('sign-in') || uri.path.contains('/signin');
     if (!_hasKey && !isSignIn) return;
 
@@ -525,6 +543,74 @@ You can see who those are by looking for the confirmation check mark to the righ
   }
 
   /// Decode a base64Url fragment to a FedKey and trigger the appropriate scan handler.
+  /// FILMING ONLY. Replaces this device's keys with a set pushed onto it, so a
+  /// shoot can start from a known identity instead of whatever the device
+  /// happens to hold.
+  ///
+  /// NOT TESTED, NOT IN USE. Written for a demo-fixture generator that has since
+  /// been dropped; the demo identity is now created on a real phone instead.
+  /// Left here because the reset problem it solves may come back. Treat as
+  /// unverified.
+  ///
+  ///   adb push keys.json /sdcard/Android/data/net.oneofus.app/files/filmkey.json
+  ///   adb shell am start -a android.intent.action.VIEW -d "keymeid://importkey"
+  ///
+  /// The file is read from the app's own external files directory, which adb can
+  /// write without any storage permission — and the private keys never appear in
+  /// a URL, a log, or a shell history. Format is the same JSON the
+  /// IMPORT / EXPORT screen accepts. Only reachable when [Config.filmTools] is
+  /// compiled in.
+  Future<void> _handleImportKey() async {
+    try {
+      final Directory? dir = await getExternalStorageDirectory();
+      if (dir == null) {
+        debugPrint('IMPORTKEY: no external storage dir');
+        return;
+      }
+      final File f = File('${dir.path}/filmkey.json');
+      if (!await f.exists()) {
+        debugPrint('IMPORTKEY: not found: ${f.path}');
+        return;
+      }
+      await Keys().importKeys(await f.readAsString());
+      debugPrint('IMPORTKEY: imported keys from ${f.path}');
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('IMPORTKEY: $e');
+    }
+  }
+
+  /// FILMING ONLY. Deletes one service's delegate key from secure storage so the
+  /// next sign-in prompts "Create Delegate Key?" again.
+  ///
+  ///   keymeid://deletekey?domain=nerdster.org   one service
+  ///   keymeid://deletekey?domain=all            every delegate, identity kept
+  ///
+  /// Only reachable when [Config.filmTools] is compiled in. It never touches the
+  /// identity key, and it publishes nothing — this is local state only, so
+  /// anything already published stays published.
+  Future<void> _handleDeleteKey(Uri uri) async {
+    final String? domain = uri.queryParameters['domain'];
+    if (domain == null || domain.isEmpty) {
+      debugPrint('DELETEKEY: no ?domain= given');
+      return;
+    }
+    try {
+      if (domain == 'all') {
+        for (final d in Keys().delegates.keys.toList()) {
+          await Keys().removeDelegate(d);
+          debugPrint('DELETEKEY: removed delegate for $d');
+        }
+      } else {
+        await Keys().removeDelegate(domain);
+        debugPrint('DELETEKEY: removed delegate for $domain');
+      }
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('DELETEKEY: $e');
+    }
+  }
+
   Future<void> _handleKeyFragment(String fragment, TrustVerb verb, String debugVerb) async {
     try {
       final jsonStr = utf8.decode(base64Url.decode(fragment));

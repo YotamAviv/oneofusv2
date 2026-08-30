@@ -1,0 +1,15 @@
+{
+  "_comment": [
+    "Keys the demo phone owns, and the ONLY keys truncate_statements.js will ever",
+    "delete from. Everything else in these stores belongs to a real person and",
+    "deletion cannot be undone, so this file is the safety allowlist -- a token",
+    "not listed here is refused before a connection is even opened.",
+    "",
+    "Add the identity you create on the demo phone. Its token is the SHA1 of the",
+    "pretty-printed (2-space indent) canonical public key JSON -- not the compact",
+    "form, which produces a token matching nothing."
+  ],
+  "demoTokens": {
+    "demo-phone": "7ab860faedbcf8c88fbed056830ebbe34bf73820"
+  }
+}

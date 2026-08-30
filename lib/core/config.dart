@@ -12,6 +12,25 @@ class Config {
 
   static FireChoice get fireChoice => _fireChoice;
 
+  /// FILMING ONLY. Enables `keymeid://deletekey?domain=<d>`, which deletes one
+  /// service's delegate key pair from secure storage.
+  ///
+  /// Why this exists: the intro video's sign-in shot has to show the app
+  /// prompting "Create Delegate Key?", and that prompt only appears when the
+  /// phone holds no delegate key for that service. A reshoot therefore needs a
+  /// way back to "vouched, no delegate yet". Note this is local state only —
+  /// the published delegate statement is separate and stays published, which is
+  /// a legitimate state (you claimed a key pair represents you there; you just
+  /// no longer hold it on this phone).
+  ///
+  /// Compile-time and off by default, so a shipped build has no such deep link
+  /// at all. Build the filming rig with:
+  ///
+  ///   flutter build apk --debug --dart-define=filmTools=true
+  ///
+  /// See oneofus/doc/video_capture_manual.md section 5.
+  static const bool filmTools = bool.fromEnvironment('filmTools');
+
   static String get _emulatorHost {
     if (kIsWeb) return 'localhost';
     // 10.0.2.2 is for Android Emulator, localhost for Desktop/iOS Simulator

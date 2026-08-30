@@ -1,0 +1,12 @@
+node_modules/
+package-lock.json
+out/
+fonts/
+tapfx/
+espeak/
+tts-venv/
+voices/
+casting/
+vo_parts/
+video*/
+*.png
