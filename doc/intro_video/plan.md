@@ -235,21 +235,40 @@ identity vouches for Tom and `demo_identity.json` is pointed at its token. The
 vouch scene itself publishes that vouch, so the material for it exists; the token
 just needs reading back and writing down.
 
-### TODO — app changes, deferred
+### App changes — both done, 31 Aug, on `main`
 
-Both need a build pushed to a real phone, so they wait. Then re-shoot the vouch
-scene and the footage that goes in it.
+Commit `4ffe97b`, merged here.
 
-1. **Pause on capture.** The scanner switches to *Who's Key is This?* the instant
-   it decodes, so the moment of recognition is invisible. Freeze the decoded
-   frame for about a second first — a shutter feel — then show the dialog. Good
-   feedback in its own right, and it would replace the freeze-frame hack
-   `composite_scan.sh` uses to hold the phone in view until the app reacts.
+1. **Pause on capture.** The scanner marks the capture, holds 850ms and then
+   leaves: the frame flashes bright and the reticle turns green and closes on
+   what it found. **Not exercised yet** — the emulator's camera renders a room
+   with no QR in it, so nothing can be decoded there. Wants a look on a real
+   phone, and the 850ms is a guess worth tuning by eye.
 
-2. **"Trusted: Success" fires too early.** The snackbar appears while the spinner
-   is still spinning and *Who's Key is This?* is still up. Confirmed in the raw
-   take, so it is the app and not the video. Left in the footage on purpose
-   rather than edited around — fix the app, then re-shoot.
+2. **"Trusted: Success" fired too early.** Both dialogs await their `onSubmit`
+   and only close once it returns, so a snackbar raised inside the push landed
+   underneath the dialog reporting on it. The push now reloads first and takes an
+   `announce` flag; each dialog says so itself once closed. Verified on the
+   emulator: spinner with no snackbar, then the dialog closes, then the
+   confirmation.
+
+The write was never optimistic — this app doesn't pass the
+`optimisticConcurrencyFailed` callback that gates that path in
+`DirectFirestoreWriter`, so success has always meant committed. The fix was about
+what the screen said, not what was true.
+
+**Re-shoot the vouch scene** once the capture pause has been eyeballed; the
+footage composited into it may want re-cutting to match the new timing.
+
+**The emulator now runs a `main` build**, which has no `Config.filmTools`, so
+`keymeid://deletekey` is gone and `shoot.sh` cannot reset the delegate key until
+a branch build is installed again:
+
+    flutter build apk --debug --target-platform android-x64
+    adb -s emulator-5554 install -r build/app/outputs/flutter-apk/app-debug.apk
+
+(`/data` on that AVD runs ~90% full; the all-ABI debug APK is 127MB and will not
+fit, hence `--target-platform`.)
 
 ### Notes for whoever picks this up
 
