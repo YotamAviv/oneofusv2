@@ -64,8 +64,10 @@ const AT = {
 
 // How long the scanner sits there with nothing happening. Match it to the
 // footage being composited in, so the rendered room is never on screen: the
-// composite covers exactly this window.
-const SCAN_HOLD = 6000;
+// composite covers exactly this window, and the app leaves the scanner at the
+// moment the footage ends -- which is the moment the real phone's scanner
+// captured the card, so the cut lands where the app itself would have moved on.
+const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
