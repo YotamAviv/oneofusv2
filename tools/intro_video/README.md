@@ -198,6 +198,27 @@ and Comic Neue are embedded, so a different typeface means adding the file too
 
 Don't put a zoom over a beat — see the note at the top of `annotate.js`.
 
+## Real camera footage inside the emulator — `./composite_scan.sh`
+
+The one shot that can't be generated is the demo phone *seeing* another phone:
+a camera, a table, somebody's identity on a screen. Everything around it can be.
+So the camera picture comes from footage and the rest — status bar, app header,
+alignment frame, hint — comes from the emulator, which means the app version,
+the screen size and the styling match the takes either side of it.
+
+The footage is salvaged out of the Aug 11 phone recording
+(`~/Videos/intro_video_source/`), which has the whole opening in it once: the
+Play Store listing at 0:22, CREATE NEW IDENTITY KEY at 0:37, the scan at 0:57,
+the moniker at 1:12, "Trusted: Success" at 1:27. `out/salvage/` holds the cut
+pieces.
+
+The trick is two numbers, where each screen's camera view starts — y=530 in the
+old 1080x2400 recording, y=385 on the 1080x2220 emulator. Remeasure both after
+a reshoot or after the app's header changes height. The alignment frame and
+hint come from the footage rather than the emulator, since they are burned into
+the camera region; they line up closely enough that the seam doesn't show, which
+is luck and worth re-checking on a frame.
+
 ## Assembling a review copy — `./assemble.sh`
 
 Joins the finished takes into one file with a music bed, crossfaded, encoded the
