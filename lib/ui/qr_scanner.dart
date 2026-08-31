@@ -36,6 +36,10 @@ class QrScanner extends StatefulWidget {
 
 class _QrScannerState extends State<QrScanner> {
   bool _isHandled = false;
+  bool _captured = false;
+
+  /// How long to hold on the moment of recognition before moving on.
+  static const Duration _captureHold = Duration(milliseconds: 850);
 
   void _onDetect(BarcodeCapture capture) async {
     if (_isHandled) return;
@@ -47,8 +51,18 @@ class _QrScannerState extends State<QrScanner> {
         final isValid = await widget.validator(code);
         if (isValid && mounted) {
           _isHandled = true;
+          // Mark the capture, then wait, before leaving the scanner.
+          //
+          // Decoding is instant and the screen used to change on the same
+          // frame, so there was nothing to connect the thing you pointed the
+          // camera at with the dialog that appeared -- the scan had already
+          // happened by the time you noticed it was happening. A beat here says
+          // "got it", the way a shutter does.
+          setState(() => _captured = true);
+          await Future.delayed(_captureHold);
+          if (!mounted) return;
           Navigator.of(context).pop(code);
-          break;
+          return;
         }
       }
     }
@@ -96,14 +110,32 @@ class _QrScannerState extends State<QrScanner> {
       body: Stack(
         children: [
           MobileScanner(onDetect: _onDetect),
+          // The flash of a capture: the frame goes bright for an instant and
+          // the reticle turns green and closes on what it found.
+          IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _captured ? 1 : 0,
+              duration: const Duration(milliseconds: 120),
+              child: Container(color: Colors.white.withValues(alpha: 0.55)),
+            ),
+          ),
           Center(
-            child: Container(
-              width: 250,
-              height: 250,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              width: _captured ? 220 : 250,
+              height: _captured ? 220 : 250,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 2),
+                border: Border.all(
+                  color: _captured ? Colors.greenAccent.shade400 : Colors.white,
+                  width: _captured ? 4 : 2,
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
+              child: _captured
+                  ? const Center(
+                      child: Icon(Icons.check_rounded, color: Colors.white, size: 88))
+                  : null,
             ),
           ),
           Positioned(

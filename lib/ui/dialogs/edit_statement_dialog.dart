@@ -438,7 +438,9 @@ Block: Bots, spammers, bad actors, careless, confused..''',
       final statement = TrustStatement(Jsonish(json));
       await widget.onSubmit(statement);
 
-      if (mounted) Navigator.of(context).pop();
+      // Popped WITH the statement, so whoever opened this dialog knows a
+      // statement was published and can say so once the dialog is gone.
+      if (mounted) Navigator.of(context).pop(statement);
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);

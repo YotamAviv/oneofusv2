@@ -776,15 +776,21 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     bool isNewScan = false,
     TrustVerb? lockedVerb,
   }) async {
-    await showDialog(
+    final published = await showDialog<TrustStatement>(
       context: context,
       builder: (context) => EditStatementDialog(
         proposedStatement: statement,
         existingStatement: existingStatement,
         isNewScan: isNewScan,
-        onSubmit: _pushTrustStatement,
+        onSubmit: (s) => _pushTrustStatement(s, announce: false),
       ),
     );
+    // Announced here rather than inside the push. The dialog stays on screen
+    // for as long as its onSubmit is running and only closes once it returns,
+    // so a snackbar fired from in there lands UNDERNEATH the dialog it is
+    // reporting on, with that dialog's spinner still turning -- which reads as
+    // the app claiming success while it is visibly still working.
+    if (published != null && mounted) _showSuccessSnackBar(published);
   }
 
   Future<void> _showClearStatementDialog({
@@ -795,6 +801,7 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     final myPubKeyJson = await _keys.getIdentityPublicKeyJson();
     if (!mounted) return;
 
+    TrustStatement? published;
     await showDialog(
       context: context,
       builder: (context) => ClearStatementDialog(
@@ -807,13 +814,18 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
             domain: statement.domain,
           );
 
-          await _pushTrustStatement(TrustStatement(Jsonish(json)));
+          final cleared = TrustStatement(Jsonish(json));
+          await _pushTrustStatement(cleared, announce: false);
+          published = cleared;
         },
       ),
     );
+    if (published != null && mounted) _showSuccessSnackBar(published!);
   }
 
-  Future<void> _pushTrustStatement(TrustStatement statement) async {
+  /// `announce` is false where a dialog is on screen while this runs; that
+  /// dialog's own code says so once it has closed.
+  Future<void> _pushTrustStatement(TrustStatement statement, {bool announce = true}) async {
     bool confirmed = true;
 
     if (_showLgtm) {
@@ -870,8 +882,13 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
       }
 
       if (mounted) {
-        _showSuccessSnackBar(statement);
+        // Reload first, announce second. The write is already committed by the
+        // time _executePush returns -- this app never takes the writer's
+        // optimistic path, which is gated on an optimisticConcurrencyFailed
+        // callback it does not pass -- so this ordering is about what the
+        // screen says, not about what is true.
         await loadAllData();
+        if (announce && mounted) _showSuccessSnackBar(statement);
       }
     } catch (e) {
       if (mounted) {
