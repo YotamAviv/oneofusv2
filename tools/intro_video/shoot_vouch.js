@@ -62,7 +62,10 @@ const AT = {
   publish: [761, 1716],         // PUBLISH, once a moniker makes it tappable
 };
 
-const SCAN_HOLD = 4000;         // how long the scanner sits there for the footage
+// How long the scanner sits there with nothing happening. Match it to the
+// footage being composited in, so the rendered room is never on screen: the
+// composite covers exactly this window.
+const SCAN_HOLD = 6000;
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
@@ -130,7 +133,7 @@ const SCAN_HOLD = 4000;         // how long the scanner sits there for the foota
   tap('scan', AT.scan);
   await sleep(1500);
   tap('allow_camera', AT.allowCamera);  // fresh install, so the ask always comes
-  await sleep(2200);                   // camera starting up
+  await sleep(1800);                   // camera starting up
   mark('scanner');
 
   // The beat the footage goes into. Nothing happens on the device here on
@@ -140,6 +143,15 @@ const SCAN_HOLD = 4000;         // how long the scanner sits there for the foota
   mark('scan_hold_done');
 
   // --- the key arrives, as if scanned ---
+  // Leave the scanner FIRST. A real scan pops it and shows the dialog over the
+  // main screen -- that is what the Aug 11 footage does -- whereas the deep link
+  // on its own leaves the scanner underneath. Which is both wrong and the reason
+  // the emulator's rendered room was visible around the dialog for the rest of
+  // the take: the composite has ended by then and there is nothing over it.
+  d.E('shell', 'input', 'keyevent', '4');
+  await sleep(1000);
+  mark('left_scanner');
+
   const payload = Buffer.from(JSON.stringify({ key: TOM })).toString('base64url');
   d.open(`keymeid://vouch#${payload}`);
   await sleep(1800);

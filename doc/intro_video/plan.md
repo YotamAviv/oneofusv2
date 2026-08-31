@@ -197,6 +197,77 @@ ffmpeg -ss 378.5 -t 6 -i raw.mp4 -ss 392 -t 6 -i raw.mp4 -an -filter_complex \
   -c:v libx264 -crf 22 -pix_fmt yuv420p out.mp4
 ```
 
+## Where things stand — 30 Aug 2026
+
+Picking up from here: everything below is committed on `intro-video-tooling`,
+and every finished file is in `tools/intro_video/out/` (gitignored, stamped, and
+nothing is overwritten).
+
+**Three scenes shoot end to end, from one command each.**
+
+| | | |
+| --- | --- | --- |
+| sign-in | `./shoot.sh` | ~9s |
+| Nerdster feed basics | `./shoot_nerdster.sh` | ~16s |
+| signature chain | `./shoot_crypto.sh` | ~25s |
+| opening vouch | `node shoot_vouch.js` + 2 steps | ~37s |
+
+The vouch scene is three commands rather than one, because the composite step
+needs a take to exist first:
+
+    node shoot_vouch.js
+    node overlay_taps.js out/vouch_<stamp>.mp4
+    ./composite_scan.sh out/vouch_<stamp>_taps.mp4 \
+        out/salvage/vouch_scan_long.mp4 scanWindow out/scene1_vouch_<stamp>.mp4
+
+Latest: `out/scene1_vouch_20260830-215144.mp4`.
+
+**Post-production works**: `annotate.js` does the scrolling prompter, the
+pause-and-spotlight beats with pointing bubbles, and zoom punch-ins, all from a
+cue file whose times name moments the take recorded (`"at": "tap_publish"`), so
+they survive a reshoot. `assemble.sh` joins scenes with a music bed and encodes
+for YouTube. The two-scene review cut is `out/upload.mp4`.
+
+**The demo phone's identity is fresh.** `shoot_vouch.js` runs `pm clear`, which
+destroys the old identity private key — that was the one `demo_identity.json`
+names, so **`shoot.sh` and `shoot_nerdster.sh` will not work until** the new
+identity vouches for Tom and `demo_identity.json` is pointed at its token. The
+vouch scene itself publishes that vouch, so the material for it exists; the token
+just needs reading back and writing down.
+
+### TODO — app changes, deferred
+
+Both need a build pushed to a real phone, so they wait. Then re-shoot the vouch
+scene and the footage that goes in it.
+
+1. **Pause on capture.** The scanner switches to *Who's Key is This?* the instant
+   it decodes, so the moment of recognition is invisible. Freeze the decoded
+   frame for about a second first — a shutter feel — then show the dialog. Good
+   feedback in its own right, and it would replace the freeze-frame hack
+   `composite_scan.sh` uses to hold the phone in view until the app reacts.
+
+2. **"Trusted: Success" fires too early.** The snackbar appears while the spinner
+   is still spinning and *Who's Key is This?* is still up. Confirmed in the raw
+   take, so it is the app and not the video. Left in the footage on purpose
+   rather than edited around — fix the app, then re-shoot.
+
+Possibly related, worth a look while in there: a `keymeid://vouch#` deep link
+arriving while the scanner is open leaves the scanner underneath, where a real
+scan pops it. The shoot script presses Back first to match real behaviour.
+
+### Notes for whoever picks this up
+
+- **The rendered room is the tell.** The emulator's camera shows a living room
+  with a bookshelf and a cat. Any frame where the scanner is visible and the
+  composite isn't covering it gives the whole thing away, which is why the
+  composite is padded at both ends and why the script leaves the scanner before
+  the dialog. Check the edges of the scan window on every reshoot.
+- **Feeding the footage to the emulator's camera** (`v4l2loopback` + `-camera-back
+  webcam0`) would remove that class of problem entirely — the app would really
+  scan it. Deliberately not pursued; it needs one `sudo modprobe`.
+- Coordinates in `shoot_vouch.js` are measured off screenshots and a layout
+  change moves them silently. The take will look fine and do nothing.
+
 ## Next steps
 
 - **Decide the caption register** — narrator-only vs. narrator + Milhouse. The

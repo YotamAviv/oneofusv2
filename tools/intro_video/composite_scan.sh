@@ -62,14 +62,20 @@ SRC_TOP=530                             # camera view starts here in the footage
 DST_TOP=385                             # ... and here on the emulator
 SRC_H=$((2400 - SRC_TOP))
 DST_H=$((2220 - DST_TOP))
-HOLD=1.0                                # freeze the last frame this long
+LEAD=1.5                                # freeze the FIRST frame this long before
+HOLD=1.0                                # ... and the last one this long after
 
 DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$FOOTAGE")
+BEGIN=$(python3 -c "print(round($START - $LEAD, 3))")
 END=$(python3 -c "print(round($START + $DUR + $HOLD, 3))")
 echo "$FOOTAGE (${DUR}s) into $BASE at ${START}s, held to ${END}s"
 
+# Padded at both ends with its own first and last frames. The scanner is on
+# screen a little before the footage begins and a little after it ends, and
+# every uncovered moment is the emulator's rendered living room.
 CAM="[1:v]crop=1080:${SRC_H}:0:${SRC_TOP},scale=1080:${DST_H},\
-tpad=stop_mode=clone:stop_duration=${HOLD},setpts=PTS-STARTPTS+${START}/TB[cam]"
+tpad=start_mode=clone:start_duration=${LEAD}:stop_mode=clone:stop_duration=${HOLD},\
+setpts=PTS-STARTPTS+${BEGIN}/TB[cam]"
 
 if [[ "$BASE" == *.png ]]; then
   ffmpeg -y -v error -loop 1 -t "$END" -i "$BASE" -i "$FOOTAGE" \
@@ -78,7 +84,7 @@ if [[ "$BASE" == *.png ]]; then
 else
   ffmpeg -y -v error -i "$BASE" -i "$FOOTAGE" \
     -filter_complex "${CAM};[0:v][cam]overlay=0:${DST_TOP}:\
-enable='between(t,${START},${END})',format=yuv420p[v]" \
+enable='between(t,${BEGIN},${END})',format=yuv420p[v]" \
     -map "[v]" -c:v libx264 -crf 19 -preset slow "$OUT"
 fi
 
