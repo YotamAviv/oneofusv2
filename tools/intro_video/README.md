@@ -235,6 +235,13 @@ own start:
 `scanWindow` there is a mark name, not a number — `composite_scan.sh` resolves
 it against the take's marks and shifts it onto the trimmed video's clock.
 
+The clock is zeroed on the white ACTUALLY arriving — `waitForBright` in
+`lib/device.js` polls the screen — not on a sleep long enough to assume it has.
+Chrome takes its own time to paint, `find_flash.js` locks onto the first bright
+frame, and a clock zeroed later than that frame puts every touch indicator early
+by the difference. That is what drew the camera-permission tap over a screen
+that hadn't got there yet.
+
 It is a *marginal* flash: this app's UI is already light, so a white frame only
 beats the median by about 23 luma against the 20 the detector needs. A
 full-screen white with no browser chrome would have more room.

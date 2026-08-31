@@ -59,6 +59,7 @@ const AT = {
   scan: [541, 1983],            // the QR button, bottom centre of the main screen
   allowCamera: [538, 1109],     // "While using the app" -- the system dialog
   moniker: [540, 918],          // the name field in "Who's Key is This?"
+  publish: [761, 1716],         // PUBLISH, once a moniker makes it tappable
 };
 
 const SCAN_HOLD = 4000;         // how long the scanner sits there for the footage
@@ -97,10 +98,15 @@ const SCAN_HOLD = 4000;         // how long the scanner sits there for the foota
   await sleep(4000);
   d.E('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', 'about:blank',
     '-n', 'com.android.chrome/com.google.android.apps.chrome.Main');
-  await sleep(2500);                   // Chrome up and painted white
-  t0 = Date.now();
-  await sleep(600);                    // hold the white for find_flash.js
-  marks.syncFlash = { heldMs: 600 };
+  // Zero on the white ACTUALLY arriving, not on a sleep long enough to assume
+  // it has. Chrome takes its own time to paint, find_flash.js locks onto the
+  // first bright frame, and a clock zeroed later than that frame puts every
+  // touch indicator early by the difference -- which is how the first version
+  // of this take drew the camera-permission tap over a screen that had not got
+  // there yet.
+  t0 = await d.waitForBright();
+  await sleep(900);                    // hold the white for find_flash.js
+  marks.syncFlash = { heldMs: 900 };
 
   // --- launch the app ---
   d.launch(APP);
@@ -147,10 +153,21 @@ const SCAN_HOLD = 4000;         // how long the scanner sits there for the foota
   // somebody they know.
   await d.typeSlow(MONIKER, 220);
   mark('typed_moniker');
-  await sleep(2600);                   // hold on the name, before Publish
+  await sleep(1800);                   // a beat on the name, then commit to it
+
+  tap('publish', AT.publish);
+  await sleep(4500);                   // the statement being signed, then the
+  mark('published');                   // "Trusted: Success" snackbar
+  // Stay on it -- this is the payoff -- but not so long that the dialog closes
+  // and the scanner comes back, because the composite has ended by then and
+  // what shows through is the emulator's rendered room.
+  await sleep(2400);
 
   rec.kill('SIGINT');
-  await sleep(7000);                   // screenrecord finishes writing after this
+  await sleep(10000);                  // screenrecord finishes writing after it
+                                       // is asked to stop, and pulling early
+                                       // truncates the tail -- which cost the
+                                       // snackbar the first time
   const dt = new Date(), p2 = n => String(n).padStart(2, '0');
   const stamp = `${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}-` +
                 `${p2(dt.getHours())}${p2(dt.getMinutes())}${p2(dt.getSeconds())}`;

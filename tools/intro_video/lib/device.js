@@ -53,8 +53,40 @@ function device(serial = process.env.AVD || 'emulator-5554') {
     throw new Error(`timeout waiting for ${pkg}`);
   };
 
+  /// Mean brightness of the screen, 0-255. Cheap: the frame is scaled to 8x8
+  /// grey before it is read.
+  const brightness = () => {
+    const buf = execFileSync('bash', ['-c',
+      `adb -s ${serial} exec-out screencap -p | ` +
+      `ffmpeg -v error -i - -vf scale=8:8,format=gray -f rawvideo -`],
+      { encoding: 'buffer', maxBuffer: 1 << 20 });
+    let sum = 0;
+    for (const b of buf) sum += b;
+    return buf.length ? sum / buf.length : 0;
+  };
+
+  /// Wait for the screen to go bright, and report WHEN -- the midpoint between
+  /// the last dark reading and the first bright one.
+  ///
+  /// This is how the sync flash gets its instant on a native take. Zeroing the
+  /// clock at some fixed sleep after asking for the flash is not good enough:
+  /// whatever paints it takes an unknown moment to do so, find_flash.js locks
+  /// onto the first bright FRAME, and the gap between the two lands every touch
+  /// indicator early by exactly that much.
+  const waitForBright = async (threshold = 200, timeout = 15000) => {
+    const t0 = Date.now();
+    let lastDark = Date.now();
+    while (Date.now() - t0 < timeout) {
+      const b = brightness();
+      if (b >= threshold) return (lastDark + Date.now()) / 2;
+      lastDark = Date.now();
+    }
+    throw new Error('screen never went bright — no sync flash');
+  };
+
   return {
     E, Eout, sleep, waitForStillScreen, foregroundApp, waitForApp,
+    brightness, waitForBright,
     tap: (x, y) => E('shell', 'input', 'tap', String(Math.round(x)), String(Math.round(y))),
     type: text => E('shell', 'input', 'text', text.replace(/ /g, '%s')),
     /// One character at a time, so it reads as typing rather than a paste.
