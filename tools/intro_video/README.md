@@ -198,6 +198,37 @@ and Comic Neue are embedded, so a different typeface means adding the file too
 
 Don't put a zoom over a beat — see the note at the top of `annotate.js`.
 
+## The opening beat — `node shoot_vouch.js`
+
+A phone with no keys on it becomes a phone that has vouched for somebody:
+CREATE NEW IDENTITY KEY → the congratulations → the scanner → Tom's phone → his
+name. Then `composite_scan.sh` drops the real camera footage into the scanner
+window; `scanWindow` in the marks file says roughly where it is, and the exact
+number is found by eye (see below).
+
+**It wipes the app.** `pm clear` is the only route back to "You have no keys on
+this device", and it destroys the identity private key in secure storage — this
+image has no root, so there is no backing it up first. Every take mints a NEW
+identity, which has vouched for nobody and delegated nothing, so `shoot.sh` and
+`shoot_nerdster.sh` need their setup redone afterwards: a vouch for Tom, and
+`demo_identity.json` pointed at the new token.
+
+Two things are faked, both in the same place. The emulator's camera renders a
+room with a bookshelf in it, so the scanner is held on screen doing nothing and
+the footage is composited over that. And the scan is a `keymeid://vouch#` deep
+link carrying Tom's public key — the same path a real scan takes once the QR is
+decoded, so the dialog is the app's own, with the real key in it. What is faked
+is the light hitting the lens, not the crypto.
+
+Two things this take can't do that the browser ones can. There is no sync flash,
+because that trick paints a white frame from inside a page and this is a native
+app — so the marks are on the script's clock, a second or so ahead of the
+footage, and the composite start is lined up by eye. And the waits are sleeps:
+there is no accessibility tree, `screencap` is not byte-stable on this emulator
+(the same static screen hashes differently every grab), and the scanner has a
+live camera preview behind its dialogs, so "the screen has stopped changing" is
+never true.
+
 ## Real camera footage inside the emulator — `./composite_scan.sh`
 
 The one shot that can't be generated is the demo phone *seeing* another phone:
