@@ -57,6 +57,13 @@ function device(serial = process.env.AVD || 'emulator-5554') {
     E, Eout, sleep, waitForStillScreen, foregroundApp, waitForApp,
     tap: (x, y) => E('shell', 'input', 'tap', String(Math.round(x)), String(Math.round(y))),
     type: text => E('shell', 'input', 'text', text.replace(/ /g, '%s')),
+    /// One character at a time, so it reads as typing rather than a paste.
+    typeSlow: async (text, perCharMs = 180) => {
+      for (const ch of text) {
+        E('shell', 'input', 'text', ch === ' ' ? '%s' : ch);
+        await sleep(perCharMs);
+      }
+    },
     launch: pkg => E('shell', 'monkey', '-p', pkg, '-c', 'android.intent.category.LAUNCHER', '1'),
     clear: pkg => Eout('shell', 'pm', 'clear', pkg).trim(),
     open: uri => E('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', uri),

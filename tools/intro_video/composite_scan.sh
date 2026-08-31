@@ -39,6 +39,25 @@ FOOTAGE="${2:?}"
 START="${3:?}"
 OUT="${4:-${BASE%.mp4}_composited.mp4}"
 
+# <start> may be a mark name instead of a number -- "scanWindow" is the one the
+# vouch take writes. Resolved against the take's own marks file and shifted onto
+# the trimmed video's clock, so a reshoot doesn't have to be lined up by eye.
+if ! [[ "$START" =~ ^[0-9.]+$ ]]; then
+  START=$(node -e "
+    const { loadMarks, TRIM_PAD } = require('./lib/marks');
+    const m = loadMarks(process.argv[1]);
+    if (!m) { console.error('no marks file for ' + process.argv[1]); process.exit(1); }
+    const v = m[process.argv[2]];
+    const t = (v && typeof v === 'object') ? v.start : v;
+    if (typeof t !== 'number') {
+      console.error('no mark \"' + process.argv[2] + '\" in that take');
+      process.exit(1);
+    }
+    console.log((t - TRIM_PAD).toFixed(3));
+  " "$BASE" "$START")
+  echo "start resolved from marks: ${START}s"
+fi
+
 SRC_TOP=530                             # camera view starts here in the footage
 DST_TOP=385                             # ... and here on the emulator
 SRC_H=$((2400 - SRC_TOP))

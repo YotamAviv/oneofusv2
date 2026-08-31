@@ -220,14 +220,34 @@ link carrying Tom's public key — the same path a real scan takes once the QR i
 decoded, so the dialog is the app's own, with the real key in it. What is faked
 is the light hitting the lens, not the crypto.
 
-Two things this take can't do that the browser ones can. There is no sync flash,
-because that trick paints a white frame from inside a page and this is a native
-app — so the marks are on the script's clock, a second or so ahead of the
-footage, and the composite start is lined up by eye. And the waits are sleeps:
-there is no accessibility tree, `screencap` is not byte-stable on this emulator
-(the same static screen hashes differently every grab), and the scanner has a
-live camera preview behind its dialogs, so "the screen has stopped changing" is
-never true.
+The flash works here too. It doesn't have to come from inside the app — it only
+has to be a bright frame at a known instant, and it happens before the app is
+launched, in the head that gets trimmed off anyway. So the take opens Chrome on
+a blank page, zeroes its clock there, and launches the app over the top. That
+gives the touch indicators (`overlay_taps.js`) and lets the composite find its
+own start:
+
+    node shoot_vouch.js
+    node overlay_taps.js out/vouch_<stamp>.mp4
+    ./composite_scan.sh out/vouch_<stamp>_taps.mp4 \
+        out/salvage/vouch_scan_long.mp4 scanWindow out/scene1_vouch.mp4
+
+`scanWindow` there is a mark name, not a number — `composite_scan.sh` resolves
+it against the take's marks and shifts it onto the trimmed video's clock.
+
+It is a *marginal* flash: this app's UI is already light, so a white frame only
+beats the median by about 23 luma against the 20 the detector needs. A
+full-screen white with no browser chrome would have more room.
+
+The marks are what narration cues hang off, by name (see `annotate.js`):
+`welcome`, `tap_create_key`, `congratulations`, `tap_okay`, `main_screen`,
+`tap_scan`, `tap_allow_camera`, `scanner`, `scan_hold_done`, `whos_key_is_this`,
+`tap_moniker_field`, `typed_moniker`.
+
+The waits, though, are sleeps: there is no accessibility tree, `screencap` is not
+byte-stable on this emulator (the same static screen hashes differently every
+grab), and the scanner has a live camera preview behind its dialogs, so "the
+screen has stopped changing" is never true.
 
 ## Real camera footage inside the emulator — `./composite_scan.sh`
 

@@ -78,23 +78,38 @@ const SCAN_HOLD = 4000;         // how long the scanner sits there for the foota
   // --- stage: a phone with nothing on it ---
   console.log('wiping', APP);
   d.clear(APP);
-  d.launch(APP);
-  await d.waitForApp(APP);
-  await sleep(3500);
-  console.log('  welcome screen up');
+  d.E('shell', 'am', 'force-stop', 'com.android.chrome');
+  await sleep(1500);
 
   const rec = spawn('adb', ['-s', process.env.AVD || 'emulator-5554', 'shell', 'screenrecord',
     '--time-limit', '120', '--bit-rate', '8000000', '/sdcard/vouch.mp4']);
-  // No sync flash here. The trick used elsewhere paints a white frame from
-  // inside the page, and there is no page -- this is a native app. So the clock
-  // below is the script's, running a couple of seconds ahead of the footage, and
-  // the composite window has to be lined up by eye. Fine for a prototype; a real
-  // one wants a flash the app itself can be asked for.
-  await sleep(3000);
+
+  // SYNC FLASH. The browser takes paint a white frame from inside the page;
+  // there is no page here, but there doesn't need to be -- the flash only has to
+  // be a bright frame at a known instant, and it happens before the app is even
+  // launched, in the head that gets trimmed off anyway. So: Chrome on a blank
+  // page, which is as white as this screen ever gets, then the app launches over
+  // the top of it.
+  //
+  // Without this the marks are on the script's clock, which runs seconds ahead
+  // of the footage: the touch indicators land early and every cue time in the
+  // annotation is wrong.
+  await sleep(4000);
+  d.E('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', 'about:blank',
+    '-n', 'com.android.chrome/com.google.android.apps.chrome.Main');
+  await sleep(2500);                   // Chrome up and painted white
   t0 = Date.now();
+  await sleep(600);                    // hold the white for find_flash.js
+  marks.syncFlash = { heldMs: 600 };
+
+  // --- launch the app ---
+  d.launch(APP);
+  await d.waitForApp(APP);
+  await sleep(3800);                   // splash, then the welcome screen
+  mark('welcome');
+  await sleep(1400);
 
   // --- a key of one's own ---
-  await sleep(700);
   tap('create_key', AT.createKey);
   await sleep(2200);                   // minting the key, then the new screen
   mark('congratulations');
@@ -127,7 +142,10 @@ const SCAN_HOLD = 4000;         // how long the scanner sits there for the foota
 
   tap('moniker_field', AT.moniker);
   await sleep(900);
-  d.type(MONIKER);
+  // Typed, not pasted: a name appearing all at once reads as a script filling in
+  // a form, which is what it is, and the whole point is that a person is naming
+  // somebody they know.
+  await d.typeSlow(MONIKER, 220);
   mark('typed_moniker');
   await sleep(2600);                   // hold on the name, before Publish
 
