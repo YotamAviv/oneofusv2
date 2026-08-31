@@ -251,10 +251,6 @@ scene and the footage that goes in it.
    take, so it is the app and not the video. Left in the footage on purpose
    rather than edited around — fix the app, then re-shoot.
 
-Possibly related, worth a look while in there: a `keymeid://vouch#` deep link
-arriving while the scanner is open leaves the scanner underneath, where a real
-scan pops it. The shoot script presses Back first to match real behaviour.
-
 ### Notes for whoever picks this up
 
 - **The rendered room is the tell.** The emulator's camera shows a living room
