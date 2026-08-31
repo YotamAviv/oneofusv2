@@ -236,6 +236,10 @@ const toDevice = (x, y) => VIEW2DEV
   const stamp = `${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
   const name = `signin_${stamp}`;
   E('pull', '/sdcard/signin.mp4', path.join(OUT, `${name}.mp4`));
+  // Off the device once it is safely here. Every take used to leave its
+  // recording behind, and they were quietly filling /data -- enough that an
+  // apk install eventually failed for want of space.
+  E('shell', 'rm', '-f', '/sdcard/signin.mp4');
   fs.writeFileSync(path.join(OUT, `${name}.marks.json`), JSON.stringify(marks, null, 2));
   console.log(`\nout/${name}.mp4\nout/${name}.marks.json  (${marks.taps.length} taps logged)`);
 })().catch(e => {

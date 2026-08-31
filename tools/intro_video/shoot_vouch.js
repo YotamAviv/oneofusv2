@@ -185,6 +185,10 @@ const SCAN_HOLD = 6000;
                 `${p2(dt.getHours())}${p2(dt.getMinutes())}${p2(dt.getSeconds())}`;
   const name = `vouch_${stamp}`;
   d.E('pull', '/sdcard/vouch.mp4', path.join(OUT, `${name}.mp4`));
+  // Off the device once it is safely here. Every take used to leave its
+  // recording behind, and they were quietly filling /data -- enough that an
+  // apk install eventually failed for want of space.
+  d.E('shell', 'rm', '-f', '/sdcard/vouch.mp4');
   fs.writeFileSync(path.join(OUT, `${name}.marks.json`), JSON.stringify(marks, null, 2));
   console.log(`\nout/${name}.mp4\nout/${name}.marks.json  (${marks.taps.length} taps)`);
   console.log(`scan window: ${marks.scanWindow.start}s + ${SCAN_HOLD / 1000}s (script clock)`);

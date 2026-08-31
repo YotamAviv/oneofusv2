@@ -307,6 +307,10 @@ const toDevice = (x, y) => ({
                 `${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
   const nm = `crypto_${stamp}`;
   E('pull', '/sdcard/crypto.mp4', path.join(OUT, `${nm}.mp4`));
+  // Off the device once it is safely here. Every take used to leave its
+  // recording behind, and they were quietly filling /data -- enough that an
+  // apk install eventually failed for want of space.
+  E('shell', 'rm', '-f', '/sdcard/crypto.mp4');
   fs.writeFileSync(path.join(OUT, `${nm}.marks.json`), JSON.stringify(marks, null, 2));
   console.log(`\nout/${nm}.mp4\nout/${nm}.marks.json  (${marks.taps.length} taps)`);
 })().catch(e => { console.error('\nTAKE FAILED:', e.message); process.exit(1); });
