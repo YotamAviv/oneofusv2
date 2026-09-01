@@ -75,18 +75,75 @@ function device(serial = process.env.AVD || 'emulator-5554') {
   /// indicator early by exactly that much.
   const waitForBright = async (threshold = 200, timeout = 15000) => {
     const t0 = Date.now();
-    let lastDark = Date.now();
+    let last = Date.now();
     while (Date.now() - t0 < timeout) {
       const b = brightness();
-      if (b >= threshold) return (lastDark + Date.now()) / 2;
-      lastDark = Date.now();
+      if (b >= threshold) return (last + Date.now()) / 2;
+      last = Date.now();
     }
     throw new Error('screen never went bright — no sync flash');
   };
 
+  /// The same, for a dark flash. A white flash is invisible to find_flash.js on
+  /// a take that is mostly white -- a browser, say -- because it barely beats the
+  /// median. Black stands out there instead.
+  const waitForDark = async (threshold = 60, timeout = 15000) => {
+    const t0 = Date.now();
+    let last = Date.now();
+    while (Date.now() - t0 < timeout) {
+      const b = brightness();
+      if (b <= threshold) return (last + Date.now()) / 2;
+      last = Date.now();
+    }
+    throw new Error('screen never went dark — no sync flash');
+  };
+
+  /// Re-point the devtools forward at Chrome's socket.
+  ///
+  /// Must happen AFTER Chrome is (re)started. The socket is new each time, and a
+  /// forward set up against the old one still looks fine until something
+  /// connects to it, at which point it is a "socket hang up" several steps away
+  /// from the cause.
+  const forwardDevtools = async (port = 9222) => {
+    try { E('forward', '--remove-all'); } catch { /* nothing forwarded yet */ }
+    E('forward', `tcp:${port}`, 'localabstract:chrome_devtools_remote');
+    for (let i = 0; i < 40; i++) {
+      try { if ((await fetch(`http://localhost:${port}/json/version`)).ok) return; } catch {}
+      await sleep(500);
+    }
+    throw new Error(`Chrome devtools never came up on localhost:${port}`);
+  };
+
+  /// Stop a screenrecord running on the device, and wait until its file has
+  /// stopped growing.
+  ///
+  /// Killing the local `adb shell screenrecord` process does not reliably stop
+  /// the remote one, and a fixed sleep afterwards is a guess. On a long take the
+  /// guess was wrong: five seconds of the signature-chain take were never in the
+  /// pulled file, which surfaced two steps later as annotate.js trying to grab a
+  /// frame past the end. Signal the process on the device, then watch the size.
+  const stopRecording = async (remotePath, timeout = 30000) => {
+    try { E('shell', 'pkill', '-INT', 'screenrecord'); } catch { /* already gone */ }
+    const size = () => {
+      try { return +Eout('shell', 'stat', '-c', '%s', remotePath).trim() || 0; }
+      catch { return 0; }
+    };
+    const t0 = Date.now();
+    let last = -1, stable = 0;
+    while (Date.now() - t0 < timeout) {
+      await sleep(700);
+      const now = size();
+      if (now > 0 && now === last) { if (++stable >= 3) return now; }
+      else stable = 0;
+      last = now;
+    }
+    return last;
+  };
+
   return {
-    E, Eout, sleep, waitForStillScreen, foregroundApp, waitForApp,
-    brightness, waitForBright,
+    E, Eout, sleep, waitForStillScreen, foregroundApp, waitForApp, forwardDevtools,
+    stopRecording,
+    brightness, waitForBright, waitForDark,
     tap: (x, y) => E('shell', 'input', 'tap', String(Math.round(x)), String(Math.round(y))),
     type: text => E('shell', 'input', 'text', text.replace(/ /g, '%s')),
     /// One character at a time, so it reads as typing rather than a paste.

@@ -5,11 +5,16 @@
     "deletion cannot be undone, so this file is the safety allowlist -- a token",
     "not listed here is refused before a connection is even opened.",
     "",
-    "Add the identity you create on the demo phone. Its token is the SHA1 of the",
-    "pretty-printed (2-space indent) canonical public key JSON -- not the compact",
-    "form, which produces a token matching nothing."
+    "PUBLIC TOKENS ONLY. The private keys are not in this repository and must not",
+    "be: it is public, and whoever holds one can sign as that identity. The demo",
+    "phone's export lives at ~/.config/oneofus/demo_identity_private.json, mode",
+    "600, and goes back onto a phone through the app's IMPORT screen.",
+    "",
+    "A token is the SHA1 of the pretty-printed (2-space indent) canonical public",
+    "key JSON -- not the compact form, which produces a token matching nothing."
   ],
   "demoTokens": {
-    "demo-phone": "7ab860faedbcf8c88fbed056830ebbe34bf73820"
+    "demo-phone": "98598cb57f341b9e9b457bc5d15bba569db36902",
+    "demo-phone-emulator-retired": "7ab860faedbcf8c88fbed056830ebbe34bf73820"
   }
 }

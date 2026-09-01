@@ -345,8 +345,11 @@ async function commentField(page) {
   // landed before calling this a take.
   await verifyPublished();
 
-  rec.kill('SIGINT');
-  await sleep(4000);
+  // Stop it on the DEVICE and wait for the file to settle. Killing the local
+  // adb first severs the shell before screenrecord can write its moov atom,
+  // and the pulled file is then not a video at all.
+  await require('./lib/device').device().stopRecording('/sdcard/nerdster.mp4');
+  rec.kill();
   await browser.close();
 
   const dt = new Date();

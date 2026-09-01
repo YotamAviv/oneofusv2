@@ -1,0 +1,31 @@
+{
+  "_comment": [
+    "The demo phone's identity, private key included, and yes on purpose.",
+    "",
+    "This repository is public, so anyone can sign statements as this identity.",
+    "That is acceptable here and the reasoning should be checked if it changes:",
+    "NOBODY VOUCHES FOR THIS IDENTITY. It vouches for Tom; Tom does not vouch",
+    "back, and no one else does either. An identity nobody trusts has no trust",
+    "to lend, so a stranger signing with this key produces statements from a",
+    "nobody. Nothing in the video depends on the key being secret -- what it",
+    "demonstrates is that statements are signed and checkable, not that this",
+    "particular signer is exclusive.",
+    "",
+    "IF THAT EVER CHANGES -- if a real identity vouches for this one -- then this",
+    "key becomes a way to sign from inside somebody's network, and it should come",
+    "out of here and be replaced.",
+    "",
+    "If the stream gets written to by someone else, reset it:",
+    "  I_MEAN_IT=yes node truncate_statements.js --token <token> --project oneofus",
+    "    --prod --keep <the vouch in state/demo_vouches_tom.json>",
+    "",
+    "Goes onto a phone through IMPORT KEYS FROM A BACKED UP EXPORT.",
+    "Public token: 98598cb57f341b9e9b457bc5d15bba569db36902"
+  ],
+  "one-of-us.net": {
+    "crv": "Ed25519",
+    "d": "Zf9uLAk1A47iROiazz1VXyQCQNRDqVavLxiAy4FcY5U",
+    "kty": "OKP",
+    "x": "g4YECJM-ii4k_SlfcU_vI4HLfZOzaIMMvpYXU9jZtnk"
+  }
+}

@@ -19,8 +19,11 @@ const marks = JSON.parse(fs.readFileSync(src.replace(/\.mp4$/, '.marks.json'), '
 // the process spawns, so a clock zeroed at spawn is ahead of the video.
 let OFFSET = 0;
 try {
+  // The take records which way its flash went; a white one is invisible on a
+  // take that is mostly white, so those flash black instead.
+  const kind = marks.syncFlash && marks.syncFlash.kind === 'dark' ? ['--dark'] : [];
   OFFSET = JSON.parse(execFileSync('node',
-    [path.join(__dirname, 'find_flash.js'), src], { encoding: 'utf8' })).offset;
+    [path.join(__dirname, 'find_flash.js'), src, ...kind], { encoding: 'utf8' })).offset;
   console.log(`sync flash at ${OFFSET}s — shifting marks by that much`);
 } catch (e) {
   console.error('WARNING: no sync flash found; taps will be mistimed');

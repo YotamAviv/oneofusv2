@@ -1,7 +1,20 @@
+# What is generated, and what is deliberately absent.
+#
+# out/ holds takes and renders -- large, stamped, and reproducible from the
+# scripts. footage/ is the opposite: two and a half seconds of a real phone
+# scanning a real identity card, which nothing here can regenerate, so it is
+# tracked.
+#
+# soundtrack.mp3 is optional: assemble.sh uses it if it is there and builds a
+# silent video if it is not. soundtrack.json says which track the prototypes
+# were cut against.
+#
+# fonts/ and package-lock.json used to be ignored. They are pinned now: the
+# faces are OFL and the pipeline will not render a card without them, and a
+# floating Playwright is a video that stops building six months from now.
 node_modules/
-package-lock.json
 out/
-fonts/
+!footage/
 tapfx/
 espeak/
 tts-venv/
@@ -10,3 +23,4 @@ casting/
 vo_parts/
 video*/
 *.png
+soundtrack.mp3

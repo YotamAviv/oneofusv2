@@ -105,6 +105,10 @@ const toDevice = (x, y) => VIEW2DEV
   E('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', 'https://nerdster.org',
     '-n', 'com.android.chrome/com.google.android.apps.chrome.Main');
   await waitForApp('com.android.chrome');
+  // Re-forward AFTER the restart above. shoot.sh sets the forward up before it
+  // runs this, and force-stopping Chrome invalidates it -- which surfaces later
+  // as "socket hang up" from connectOverCDP, several steps from the cause.
+  await require('./lib/device').device().forwardDevtools();
   await sleep(1200);                       // let the home page paint
 
   let { browser, page, cdp } = await attachToAvdChrome(chromium);
@@ -226,8 +230,11 @@ const toDevice = (x, y) => VIEW2DEV
   await sleep(1200);
   mark('done');
 
-  rec.kill('SIGINT');
-  await sleep(4000);
+  // Stop it on the DEVICE and wait for the file to settle. Killing the local
+  // adb first severs the shell before screenrecord can write its moov atom,
+  // and the pulled file is then not a video at all.
+  await require('./lib/device').device().stopRecording('/sdcard/signin.mp4');
+  rec.kill();
   await browser.close();
   // Never overwrite: every take is kept, stamped, so a good one can't be lost
   // to a later bad one. (One reshoot was already forced by a deleted raw.)

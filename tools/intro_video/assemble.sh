@@ -2,15 +2,14 @@
 # Join the finished takes into one file with a music bed, encoded the way
 # YouTube wants it.
 #
-#   ./assemble.sh out/upload.mp4 out/music.m4a out/a_annotated.mp4 out/b_annotated.mp4
+#   ./assemble.sh out/upload.mp4 soundtrack.mp3 out/a_annotated.mp4 out/b_annotated.mp4
 #
-# With no arguments it uses out/music.m4a and the newest annotated take of each
-# kind, which is what a review pass wants.
+# With no arguments it uses soundtrack.mp3 and the newest annotated take of each
+# kind, which is what a review pass wants. No soundtrack, no problem: the video
+# is built silent.
 #
-# PROTOTYPE, and the music is the part to think about before anything is
-# published: this is a stock track lifted off YouTube, so whether it can be
-# used, and whether Content ID says so, is a question for whoever uploads it.
-# out/ is gitignored, so no audio file lands in the repo.
+# PROTOTYPE. The soundtrack is optional and never committed -- see soundtrack.json
+# for which track this was built against and where it came from.
 #
 # The takes are 1080x2220 -- the emulator's screen, taller than 9:16. Kept as
 # shot, because fitting it to 9:16 means scaling down until there are pillars
@@ -20,8 +19,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 OUT="${1:-out/upload.mp4}"
-MUSIC="${2:-out/music.m4a}"
-shift 2 2>/dev/null || true
+SOUND="${2:-soundtrack.mp3}"
+# Shift one at a time. `shift 2` with fewer than two arguments shifts nothing,
+# which quietly left the OUTPUT filename sitting in the clip list.
+if [ $# -gt 0 ]; then shift; fi
+if [ $# -gt 0 ]; then shift; fi
 CLIPS=("$@")
 if [ ${#CLIPS[@]} -eq 0 ]; then
   CLIPS=(
@@ -29,7 +31,17 @@ if [ ${#CLIPS[@]} -eq 0 ]; then
     "$(ls -t out/crypto_*_taps_annotated.mp4 | head -1)"
   )
 fi
-[ -f "$MUSIC" ] || { echo "no music at $MUSIC"; exit 1; }
+# The soundtrack is optional and not in the repository -- the licence on a stock
+# track covers using it in a project, not redistributing the file, and this
+# repository is public. Drop one in as soundtrack.mp3 and it gets used; leave it
+# out and the video is built silent rather than not built at all. See
+# soundtrack.json for what the reference track is and where it came from.
+if [ -f "$SOUND" ]; then
+  echo "soundtrack: $SOUND"
+else
+  echo "no soundtrack at $SOUND -- building silent (see soundtrack.json)"
+  SOUND=""
+fi
 
 XFADE=0.6          # seconds of crossfade between takes
 TAIL=1.2           # seconds of music left running past the last frame
@@ -64,14 +76,23 @@ for i in "${!CLIPS[@]}"; do
 done
 FILTER="${FILTER}${PREV}format=yuv420p[v]"
 
-FADEOUT=$(python3 -c "print(round($TOTAL + $TAIL - 1.6, 3))")
-ffmpeg -y -v error "${INPUTS[@]}" -i "$MUSIC" \
+AUDIO=()
+LENGTH=$TOTAL
+if [ -n "$SOUND" ]; then
+  # Only run past the last frame when there is music to carry it.
+  LENGTH=$(python3 -c "print(round($TOTAL + $TAIL, 3))")
+  FADEOUT=$(python3 -c "print(round($LENGTH - 1.6, 3))")
+  AUDIO=(-i "$SOUND"
+         -map "${#CLIPS[@]}:a"
+         -af "afade=t=in:st=0:d=0.8,afade=t=out:st=$FADEOUT:d=1.6"
+         -c:a aac -b:a 192k -ar 48000 -ac 2)
+fi
+
+ffmpeg -y -v error "${INPUTS[@]}" "${AUDIO[@]}" \
   -filter_complex "$FILTER" \
-  -map "[v]" -map "${#CLIPS[@]}:a" \
-  -af "afade=t=in:st=0:d=0.8,afade=t=out:st=$FADEOUT:d=1.6" \
-  -t "$(python3 -c "print(round($TOTAL + $TAIL, 3))")" \
+  -map "[v]" \
+  -t "$LENGTH" \
   -c:v libx264 -profile:v high -crf 19 -preset slow -pix_fmt yuv420p -r 25 \
-  -c:a aac -b:a 192k -ar 48000 -ac 2 \
   -movflags +faststart "$OUT"
 
 echo

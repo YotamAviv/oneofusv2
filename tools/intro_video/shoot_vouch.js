@@ -101,7 +101,13 @@ const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
   // of the footage: the touch indicators land early and every cue time in the
   // annotation is wrong.
   await sleep(4000);
-  d.E('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', 'about:blank',
+  // BLACK, not white. The flash sits in the trimmed head, but not all of it
+  // gets trimmed -- whatever is left shows for a beat at the top of the scene,
+  // and a white browser page there reads as the browser coming back rather than
+  // as a cut. Black reads as a cut. It also beats the median more convincingly
+  // than white does on a take made of light app screens.
+  d.E('shell', 'am', 'start', '-a', 'android.intent.action.VIEW',
+    '-d', 'data:text/html,%3Cbody%20style%3D%22background%3A%23000%22%3E',
     '-n', 'com.android.chrome/com.google.android.apps.chrome.Main');
   // Zero on the white ACTUALLY arriving, not on a sleep long enough to assume
   // it has. Chrome takes its own time to paint, find_flash.js locks onto the
@@ -109,11 +115,14 @@ const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
   // touch indicator early by the difference -- which is how the first version
   // of this take drew the camera-permission tap over a screen that had not got
   // there yet.
-  t0 = await d.waitForBright();
-  await sleep(900);                    // hold the white for find_flash.js
-  marks.syncFlash = { heldMs: 900 };
+  t0 = await d.waitForDark();
+  await sleep(600);                    // hold it for find_flash.js
+  marks.syncFlash = { heldMs: 600, kind: 'dark' };
 
   // --- launch the app ---
+  // Off camera. The home screen and the tap on the icon are shoot_home.js, a
+  // separate three-second take: this one wipes the app's keys to run, and
+  // re-recording how somebody opens an app should not cost an identity.
   d.launch(APP);
   await d.waitForApp(APP);
   await sleep(3800);                   // splash, then the welcome screen
@@ -177,8 +186,11 @@ const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
   // what shows through is the emulator's rendered room.
   await sleep(2400);
 
-  rec.kill('SIGINT');
-  await sleep(10000);                  // screenrecord finishes writing after it
+  // Stop it on the DEVICE and wait for the file to settle. Killing the local
+  // adb first severs the shell before screenrecord can write its moov atom,
+  // and the pulled file is then not a video at all.
+  await require('./lib/device').device().stopRecording('/sdcard/vouch.mp4');
+  rec.kill();                  // screenrecord finishes writing after it
                                        // is asked to stop, and pulling early
                                        // truncates the tail -- which cost the
                                        // snackbar the first time

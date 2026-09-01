@@ -2,7 +2,7 @@
 # Put real camera footage inside the emulator's scanner screen.
 #
 #   ./composite_scan.sh <base> <footage> <start> [out.mp4]
-#   ./composite_scan.sh out/vouch_<stamp>.mp4 out/salvage/vouch_scan_long.mp4 14.3
+#   ./composite_scan.sh out/vouch_<stamp>.mp4 footage/vouch_scan_2026-08-31.mp4 14.3
 #
 # <base> is a take of the emulator (or a still of its scanner screen), <footage>
 # is the camera picture to drop in, <start> is where in the base the scanner is

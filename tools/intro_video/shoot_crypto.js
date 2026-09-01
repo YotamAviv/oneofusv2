@@ -295,11 +295,11 @@ const toDevice = (x, y) => ({
   await sleep(3500);
   mark('done');
 
-  rec.kill('SIGINT');
-  // screenrecord finishes writing after it is asked to stop, and pulling too
-  // early truncates the take -- which shows up as a video that ends before the
-  // thing it was made to show.
-  await sleep(7000);
+  // Stop it on the DEVICE and wait for the file to settle. Killing the local
+  // adb first severs the shell before screenrecord can write its moov atom,
+  // and the pulled file is then not a video at all.
+  await require('./lib/device').device().stopRecording('/sdcard/crypto.mp4');
+  rec.kill();
   await browser.close();
 
   const d = new Date(), p2 = n => String(n).padStart(2, '0');

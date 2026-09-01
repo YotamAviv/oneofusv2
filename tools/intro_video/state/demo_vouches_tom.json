@@ -1,0 +1,38 @@
+{
+  "_comment": [
+    "The demo phone's vouch for Tom, exactly as production serves it: signed, with",
+    "its id (the statement token). This is the starting state everything else",
+    "assumes -- the demo identity has trusted somebody, and nothing more.",
+    "",
+    "Fetched 2026-09-01 from",
+    "  https://export.one-of-us.net/?spec=98598cb57f341b9e9b457bc5d15bba569db36902&includeId=true",
+    "",
+    "If the stream ever holds more than this, truncate back to this statement's id:",
+    "  e09852539815f2da4af5a8bbad100e3fee067f0a"
+  ],
+  "98598cb57f341b9e9b457bc5d15bba569db36902": [
+    {
+      "I": {
+        "crv": "Ed25519",
+        "kty": "OKP",
+        "x": "g4YECJM-ii4k_SlfcU_vI4HLfZOzaIMMvpYXU9jZtnk"
+      },
+      "comment": "",
+      "id": "e09852539815f2da4af5a8bbad100e3fee067f0a",
+      "signature": "8fbcd93bea4c09f3579022cb0667b1d86eac49d23119720db10c97dd58793080f289e9c5284ff4e5a2248bad79bb809b7a872bac05cd4a4a146d472e8d87f901",
+      "statement": "net.one-of-us",
+      "time": "2026-08-31T16:53:56.286475Z",
+      "trust": {
+        "crv": "Ed25519",
+        "kty": "OKP",
+        "x": "Fenc6ziXKt69EWZY-5wPxbJNX9rk3CDRVSAEnA8kJVo"
+      },
+      "with": {
+        "endpoint": {
+          "url": "https://export.one-of-us.net"
+        },
+        "moniker": "Tom"
+      }
+    }
+  ]
+}

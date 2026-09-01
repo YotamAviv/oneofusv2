@@ -1,5 +1,49 @@
 # Filming the demo
 
+## Start here — setting up a machine
+
+The scripts drive a real Android emulator against production. Six things have to
+be true, and two of them are device state that survives nothing: they were both
+lost during a rebuild and cost an afternoon before anyone noticed.
+
+**1. Tools.** `adb`, `ffmpeg`, `node`, `python3`, and the Android SDK emulator.
+
+**2. Node packages.** `npm ci` in this directory (`package-lock.json` is pinned).
+
+**3. An emulator, running.** `flutter emulators --launch Pixel_3a_API_35`. Every
+coordinate in the app-blind scripts is measured against its 1080x2220 screen, so
+a different device profile means remeasuring. Keep an eye on its disk: a fat
+debug APK will not install with under a gigabyte free, and the failure is quiet.
+
+**4. A filmTools build of the app, installed.**
+
+    flutter build apk --debug --target-platform android-x64 --dart-define=filmTools=true
+    adb install -r ../../build/app/outputs/flutter-apk/app-debug.apk
+
+`--target-platform` matters: the all-ABI debug APK is 127MB and will not fit.
+Without `filmTools` the `keymeid://deletekey` and `keymeid://importkey` links are
+compiled out, and both `shoot.sh` and `restore_demo_identity.sh` stop working --
+silently, because a deep link nothing handles is not an error.
+
+**5. one-of-us.net approved as a link handler.** *Resets on reinstall.*
+
+    adb shell pm set-app-links-user-selection --user 0 \
+      --package net.oneofus.app true one-of-us.net
+
+Without it the sign-in take fails at "timeout waiting for net.oneofus.app to
+come to the front": the universal link opens the browser instead of the app.
+Check it with `adb shell pm get-app-links --user 0 net.oneofus.app` -- you want
+`one-of-us.net` under `Selection state: Enabled`. (The `1024` verification state
+above it is expected and fine: the AVD build is debug-signed, so automatic
+verification cannot pass and this approval stands in for it.)
+
+**6. The app icon on the home screen.** Drag it out of the app drawer once, by
+hand. `shoot_home.js` taps a fixed coordinate and does not arrange it.
+
+Then `./restore_demo_identity.sh` to put the demo phone's identity on the device,
+and `./build_scene1.sh` to make a scene.
+
+
 Two takes so far, both on one Android emulator against production, both driven
 by the Flutter accessibility tree rather than by pixel coordinates:
 
@@ -8,8 +52,18 @@ by the Flutter accessibility tree rather than by pixel coordinates:
 | `./shoot.sh` | [the sign-in sequence](#filming-the-sign-in-sequence) — ~9s |
 | `./shoot_nerdster.sh` | [the Nerdster feed basics](#filming-the-nerdster-feed-basics) — ~16s |
 
-They run in that order the first time: the Nerdster take needs the delegate key
-that sign-in creates. After that either can be reshot on its own.
+**Order matters.** `build_scene1.sh` runs `pm clear` to get a phone with no keys
+on it, which destroys whatever identity was there. So:
+
+    ./build_scene1.sh              # preamble + vouch -- wipes the app
+    ./restore_demo_identity.sh     # put the demo phone's identity back
+    ./shoot.sh                     # sign-in, which creates the delegate
+    ./shoot_nerdster.sh            # the feed, which needs that delegate
+    ./shoot_crypto.sh              # the signature chain
+
+Nothing after the restore is hardcoded: the identity's token is computed from
+the key, and the delegate and every statement are made by the app itself,
+running against production, the same as a real phone would.
 
 `node probe.js` dumps what is on screen — role, position and label of every
 node. It is the tool to reach for before changing either script, since it
@@ -198,7 +252,44 @@ and Comic Neue are embedded, so a different typeface means adding the file too
 
 Don't put a zoom over a beat — see the note at the top of `annotate.js`.
 
-## The opening beat — `node shoot_vouch.js`
+## The preamble — three pieces, ~16s
+
+Its own scene, ending on the tap that opens the app. The vouch scene takes over
+from there. Short scenes are the point: the vouch take wipes the app's keys to
+run, and nothing else here does, so nothing else should have to.
+
+| | | |
+| --- | --- | --- |
+| `node shoot_browser.js` | the page in a browser, and a tap on the Play badge | ~11s |
+| `node card.js out/card_install.mp4 3.6 "Use the app store links" "to install ONE-OF-US.NET"` | a text card | 3.6s |
+| `node shoot_home.js` | the home screen, and a tap on the app icon | ~4s |
+
+It opens on the page rather than typing an address in, and **the tap on the Play
+badge is drawn but never dispatched** — `overlay_taps.js` draws from the marks,
+not from the touch, so logging one without sending it puts the finger on the
+badge and leaves the browser where it is. The store never opens. That keeps the
+take inside the browser, so re-recording it costs no cleanup, and it avoids a
+listing that says "Update" under a red internal-tester warning. What would have
+happened next is the card's job to say.
+
+`./build_scene1.sh` runs all of it — the three preamble takes, the vouch take,
+the touch indicators, the scan composite, both joins and the assembly — and
+writes `out/scene1_full_<stamp>.mp4`. It records every take fresh, so it is also
+the check that this repository holds what the video needs. The one thing it
+cannot regenerate is `footage/`, which is why that is tracked.
+
+Every trim it makes comes from a take's own marks rather than a number that was
+true once: the preamble starts at the browser take's `page`, the home segment at
+`home_screen`, and the vouch scene at `welcome`, since the preamble has already
+shown the app opening. Each take opens with a sync flash and `overlay_taps.js`
+trims to it, but what is left is the flash page still sliding away — those marks
+are where the picture becomes worth seeing.
+
+**The app icon is on the home screen** because it was dragged there out of the
+app drawer once, by hand (`input motionevent` DOWN / MOVE / UP). It stays put, so
+no take has to arrange it.
+
+## The vouch take — `node shoot_vouch.js`
 
 A phone with no keys on it becomes a phone that has vouched for somebody:
 CREATE NEW IDENTITY KEY → the congratulations → the scanner → Tom's phone → his
@@ -220,6 +311,15 @@ link carrying Tom's public key — the same path a real scan takes once the QR i
 decoded, so the dialog is the app's own, with the real key in it. What is faked
 is the light hitting the lens, not the crypto.
 
+**A flash is white or black, whichever the take is not.** `find_flash.js` locks
+onto the frame furthest from the median, so a white flash is invisible on a take
+made of white browser pages — it reported "no clear flash" and every touch
+indicator was mistimed. Those takes flash black instead (`--dark`, recorded in
+the marks as `syncFlash.kind` and passed through by `overlay_taps.js`). The vouch
+take flashes black too, for a different reason: whatever the trim leaves shows
+for a beat at the top of the scene, and a white browser page there reads as the
+browser coming back rather than as a cut.
+
 The flash works here too. It doesn't have to come from inside the app — it only
 has to be a bright frame at a known instant, and it happens before the app is
 launched, in the head that gets trimmed off anyway. So the take opens Chrome on
@@ -230,7 +330,7 @@ own start:
     node shoot_vouch.js
     node overlay_taps.js out/vouch_<stamp>.mp4
     ./composite_scan.sh out/vouch_<stamp>_taps.mp4 \
-        out/salvage/vouch_scan_long.mp4 scanWindow out/scene1_vouch.mp4
+        footage/vouch_scan_2026-08-31.mp4 scanWindow out/scene1_vouch.mp4
 
 `scanWindow` there is a mark name, not a number — `composite_scan.sh` resolves
 it against the take's marks and shifts it onto the trimmed video's clock.
@@ -267,7 +367,7 @@ the screen size and the styling match the takes either side of it.
 The footage is salvaged out of the Aug 11 phone recording
 (`~/Videos/intro_video_source/`), which has the whole opening in it once: the
 Play Store listing at 0:22, CREATE NEW IDENTITY KEY at 0:37, the scan at 0:57,
-the moniker at 1:12, "Trusted: Success" at 1:27. `out/salvage/` holds the cut
+the moniker at 1:12, "Trusted: Success" at 1:27. `out/salvage/` holds the older Aug 11 cuts; the one in use is `footage/`, tracked
 pieces.
 
 The trick is two numbers, where each screen's camera view starts — y=530 in the
@@ -291,6 +391,39 @@ both sides, and small text is already this material's main problem.
 about the pipeline establishes that a track can be used; that is a question for
 whoever uploads, and Content ID answers it in its own way. `out/` is gitignored,
 so no audio file lands in the repo.
+
+## What is in the repository, and what is not
+
+Everything needed to build the video is tracked except two things, and both are
+deliberate.
+
+| | |
+| --- | --- |
+| `footage/` | the 2.5s of a real phone scanning a real identity card. Nothing here can regenerate it, so it is tracked. |
+| `state/` | the demo phone's vouch for Tom, as published and signed. The starting state the later takes assume. |
+| `demo_identity.json` | public tokens — the deletion allowlist |
+| `demo_identity_private.json` | the demo phone's key, deliberately (see below) |
+| `soundtrack.json` | which track the prototypes used, and where it came from |
+| `fonts/` | Inter and Comic Neue, both OFL. Pinned: no card renders without them. |
+| `package-lock.json` | pinned, so Playwright doesn't float |
+
+**The private key is here on purpose**, in `demo_identity_private.json`. This
+repository is public, so anyone can sign as this identity — which is acceptable
+*because nobody vouches for it*. It vouches for Tom; Tom does not vouch back and
+neither does anyone else, so an identity nobody trusts has no trust to lend and
+a stranger signing with it produces statements from a nobody. If someone writes
+to the stream, truncate it back to the vouch in `state/`.
+
+That reasoning is worth re-checking if it changes. **If a real identity ever
+vouches for the demo phone**, the key becomes a way to sign from inside somebody's
+network, and it should come out and be replaced.
+
+**The soundtrack is not here**, and is optional. A stock licence covers using a
+track in a project, not redistributing the file, and an mp3 in a public
+repository is a download link. Drop one in as `soundtrack.mp3` (gitignored) and
+`assemble.sh` uses it; leave it out and the video builds silent rather than not
+building at all. `soundtrack.json` records which track the prototypes were cut
+against.
 
 ## Requires
 

@@ -89,6 +89,14 @@ fs.mkdirSync(work, { recursive: true });
     const frame = path.join(work, `f${i}.png`);
     execFileSync('ffmpeg', ['-y', '-v', 'error', '-ss', String(b.t), '-i', inVideo,
       '-frames:v', '1', frame]);
+    // ffmpeg exits happily having written nothing when the seek is past the end,
+    // and the next step then fails on a missing file several lines from the
+    // cause. A beat later than the take is a cue-vs-take mismatch: say so.
+    if (!fs.existsSync(frame)) {
+      throw new Error(`beat at ${b.t}s is past the end of ${path.basename(inVideo)} ` +
+        `(${DUR.toFixed(2)}s). The cue names a mark the take recorded, so the take ` +
+        `is probably short -- screenrecord truncates when it is pulled too early.`);
+    }
     await page.setContent(beatPage(frame, b));
     await page.evaluate(() => document.fonts.ready);
     const box = await page.evaluate(([c, s]) => window.renderBubble(c, s),
