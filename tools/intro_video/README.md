@@ -400,7 +400,7 @@ deliberate.
 | | |
 | --- | --- |
 | `footage/` | the 2.5s of a real phone scanning a real identity card. Nothing here can regenerate it, so it is tracked. |
-| `state/` | the demo phone's vouch for Tom, as published and signed. The starting state the later takes assume. |
+| `state/` | the demo phone's vouch for Tom, as published and signed. A record, not an input — nothing reads it. |
 | `demo_identity.json` | public tokens — the deletion allowlist |
 | `demo_identity_private.json` | the demo phone's key, deliberately (see below) |
 | `soundtrack.json` | which track the prototypes used, and where it came from |
@@ -412,11 +412,28 @@ repository is public, so anyone can sign as this identity — which is acceptabl
 *because nobody vouches for it*. It vouches for Tom; Tom does not vouch back and
 neither does anyone else, so an identity nobody trusts has no trust to lend and
 a stranger signing with it produces statements from a nobody. If someone writes
-to the stream, truncate it back to the vouch in `state/`.
+to the stream, truncate it back to that first vouch — `shoot.sh` finds it by
+fetching, and `state/` records what it should look like.
 
 That reasoning is worth re-checking if it changes. **If a real identity ever
 vouches for the demo phone**, the key becomes a way to sign from inside somebody's
 network, and it should come out and be replaced.
+
+**What the key is actually for.** Not its state — the vouch take mints a fresh
+identity every run and that identity is in exactly the right state anyway (one
+vouch for Tom, no delegate). What it lacks is a *name*: `truncate_statements.js`
+refuses any token not in `demo_identity.json`, which is the safety mechanism that
+stops a wrong token destroying a real person's history. So the reset steps need a
+token known in advance, and the stored key is what makes one knowable.
+
+The cost is that each `build_scene1.sh` leaves an orphan identity in production —
+one vouch for Tom from a key nobody kept. Harmless, and it accumulates.
+
+Removing that would take a QR decoder (`zbar-tools`): the vouch take could read
+the token off the app's own QR, write it into `demo_identity.json`, and become
+the demo identity for that build instead of a throwaway — at which point
+`restore_demo_identity.sh` is a convenience rather than a required step. The same
+decoder is what would let the emulator's camera scan a real QR. Not done.
 
 **The soundtrack is not here**, and is optional. A stock licence covers using a
 track in a project, not redistributing the file, and an mp3 in a public

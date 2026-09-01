@@ -270,6 +270,18 @@ a branch build is installed again:
 (`/data` on that AVD runs ~90% full; the all-ABI debug APK is 127MB and will not
 fit, hence `--target-platform`.)
 
+### Worth doing, not done
+
+**A QR decoder (`zbar-tools`) would remove the demo-identity dance.** The vouch
+take mints a fresh identity every run, which is in the right state but has a
+token nothing can name — and `truncate_statements.js` refuses tokens that aren't
+in its allowlist. Hence the stored key, and hence `restore_demo_identity.sh`
+after every `build_scene1.sh`. With a decoder the take could read the token off
+the app's own QR, write it down, and use it; the restore becomes optional and
+production stops collecting orphan identities. The same decoder would let the
+emulator's camera scan a real QR, which is the other half of the filming rig
+nobody has built.
+
 ### Notes for whoever picks this up
 
 - **The rendered room is the tell.** The emulator's camera shows a living room
