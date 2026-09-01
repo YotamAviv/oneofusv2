@@ -4,11 +4,6 @@ Notes for making intro/demo videos covering ONE-0F-US.NET, Nerdster, and Hablote
 
 *** MY HUMAN UPDATES ***
 
-Tech:
-We're still at the prototype stage. Before first commit:
-- Address: "Every tap is a hardcoded pixel, every wait a tuned sleep, and a failed take still produces a valid-looking file. Flutter's accessibility tree in the filming build would fix all three at once."
-- Add a bubble
-- I, the person, need to understand the code and where/what the script is.
 
 Less is more:
 keep it brief and polished
@@ -20,31 +15,63 @@ The self filmed videos were simple enough to set up but hard on my to execute an
 - Buzz ? slogans
 These can flash in a special font and then fade away. They're different from the running commentary: Democracy 2.0, First Amendment 2.0, The Internet liberated lies and pornography; cryptography on the Internet can liberate authenticity, trust, maybe decency.
 
-Sections:
-Each section opens with text, then uses demo
+The prototypes worked.
+Next is
+- scripts and text we'll keep and iterate on.
+  - enables me to think of an improvement either to the app, the fonts, the text, whatever and not shoot the whole thing from scratch.
+- the option to support shorter and longer videos with components that are good.
+
+Tactics:
+- Entire screen text
+- Bubbles that point to buttons
+- Pause the video (show "||" and show important text regarding what happened)
+- Flash buzzwords (eg. "Democracy 2.0", "All your likes are belong to us"). These should be shiny, pop-up brightly, and then fade.
+
+Sections (probably a script and filename for each; all files will be assembled for the final, published video intro):
 
 - Our. Own. Decentralized. Identity. Network. (Each word appears with slight pause)
   - Demonstrate vouching in action.
   - That's it! That's all we need to do to build our own, decentralized, identity network.
 This sequence needs a shot from me using a 3rd phone showing the demo phone scanning the phone with my identity (demo phone screen not legible).
 
+- You have to be trusted, too (this demo user will not be trusted)
+  - In case you're remote, share a link which includes your public identity key.
+  - Demo that but don't actually email it or text it.
+
+- Enter the Nerdster! (Gong sound like Enter the Dragon)
+  - Show nerdster features briefly including
+  - Defer:
+    - PoV switch, Unlike the demo that was wider than a phone, try and sweep side 2 side between the 2 views, then maybe even show Lisa, Bart, Milhouse using both permissive and standard settings (defer that for now)
+    - follow/block Nerdster context
+    - block Identity (reprehensible)
+
 - Do we really need another one of these?
-  - No. This one's different
-    - a prototype leveraging our own network
-  - Enter the Nerdster! (Gong sound like Enter the Dragon)
-  - Show nerdster features briefly including changing PoV. Unlike the demo that was wider than a phone, try and sweep side 2 side between the 2 views, then maybe even show Lisa, Bart, Milhouse using both permissive and standard settings (defer that for now)
+  - No. But this is different
+    - a proof of concept of the paradigm leveraging our own, open, decentralized identity network.
+  - Open
+    - any service can leverage and contribute to our own, decentralized...
 
-- Open
-  - any service can leverage and contribute to our own, decentralized...
-  - evolution (like the Web. Services compete using data that's signed, trusted, and available, not siloed in a monopoly)
-  - Look for more text from other assets (ie. the Internet isn't Google's...)
-
-- (optional) Crypto signatures work
-  - demonstrate that a statement fetched from the web is signed correctly by using the Nerdster's built in Verify Signature dialog
+- How? Turn on the crypto (The Nerdster is specifically designed to highlight how this paradigm works)
+  - Turn on Crypto
+  - Show the interpreted and un-interpreted view of a like (not the demo's).
+  - Navigate to that person's NodeDetails, show the delegate keys, follow a delegate key's published signed statements, pretty print, 
+    - Try: Copy paste a statement and validate. Modify it (change a comment) and see that it doesn't
+    - Announce: This is is how all 3 apps work. They're not connected.
+      - Ground a service to a trusted point of view (like your own)
+      - Collect published, signed content (from anywhere; the statements are signed and portable)
+      - Verify the signatures
+      - Aggregate and present
+  Announce So:
+    - Evolution enabled (like the Web. Services compete using data that's signed, trusted, and available, not siloed in a monopoly)
+    - TODO: Look for more text from other assets (ie. the Internet isn't Google's...)
 
 - HabloTengo, Let's talk
-  Private information sharing grounded by our public open network.
-  Enough to demo that the demo phone we're using can't access folks' contact info
+  - Navigate to Hillel's NodeDetails
+  - Expand Hillel's delegate keys
+  - Note that he has a hablotengo.com delegate key
+  - Use the "Handy Dandy" link to his privately published contact info.
+  - See "Access Denied"
+  Announce: Private information sharing grounded by our own open decentralized network.
 
 - People, Not accounts
   I don't have a Nerdster account or a ONE-OF-US.NET account.
@@ -53,13 +80,19 @@ This sequence needs a shot from me using a 3rd phone showing the demo phone scan
   - Our network already exists
     - this effort is just so we can use it online
     - let's get on the same page, whether you drive Uber, comment on news, like movies or products, you're human, a person, ONE OF US.
-  - (Maybe: That man is tall, has a rude dog, fancy car, I always seem him at the park. That woman works at the coffee shop, has 3 kiddos. Online we're just accounts. Same page...)
 
-Demo shows that these signed statements are available, PORTABLE, auditable, trusted..
+- Let's get on the same page
+  - We build the identity network and **let** them use it.
+  - (We can't let them build it. One silo (eg. Twitter) will never agree to relying on another's (eg Facebook) identities.)
 
+- The Internet liberated lies and pornography, and we got confused, depressed, divided, and angry.
+- Crypto on the Internet can liberate authenticiy and trust, maybe sanity, truth, and decency...
+- Decentralized
+  Must be if it's yours and you don't own your own silo
+  Flash: "Democracy 2.0"
 - Opt-in
   - just because you can use your authentic voice doesn't mean you have to.
-
+  Flash: "First Amendment 2.0"
   
 
 ## The core problem
