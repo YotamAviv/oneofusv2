@@ -15,7 +15,6 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
-const bubble = require('./lib/bubble');
 
 const W = 1080, H = 2220;
 const FONTS = path.join(__dirname, 'fonts');
@@ -30,23 +29,7 @@ const DUR = +secs;
 // A short card cannot spend most of itself fading.
 const FADE = Math.min(FADE_MAX, DUR * 0.14);
 
-const page = `<!doctype html><meta charset="utf-8"><style>
-  ${bubble.fontFaces(FONTS)}
-  html,body { margin:0; width:${W}px; height:${H}px; background:#12181f; }
-  #c {
-    width:${W}px; height:${H}px; box-sizing:border-box; padding:0 110px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-family:'Inter', system-ui, sans-serif; text-align:center;
-  }
-  h1 { font-size:92px; line-height:1.12; font-weight:600; color:#f4f7fb; margin:0 0 34px; }
-  p  { font-size:60px; line-height:1.3;  font-weight:600; color:rgba(244,247,251,.62); margin:0 0 18px; }
-  #rule { width:120px; height:5px; border-radius:3px; background:rgba(120,190,255,.85); margin-top:52px; }
-</style>
-<div id="c">
-  <h1>${lines[0].replace(/&/g, '&amp;').replace(/</g, '&lt;')}</h1>
-  ${lines.slice(1).map(l => `<p>${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`).join('')}
-  <div id="rule"></div>
-</div>`;
+const page = require('./lib/card').page(lines, { W, H, fontsDir: FONTS });
 
 (async () => {
   const work = path.join(__dirname, 'out', 'card');

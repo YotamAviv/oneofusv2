@@ -30,6 +30,8 @@
 //     "prompter": [ { "at": "tap_type_menu", "text": "Filter it down to books." } ],
 //     "zooms": [ { "at": "statement_selected", "in": 0.6, "hold": 5, "out": 0.6,
 //                  "to": [430, 900, 760] } ],   // centre x, centre y, width
+//     "cards": [ { "at": "published", "after": 2.5, "hold": 3.5,
+//                  "lines": ["That's it.", "..."] } ],   // stops the take
 //     "beats": [ {
 //        "at": "published", "after": 0.2, "hold": 3.0, "text": "Tom liked it too.",
 //        "anchor": [300, 1180],            // what the tail points at
@@ -46,6 +48,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
 const bubble = require('./lib/bubble');
+const { page: cardPage } = require('./lib/card');
 const { loadMarks, timeOf } = require('./lib/marks');
 
 const FONTS = path.join(__dirname, 'fonts');
@@ -63,6 +66,13 @@ const marks = loadMarks(inVideo);
 const resolve = (list, what) => (list || []).map(c => ({ ...c, t: timeOf(c, marks, what) }))
   .sort((a, b) => a.t - b.t);
 const beats = resolve(cues.beats, 'beat');
+const cards = resolve(cues.cards, 'card');
+// A card and a beat are the same act: stop the take at a mark, hold a still for
+// a moment, carry on. They differ only in what the still is -- a dimmed frame
+// with a bubble on it, or a screen of text. So they are spliced together, in
+// time order, and everything downstream counts them as one kind of thing.
+const splices = [...beats.map(b => ({ ...b, kind: 'beat' })),
+                 ...cards.map(c => ({ ...c, kind: 'card' }))].sort((a, b) => a.t - b.t);
 const lines = resolve(cues.prompter, 'prompter line');
 const zooms = resolve(cues.zooms, 'zoom');
 console.log(marks ? `marks: ${path.basename(inVideo)} → ${Object.keys(marks).length} entries`
@@ -74,7 +84,7 @@ const probe = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v',
 const W = +probe[0], H = +probe[1], DUR = +probe[2];
 
 /// Where a moment in the original take lands once the pauses are spliced in.
-const shift = t => t + beats.filter(b => b.t <= t).reduce((s, b) => s + b.hold, 0);
+const shift = t => t + splices.filter(b => b.t <= t).reduce((s, b) => s + b.hold, 0);
 
 const work = path.join(__dirname, 'out', 'annotate');
 fs.rmSync(work, { recursive: true, force: true });
@@ -83,9 +93,16 @@ fs.mkdirSync(work, { recursive: true });
 (async () => {
   const browser = await chromium.launch();
 
-  // --- the frozen, spotlit beats ---
+  // --- the stills that get spliced in: frozen spotlit beats, and cards ---
   const page = await browser.newPage({ viewport: { width: W, height: H } });
-  for (const [i, b] of beats.entries()) {
+  for (const [i, b] of splices.entries()) {
+    if (b.kind === 'card') {
+      await page.setContent(cardPage(b.lines, { W, H, fontsDir: FONTS }));
+      await page.evaluate(() => document.fonts.ready);
+      await page.screenshot({ path: path.join(work, `splice${i}.png`) });
+      console.log(`card @${b.t}s  hold ${b.hold}s  "${b.lines.join(' / ').slice(0, 48)}"`);
+      continue;
+    }
     const frame = path.join(work, `f${i}.png`);
     execFileSync('ffmpeg', ['-y', '-v', 'error', '-ss', String(b.t), '-i', inVideo,
       '-frames:v', '1', frame]);
@@ -101,7 +118,7 @@ fs.mkdirSync(work, { recursive: true });
     await page.evaluate(() => document.fonts.ready);
     const box = await page.evaluate(([c, s]) => window.renderBubble(c, s),
       [b, bubble.STYLES[b.style || 'narrator']]);
-    await page.screenshot({ path: path.join(work, `beat${i}.png`) });
+    await page.screenshot({ path: path.join(work, `splice${i}.png`) });
     console.log(`beat @${b.t}s  hold ${b.hold}s  bubble ${Math.round(box.w)}x${Math.round(box.h)} ` +
                 `(${box.tail})  "${b.text.replace(/\n/g, ' ').slice(0, 40)}"`);
   }
@@ -191,22 +208,22 @@ function stripPage(lit) {
 /// Splice the frozen beats into the take. Everything downstream is on the
 /// shifted clock from here on.
 function spliceInPauses(out) {
-  if (!beats.length) { fs.copyFileSync(inVideo, out); return; }
+  if (!splices.length) { fs.copyFileSync(inVideo, out); return; }
   const inputs = [];
-  beats.forEach((b, i) => inputs.push('-loop', '1', '-t', String(b.hold),
-    '-i', path.join(work, `beat${i}.png`)));
+  splices.forEach((b, i) => inputs.push('-loop', '1', '-t', String(b.hold),
+    '-i', path.join(work, `splice${i}.png`)));
 
   const parts = [];
-  const chain = [`[0:v]split=${beats.length + 1}${beats.map((_, i) => `[c${i}]`).join('')}[c${beats.length}]`];
+  const chain = [`[0:v]split=${splices.length + 1}${splices.map((_, i) => `[c${i}]`).join('')}[c${splices.length}]`];
   let from = 0;
-  beats.forEach((b, i) => {
+  splices.forEach((b, i) => {
     chain.push(`[c${i}]trim=${from}:${b.t},setpts=PTS-STARTPTS,fps=25,setsar=1[s${i}]`);
     chain.push(`[${i + 1}:v]fps=25,setsar=1,format=yuv420p[p${i}]`);
     parts.push(`[s${i}]`, `[p${i}]`);
     from = b.t;
   });
-  chain.push(`[c${beats.length}]trim=${from},setpts=PTS-STARTPTS,fps=25,setsar=1[s${beats.length}]`);
-  parts.push(`[s${beats.length}]`);
+  chain.push(`[c${splices.length}]trim=${from},setpts=PTS-STARTPTS,fps=25,setsar=1[s${splices.length}]`);
+  parts.push(`[s${splices.length}]`);
   chain.push(`${parts.join('')}concat=n=${parts.length}:v=1:a=0[v]`);
 
   execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', inVideo, ...inputs,
@@ -260,7 +277,7 @@ function punchIn(src, out) {
 /// rather than cutting between captions.
 function layPrompter(src, out, geom) {
   if (!lines.length) { fs.copyFileSync(src, out); return; }
-  const total = DUR + beats.reduce((s, b) => s + b.hold, 0);
+  const total = DUR + splices.reduce((s, b) => s + b.hold, 0);
   const bandY = H - BAND_H;
 
   // A dark gradient behind the text, so it reads over a bright feed.

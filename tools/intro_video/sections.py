@@ -27,8 +27,10 @@ HERE = Path(__file__).resolve().parent
 DOC = HERE.parent.parent / 'doc' / 'intro_video' / 'sections.yaml'
 CUES = HERE / 'cues'
 
-# What annotate.js reads, and nothing else.
-CUE_KEYS = ('prompter', 'zooms', 'beats')
+# What annotate.js reads, and nothing else. Cards are in here because a card at
+# a mark is spliced into the take exactly as a beat is -- only a card rendered
+# on its own, outside any take, goes through --card.
+CUE_KEYS = ('prompter', 'zooms', 'beats', 'cards')
 
 
 def load():

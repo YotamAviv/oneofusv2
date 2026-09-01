@@ -13,9 +13,13 @@
 #   prompter  the running commentary along the bottom, scrolling as the take goes
 #   beats     the video STOPS -- pause bars, everything dimmed but one spotlit
 #             thing, and a bubble pointing at it
+#   cards     the video STOPS and a screen of text takes over. Same act as a
+#             beat, different still. First line large, the rest smaller.
 #   zooms     a punch-in, for the moments made of small text
 #   flash     a buzzword, bright, then gone.  NOT BUILT YET.
-#   card      a full screen of text, between takes
+#
+# All of them say WHEN the same way, so a card can land anywhere in a section --
+# `t: 0` is its start, a late mark is its end, and any mark is anywhere between.
 #
 # WHEN is a mark the take recorded, not a number of seconds: `at: tap_publish`.
 # Reshooting moves every number and none of the names. `after:` offsets from the
@@ -81,8 +85,15 @@ sections:
       - {t: 0.3, text: "A phone with no keys on it."}
       - {at: tap_create_key, text: "One tap and it has an identity."}
       - {at: scanner, text: "Scan somebody you know."}
-      - {at: tap_publish, text: "That's it. That's all we need to do to build our
-                                 own, decentralized, identity network."}
+    cards:
+      # The punchline of the section, and a full screen rather than narration.
+      - at: published
+        after: 2.5
+        hold: 3.5
+        lines:
+          - That's it.
+          - That's all we need to do to build our own,
+          - decentralized, identity network.
     todo:
       # Deferred, 2026-09-01. The composite scan covers the mechanics; this would
       # add the human moment -- two people, in a room, one act.

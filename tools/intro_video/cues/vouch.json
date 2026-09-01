@@ -16,10 +16,18 @@
     {
       "at": "scanner",
       "text": "Scan somebody you know."
-    },
+    }
+  ],
+  "cards": [
     {
-      "at": "tap_publish",
-      "text": "That's it. That's all we need to do to build our own, decentralized, identity network."
+      "at": "published",
+      "after": 2.5,
+      "hold": 3.5,
+      "lines": [
+        "That's it.",
+        "That's all we need to do to build our own,",
+        "decentralized, identity network."
+      ]
     }
   ]
 }
