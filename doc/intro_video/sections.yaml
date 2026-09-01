@@ -14,7 +14,10 @@
 #   beats     the video STOPS -- pause bars, everything dimmed but one spotlit
 #             thing, and a bubble pointing at it
 #   cards     the video STOPS and a screen of text takes over. Same act as a
-#             beat, different still. First line large, the rest smaller.
+#             beat, different still. `lines:` renders the first large and the
+#             rest smaller; `words:` makes them arrive one at a time and stay.
+#             A section whose card IS the section (no take) has exactly one, and
+#             `sections.py --card <id>` renders it.
 #   zooms     a punch-in, for the moments made of small text
 #   flash     a buzzword, bright, then gone.  NOT BUILT YET.
 #
@@ -39,14 +42,14 @@
 # video is a list of sections in order, and a section can be in more than one.
 videos:
   intro:
-    title: Our Own Open Decentralized Identity Network
+    # Our Own Open Decentralized Identity Network
     sections: [preamble, vouch, invite, nerdster, another_one, crypto, hablotengo,
                people_not_accounts, same_page, liberated, decentralized, opt_in]
 
   # A place to grow into. Sections that are too long or too subtle for the intro
   # go here rather than being dropped -- see crypto's `defer:` block.
   long:
-    title: (unnamed, 10-15 minutes)
+    # (unnamed, 10-15 minutes)
     sections: []
 
 # ---------------------------------------------------------------------------
@@ -54,7 +57,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: preamble
-    title: Getting the app
+    # Getting the app
     build: shoot_browser + card + shoot_home    # tools/intro_video/build_scene1.sh
     status: built
     # Three short takes and a card, joined. People can navigate to a web page and
@@ -62,11 +65,11 @@ sections:
     # film the Play Store -- the tap on the Play badge is DRAWN AND NEVER
     # DISPATCHED (overlay_taps.js draws from the marks, not from the touch), so
     # the store never opens and the card says what would have happened.
-    card:
-      hold: 2.0
-      lines:
-        - Use the app store links
-        - to install ONE-OF-US.NET
+    cards:
+      - hold: 2.0
+        lines:
+          - Use the app store links
+          - to install ONE-OF-US.NET
     actions:
       - Chrome, already on one-of-us.net, with both store badges in view.
       - A finger lands on the Google Play badge. Nothing opens.
@@ -75,17 +78,20 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: vouch
-    title: Our. Own. Decentralized. Identity. Network.
+    # Our. Own. Decentralized. Identity. Network.
     build: shoot_vouch          # tools/intro_video/build_scene1.sh
     status: built
-    card:
-      # Each word appears with a slight pause.
-      words: [Our., Own., Decentralized., Identity., Network.]
     prompter:
       - {t: 0.3, text: "A phone with no keys on it."}
       - {at: tap_create_key, text: "One tap and it has an identity."}
       - {at: scanner, text: "Scan somebody you know."}
     cards:
+      # Each word appears and stays, building the sentence. At `welcome` rather
+      # than t:0 because the scene is trimmed to that mark -- a card before it
+      # sits in the head that gets cut off.
+      - at: welcome
+        hold: 2.0
+        words: [Our Own., Decentralized., Identity Network.]
       # The punchline of the section, and a full screen rather than narration.
       - at: published
         after: 2.5
@@ -102,7 +108,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: invite
-    title: You have to be trusted, too
+    # You have to be trusted, too
     build: shoot_invite
     status: built
     # NOT A LIMITATION -- a thing people have to do. Two points, and the second
@@ -136,7 +142,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: nerdster
-    title: Enter the Nerdster!
+    # Enter the Nerdster!
     build: shoot_nerdster
     status: built
     # A gong, like Enter the Dragon. NO ASSET -- deferred 2026-09-01.
@@ -173,22 +179,23 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: another_one
-    title: Do we really need another one of these?
+    # Do we really need another one of these?
     build: card
     status: to_build
     # Order is deliberate: show the network working FIRST, then -- once it looks
     # like every other cookie-cutter forum app -- say how it differs.
-    card:
-      lines:
-        - "Do we really need another one of these?"
-        - "No. But this is different."
-        - "A proof of concept of the paradigm, leveraging our own open,
-           decentralized identity network."
-        - "Open: any service can leverage it, and contribute to it."
+    cards:
+      - hold: 3.5
+        lines:
+          - "Do we really need another one of these?"
+          - "No. But this is different."
+          - "A proof of concept of the paradigm, leveraging our own open,
+             decentralized identity network."
+          - "Open: any service can leverage it, and contribute to it."
 
   # -------------------------------------------------------------------------
   - id: crypto
-    title: How? Turn on the crypto
+    # How? Turn on the crypto
     build: shoot_crypto
     status: built
     # The Nerdster is specifically designed to highlight how this works.
@@ -241,7 +248,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: hablotengo
-    title: HabloTengo, let's talk
+    # HabloTengo, let's talk
     build: todo
     status: to_build
     # Never driven by script, but it is the same kind of web app as the Nerdster,
@@ -258,61 +265,66 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: people_not_accounts
-    title: People, not accounts
+    # People, not accounts
     build: card
     status: to_build
-    card:
-      lines:
-        - "I don't have a Nerdster account or a ONE-OF-US.NET account."
-        - "I gave the Nerdster a delegate key I claimed as mine. The Nerdster has
-           an account with me."
-        - "Other people vouched for my identity. If anything, I have an account
-           with them."
-        - "Our network already exists. This effort is just so we can use it
-           online."
-        - "Whether you drive Uber, comment on news, like movies or products --
-           you're human, a person, ONE OF US."
+    cards:
+      - hold: 3.5
+        lines:
+          - "I don't have a Nerdster account or a ONE-OF-US.NET account."
+          - "I gave the Nerdster a delegate key I claimed as mine. The Nerdster has
+             an account with me."
+          - "Other people vouched for my identity. If anything, I have an account
+             with them."
+          - "Our network already exists. This effort is just so we can use it
+             online."
+          - "Whether you drive Uber, comment on news, like movies or products --
+             you're human, a person, ONE OF US."
 
   # -------------------------------------------------------------------------
   - id: same_page
-    title: Let's get on the same page
+    # Let's get on the same page
     build: card
     status: to_build
-    card:
-      lines:
-        - "We build the identity network and **let** them use it."
-        - "We can't let them build it. One silo will never agree to relying on
-           another's identities."
+    cards:
+      - hold: 3.5
+        lines:
+          - "We build the identity network and **let** them use it."
+          - "We can't let them build it. One silo will never agree to relying on
+             another's identities."
 
   # -------------------------------------------------------------------------
   - id: liberated
-    title: The Internet liberated lies and pornography
+    # The Internet liberated lies and pornography
     build: card
     status: to_build
-    card:
-      lines:
-        - "The Internet liberated lies and pornography, and we got confused,
-           depressed, divided, and angry."
-        - "Crypto on the Internet can liberate authenticity and trust. Maybe
-           sanity, truth, and decency."
+    cards:
+      - hold: 3.5
+        lines:
+          - "The Internet liberated lies and pornography, and we got confused,
+             depressed, divided, and angry."
+          - "Crypto on the Internet can liberate authenticity and trust. Maybe
+             sanity, truth, and decency."
 
   # -------------------------------------------------------------------------
   - id: decentralized
-    title: Decentralized
+    # Decentralized
     build: card
     status: to_build
-    card:
-      lines:
-        - "Must be, if it's yours and you don't own your own silo."
+    cards:
+      - hold: 3.5
+        lines:
+          - "Must be, if it's yours and you don't own your own silo."
     flash: Democracy 2.0
 
   # -------------------------------------------------------------------------
   - id: opt_in
-    title: Opt-in
+    # Opt-in
     build: card
     status: to_build
-    card:
-      lines:
-        - "Just because you can use your authentic voice doesn't mean you have
-           to."
+    cards:
+      - hold: 3.5
+        lines:
+          - "Just because you can use your authentic voice doesn't mean you have
+             to."
     flash: First Amendment 2.0

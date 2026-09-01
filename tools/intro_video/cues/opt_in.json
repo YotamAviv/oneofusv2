@@ -1,0 +1,15 @@
+{
+  "_comment": [
+    "Generated from doc/intro_video/sections.yaml -- section 'opt_in'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues opt_in"
+  ],
+  "cards": [
+    {
+      "hold": 3.5,
+      "lines": [
+        "Just because you can use your authentic voice doesn't mean you have to."
+      ]
+    }
+  ]
+}

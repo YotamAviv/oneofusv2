@@ -1,0 +1,19 @@
+{
+  "_comment": [
+    "Generated from doc/intro_video/sections.yaml -- section 'people_not_accounts'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues people_not_accounts"
+  ],
+  "cards": [
+    {
+      "hold": 3.5,
+      "lines": [
+        "I don't have a Nerdster account or a ONE-OF-US.NET account.",
+        "I gave the Nerdster a delegate key I claimed as mine. The Nerdster has an account with me.",
+        "Other people vouched for my identity. If anything, I have an account with them.",
+        "Our network already exists. This effort is just so we can use it online.",
+        "Whether you drive Uber, comment on news, like movies or products -- you're human, a person, ONE OF US."
+      ]
+    }
+  ]
+}

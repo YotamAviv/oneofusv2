@@ -32,4 +32,24 @@ function page(lines, { W, H, fontsDir }) {
 </div>`;
 }
 
-module.exports = { page };
+/// One frame of a word-by-word card: the first `shown` words, with the rest of
+/// the line's space already reserved so nothing jumps as words arrive.
+///
+/// The words accumulate. "Our." then "Our. Own." and so on -- the sentence is
+/// built in front of the viewer, which is the point of writing it that way.
+function wordsPage(words, shown, { W, H, fontsDir }) {
+  const spans = words.map((w, i) =>
+    `<span style="opacity:${i < shown ? 1 : 0}">${esc(w)}</span>`).join(' ');
+  return `<!doctype html><meta charset="utf-8"><style>
+  ${bubble.fontFaces(fontsDir)}
+  html,body { margin:0; width:${W}px; height:${H}px; background:#12181f; }
+  #c {
+    width:${W}px; height:${H}px; box-sizing:border-box; padding:0 96px;
+    display:flex; align-items:center; justify-content:center;
+    font: 600 96px/1.18 'Inter', system-ui, sans-serif; color:#f4f7fb;
+    text-align:center; text-wrap:balance;
+  }
+</style><div id="c"><div>${spans}</div></div>`;
+}
+
+module.exports = { page, wordsPage };

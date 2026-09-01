@@ -1,0 +1,16 @@
+{
+  "_comment": [
+    "Generated from doc/intro_video/sections.yaml -- section 'liberated'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues liberated"
+  ],
+  "cards": [
+    {
+      "hold": 3.5,
+      "lines": [
+        "The Internet liberated lies and pornography, and we got confused, depressed, divided, and angry.",
+        "Crypto on the Internet can liberate authenticity and trust. Maybe sanity, truth, and decency."
+      ]
+    }
+  ]
+}

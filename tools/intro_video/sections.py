@@ -84,15 +84,21 @@ def main():
         s = sections.get(args.card)
         if s is None:
             sys.exit(f"no section '{args.card}'. Try --list.")
-        card = s.get('card')
-        if not card:
-            sys.exit(f"section '{args.card}' has no card")
-        if 'words' in card:
-            sys.exit(f"section '{args.card}' wants a word-by-word card; "
-                     "card.js does not do those yet")
+        cards = s.get('cards')
+        if not cards:
+            sys.exit(f"section '{args.card}' has no cards")
+        if len(cards) != 1:
+            sys.exit(f"section '{args.card}' has {len(cards)} cards; --card renders a "
+                     "section whose card IS the section. A card that lands inside a "
+                     "take is spliced by annotate.js from the cue file instead.")
+        card = cards[0]
         out = HERE / 'out' / f"card_{args.card}.mp4"
-        cmd = ['node', str(HERE / 'card.js'), str(out),
-               str(card.get('hold', 2.0))] + [str(l) for l in card['lines']]
+        if 'words' in card:
+            cmd = ['node', str(HERE / 'card.js'), str(out),
+                   str(card['hold']), '--words'] + [str(w) for w in card['words']]
+        else:
+            cmd = ['node', str(HERE / 'card.js'), str(out),
+                   str(card['hold'])] + [str(l) for l in card['lines']]
         print(' '.join(cmd))
         subprocess.run(cmd, check=True)
         return
@@ -100,17 +106,16 @@ def main():
     if args.list or not (args.cues or args.check):
         for name, video in doc['videos'].items():
             ids = video['sections']
-            print(f"\n{name}: {video['title']}   ({len(ids)} sections)")
+            print(f"\n{name}   ({len(ids)} sections)")
             for i, sid in enumerate(ids, 1):
                 s = sections.get(sid)
                 if s is None:
                     print(f"  {i:2}. {sid}  -- NOT IN sections:")
                     continue
-                extras = [k for k in ('card', 'flash', 'announce', 'actions',
+                extras = [k for k in ('flash', 'announce', 'actions',
                                       'defer', 'todo') if s.get(k)]
                 cues = [f'{len(s[k])} {k}' for k in CUE_KEYS if s.get(k)]
-                print(f"  {i:2}. {s['title']}")
-                print(f"      {s['status']:9} build={s['build']:14} "
+                print(f"  {i:2}. {sid:22} {s['status']:9} build={s['build']:14} "
                       f"{', '.join(cues + extras)}")
         orphans = set(sections) - {i for v in doc['videos'].values() for i in v['sections']}
         if orphans:

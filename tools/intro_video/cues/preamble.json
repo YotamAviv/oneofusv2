@@ -1,0 +1,16 @@
+{
+  "_comment": [
+    "Generated from doc/intro_video/sections.yaml -- section 'preamble'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues preamble"
+  ],
+  "cards": [
+    {
+      "hold": 2.0,
+      "lines": [
+        "Use the app store links",
+        "to install ONE-OF-US.NET"
+      ]
+    }
+  ]
+}

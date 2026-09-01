@@ -1,0 +1,18 @@
+{
+  "_comment": [
+    "Generated from doc/intro_video/sections.yaml -- section 'another_one'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues another_one"
+  ],
+  "cards": [
+    {
+      "hold": 3.5,
+      "lines": [
+        "Do we really need another one of these?",
+        "No. But this is different.",
+        "A proof of concept of the paradigm, leveraging our own open, decentralized identity network.",
+        "Open: any service can leverage it, and contribute to it."
+      ]
+    }
+  ]
+}

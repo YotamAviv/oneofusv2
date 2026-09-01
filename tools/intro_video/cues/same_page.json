@@ -1,0 +1,16 @@
+{
+  "_comment": [
+    "Generated from doc/intro_video/sections.yaml -- section 'same_page'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues same_page"
+  ],
+  "cards": [
+    {
+      "hold": 3.5,
+      "lines": [
+        "We build the identity network and **let** them use it.",
+        "We can't let them build it. One silo will never agree to relying on another's identities."
+      ]
+    }
+  ]
+}

@@ -97,6 +97,21 @@ fs.mkdirSync(work, { recursive: true });
   const page = await browser.newPage({ viewport: { width: W, height: H } });
   for (const [i, b] of splices.entries()) {
     if (b.kind === 'card') {
+      if (b.words) {
+        // A word-by-word card is not a still -- the words arrive over several
+        // seconds -- so card.js builds it as a clip and it is spliced as one.
+        // Its real length comes back from ffprobe rather than from repeating
+        // card.js's arithmetic here.
+        const clip = path.join(work, `splice${i}.mp4`);
+        execFileSync('node', [path.join(__dirname, 'card.js'), clip, String(b.hold),
+          '--words', ...b.words.map(String)], { stdio: 'ignore' });
+        b.clip = clip;
+        b.hold = +execFileSync('ffprobe', ['-v', 'error', '-show_entries',
+          'format=duration', '-of', 'csv=p=0', clip], { encoding: 'utf8' }).trim();
+        console.log(`card @${b.t}s  ${b.hold}s  ${b.words.length} words  ` +
+                    `"${b.words.join(' ').slice(0, 44)}"`);
+        continue;
+      }
       await page.setContent(cardPage(b.lines, { W, H, fontsDir: FONTS }));
       await page.evaluate(() => document.fonts.ready);
       await page.screenshot({ path: path.join(work, `splice${i}.png`) });
@@ -210,8 +225,11 @@ function stripPage(lit) {
 function spliceInPauses(out) {
   if (!splices.length) { fs.copyFileSync(inVideo, out); return; }
   const inputs = [];
-  splices.forEach((b, i) => inputs.push('-loop', '1', '-t', String(b.hold),
-    '-i', path.join(work, `splice${i}.png`)));
+  // A still gets looped for its hold; a clip is already the right length.
+  splices.forEach((b, i) => b.clip
+    ? inputs.push('-i', b.clip)
+    : inputs.push('-loop', '1', '-t', String(b.hold),
+                  '-i', path.join(work, `splice${i}.png`)));
 
   const parts = [];
   const chain = [`[0:v]split=${splices.length + 1}${splices.map((_, i) => `[c${i}]`).join('')}[c${splices.length}]`];
@@ -284,7 +302,13 @@ function layPrompter(src, out, geom) {
   const scrim = path.join(work, 'scrim.png');
   execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i',
     `color=c=black:s=${W}x${BAND_H},format=rgba,` +
-    `geq=r=0:g=0:b=0:a='255*0.74*min(1,(Y/${BAND_H})*1.6+0.22)'`,
+    // Nearly opaque, with a short feather at the very top where it meets the
+    // picture. Two earlier versions were too weak and too gradual: the app's own
+    // caption sits near the TOP of the band on the scanner screen, where a ramp
+    // spread over the band's height was still only half opaque, and white text
+    // read through and tangled with the prompter line. Reach full cover in forty
+    // pixels, not three hundred.
+    `geq=r=0:g=0:b=0:a='255*min(1,Y/40+0.12)'`,
     '-frames:v', '1', scrim]);
 
   const inputs = ['-loop', '1', '-t', String(total), '-i', scrim];

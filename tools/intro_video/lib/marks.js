@@ -20,9 +20,14 @@ const fs = require('fs');
 const TRIM_PAD = 0.55;
 
 /// The marks written alongside a take, given any of its videos -- the raw one,
-/// the one with touch indicators, the annotated one.
+/// the one with touch indicators, the composited one, the annotated one.
+///
+/// The suffixes matter for ORDER. Compositing has to happen before annotation,
+/// because annotation splices cards and beats into the timeline and everything
+/// after them moves, while composite_scan resolves its window against the marks
+/// as recorded. Composite first, on unshifted time, then annotate.
 function loadMarks(video) {
-  const file = video.replace(/(_taps|_annotated)+\.mp4$/, '.mp4')
+  const file = video.replace(/(_taps|_composited|_annotated)+\.mp4$/, '.mp4')
                     .replace(/\.mp4$/, '.marks.json');
   if (!fs.existsSync(file)) return null;
   return JSON.parse(fs.readFileSync(file, 'utf8'));
