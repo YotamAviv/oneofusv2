@@ -1,44 +1,108 @@
 {
   "_comment": [
-    "Cues for the signature-chain take. Times name moments the take recorded, so",
-    "they survive a reshoot -- see out/crypto_<stamp>.marks.json for what a take",
-    "names. Coordinates are frame pixels, 1080x2220, and those do NOT survive a",
-    "reshoot that moves the layout."
+    "Generated from doc/intro_video/sections.yaml -- section 'crypto'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues crypto"
   ],
-
   "prompter": [
-    { "t": 0.4,                             "text": "Somebody I've never met liked this." },
-    { "at": "tap_moniker",                  "text": "Their name is a link. Follow it into the network." },
-    { "at": "tap_node",                     "text": "Here they are. My vouch reaches them in a few hops." },
-    { "at": "tap_delegate_key",             "text": "This is the key their Nerdster statements are signed with." },
-    { "at": "tap_published_statements",     "text": "The statements themselves are just published on the web." },
-    { "at": "tap_pretty_print",             "text": "Pretty-print it. Every one is signed, and each names the one before." },
-    { "at": "zoomed",                       "text": "Take their like." },
-    { "at": "tap_just_verify",              "text": "Paste it into the Nerdster's verifier." },
-    { "at": "tap_verify",                   "text": "Verified. Their key, their signature, their words." },
-    { "at": "verified",                     "text": "A chain of signatures, all the way back to me\nvouching for somebody I know." }
+    {
+      "t": 0.4,
+      "text": "Somebody I've never met liked this."
+    },
+    {
+      "at": "tap_moniker",
+      "text": "Their name is a link. Follow it into the network."
+    },
+    {
+      "at": "tap_node",
+      "text": "Here they are. My vouch reaches them in a few hops."
+    },
+    {
+      "at": "tap_delegate_key",
+      "text": "This is the key their Nerdster statements are signed with."
+    },
+    {
+      "at": "tap_published_statements",
+      "text": "The statements themselves are just published on the web."
+    },
+    {
+      "at": "tap_pretty_print",
+      "text": "Pretty-print it. Every one is signed, and each names the one before."
+    },
+    {
+      "at": "zoomed",
+      "text": "Take their like."
+    },
+    {
+      "at": "tap_just_verify",
+      "text": "Paste it into the Nerdster's verifier."
+    },
+    {
+      "at": "tap_verify",
+      "text": "Verified. Their key, their signature, their words."
+    },
+    {
+      "at": "verified",
+      "text": "A chain of signatures, all the way back to me\nvouching for somebody I know."
+    }
   ],
-
   "zooms": [
-    { "at": "delegate_key_shown",   "in": 0.5, "hold": 1.6, "out": 0.5, "to": [540, 1180, 620] },
-    { "at": "statement_selected",   "in": 0.6, "hold": 5.5, "out": 0.6, "to": [430, 900, 760] }
+    {
+      "at": "delegate_key_shown",
+      "in": 0.5,
+      "hold": 1.6,
+      "out": 0.5,
+      "to": [
+        540,
+        1180,
+        620
+      ]
+    },
+    {
+      "at": "statement_selected",
+      "in": 0.6,
+      "hold": 5.5,
+      "out": 0.6,
+      "to": [
+        430,
+        900,
+        760
+      ]
+    }
   ],
-
   "beats": [
     {
-      "at": "delegate_key_shown", "after": 2.1,
+      "at": "delegate_key_shown",
+      "after": 2.1,
       "hold": 2.6,
       "text": "Their delegate key.\nNot an account — a key.",
-      "anchor": [540, 1150],
-      "spotlight": [180, 900, 720, 500],
+      "anchor": [
+        540,
+        1150
+      ],
+      "spotlight": [
+        180,
+        900,
+        720,
+        500
+      ],
       "y": 380
     },
     {
-      "at": "verified", "after": 0.3,
+      "at": "verified",
+      "after": 0.3,
       "hold": 3.2,
       "text": "Signature verified,\nagainst the key we just looked at.",
-      "anchor": [540, 380],
-      "spotlight": [110, 280, 860, 260],
+      "anchor": [
+        540,
+        380
+      ],
+      "spotlight": [
+        110,
+        280,
+        860,
+        260
+      ],
       "y": 700
     }
   ]

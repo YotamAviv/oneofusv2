@@ -1,0 +1,25 @@
+{
+  "_comment": [
+    "Generated from doc/intro_video/sections.yaml -- section 'vouch'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues vouch"
+  ],
+  "prompter": [
+    {
+      "t": 0.3,
+      "text": "A phone with no keys on it."
+    },
+    {
+      "at": "tap_create_key",
+      "text": "One tap and it has an identity."
+    },
+    {
+      "at": "scanner",
+      "text": "Scan somebody you know."
+    },
+    {
+      "at": "tap_publish",
+      "text": "That's it. That's all we need to do to build our own, decentralized, identity network."
+    }
+  ]
+}

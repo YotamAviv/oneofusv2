@@ -1,0 +1,41 @@
+{
+  "_comment": [
+    "Generated from doc/intro_video/sections.yaml -- section 'invite'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues invite"
+  ],
+  "prompter": [
+    {
+      "at": "main_screen",
+      "text": "Nobody has vouched for me yet."
+    },
+    {
+      "at": "tap_share",
+      "text": "If we can't meet, I send a link. It carries my public key."
+    },
+    {
+      "at": "link",
+      "after": 3.4,
+      "text": "Send them. Don't just accept them."
+    }
+  ],
+  "beats": [
+    {
+      "at": "link",
+      "after": 1.2,
+      "hold": 3.4,
+      "text": "A URL with my public key in it.\nVouch for me from anywhere.",
+      "anchor": [
+        544,
+        1267
+      ],
+      "spotlight": [
+        40,
+        1010,
+        1000,
+        460
+      ],
+      "y": 500
+    }
+  ]
+}

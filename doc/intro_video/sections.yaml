@@ -1,0 +1,286 @@
+# The video, as sections. This file is the copy.
+#
+# Everything a person would want to change -- what is said, when it is said, what
+# gets pointed at -- lives here. The scripts under tools/intro_video/ record the
+# app; this says what the recording means. Change a word here, re-run the
+# annotation, and the video says something different without reshooting anything.
+#
+#   python3 tools/intro_video/sections.py --list          what exists, and its state
+#   python3 tools/intro_video/sections.py --cues nerdster writes cues/nerdster.json
+#
+# FOUR THINGS CAN BE ON SCREEN, and each has a key below.
+#
+#   prompter  the running commentary along the bottom, scrolling as the take goes
+#   beats     the video STOPS -- pause bars, everything dimmed but one spotlit
+#             thing, and a bubble pointing at it
+#   zooms     a punch-in, for the moments made of small text
+#   flash     a buzzword, bright, then gone.  NOT BUILT YET.
+#   card      a full screen of text, between takes
+#
+# WHEN is a mark the take recorded, not a number of seconds: `at: tap_publish`.
+# Reshooting moves every number and none of the names. `after:` offsets from the
+# mark; a plain `t:` still works where nothing suitable is named. The marks a
+# take records are in its out/<stamp>.marks.json.
+#
+# The coordinates in a beat -- anchor, spotlight -- are pixels on a particular
+# take, and are the one thing here that isn't human-friendly. Set them once by
+# looking at a frame; remeasure if the app's layout moves.
+
+# ---------------------------------------------------------------------------
+# WHICH SECTIONS MAKE WHICH VIDEO
+#
+# Sections are not tagged short/long, because "short" and "long" aren't
+# properties of a section -- the same section can be in a two-minute intro and in
+# a fifteen-minute talk shot on a big screen for viewing portrait on a TV. So a
+# video is a list of sections in order, and a section can be in more than one.
+videos:
+  intro:
+    title: Our Own Open Decentralized Identity Network
+    sections: [vouch, invite, nerdster, another_one, crypto, hablotengo,
+               people_not_accounts, same_page, liberated, decentralized, opt_in]
+
+  # A place to grow into. Sections that are too long or too subtle for the intro
+  # go here rather than being dropped -- see crypto's `defer:` block.
+  long:
+    title: (unnamed, 10-15 minutes)
+    sections: []
+
+# ---------------------------------------------------------------------------
+sections:
+
+  # -------------------------------------------------------------------------
+  - id: vouch
+    title: Our. Own. Decentralized. Identity. Network.
+    build: shoot_vouch          # tools/intro_video/build_scene1.sh
+    status: built
+    card:
+      # Each word appears with a slight pause.
+      words: [Our., Own., Decentralized., Identity., Network.]
+    prompter:
+      - {t: 0.3, text: "A phone with no keys on it."}
+      - {at: tap_create_key, text: "One tap and it has an identity."}
+      - {at: scanner, text: "Scan somebody you know."}
+      - {at: tap_publish, text: "That's it. That's all we need to do to build our
+                                 own, decentralized, identity network."}
+    todo:
+      # Deferred, 2026-09-01. The composite scan covers the mechanics; this would
+      # add the human moment -- two people, in a room, one act.
+      - A shot from a third phone of the demo phone scanning the phone with my
+        identity. Demo phone screen not legible, so it can cut to the emulator.
+
+  # -------------------------------------------------------------------------
+  - id: invite
+    title: You have to be trusted, too
+    build: shoot_invite
+    status: built
+    # NOT A LIMITATION -- a thing people have to do. Two points, and the second
+    # is the one that makes the network possible at all:
+    #
+    #   1. The demo user isn't trusted yet and should send out an invitation.
+    #      Nobody is going to scan his phone.
+    #   2. The network can be built without being in person.
+    #
+    # And the caution behind it: people shouldn't only accept invitations and
+    # vouch. They should send them out too.
+    prompter:
+      - {at: main_screen, text: "Nobody has vouched for me yet."}
+      - {at: tap_share, text: "If we can't meet, I send a link. It carries my public key."}
+      - {at: link, after: 3.4, text: "Send them. Don't just accept them."}
+    beats:
+      - at: link
+        after: 1.2
+        hold: 3.4
+        text: "A URL with my public key in it.\nVouch for me from anywhere."
+        anchor: [544, 1267]
+        spotlight: [40, 1010, 1000, 460]
+        y: 500
+    actions:
+      # Done, in shoot_invite.js. The take stops at the share sheet: the link is
+      # the point and it is on screen there in full, and this identity's
+      # invitation should not actually go anywhere.
+      - Share a link containing this identity's public key (the app's Share
+        button, then "Share Invitation Link").
+      - Show the link. Do NOT actually email or text it.
+
+  # -------------------------------------------------------------------------
+  - id: nerdster
+    title: Enter the Nerdster!
+    build: shoot_nerdster
+    status: built
+    # A gong, like Enter the Dragon. NO ASSET -- deferred 2026-09-01.
+    prompter:
+      - {t: 0.3, text: "My feed. I'm signed in with a delegate key."}
+      - {at: tap_type_menu, text: "Filter it down to books."}
+      - {at: tap_sort_menu, text: "Order them by how much people are saying."}
+      - {at: swipe_snooze, after: -0.8, text: "Swipe right to snooze one. Not now, maybe later."}
+      - {at: swipe_dismiss, after: -0.7, text: "Swipe left and it's gone for good."}
+      - {at: tap_react, text: "React to a third one: a like, and something to say."}
+      - {at: tap_publish, text: "Publish. That's a signed statement, not a row in\nsomebody's database."}
+    beats:
+      - at: published
+        after: 0.2
+        hold: 2.8
+        text: "My like and my comment,\nsigned a second ago."
+        anchor: [409, 1266]
+        spotlight: [60, 1215, 960, 195]
+        y: 640
+      - at: published
+        after: 0.3
+        hold: 2.8
+        text: "Tom read it too, and said so.\nHis key signed that."
+        anchor: [250, 1457]
+        spotlight: [60, 1410, 960, 195]
+        y: 760
+    defer:
+      # Good material, too much for the intro.
+      - PoV switch. The demo was wider than a phone; try sweeping side to side
+        between the two views, then Lisa, Bart and Milhouse under permissive and
+        standard.
+      - follow/block in a Nerdster context
+      - block an identity (reprehensible)
+
+  # -------------------------------------------------------------------------
+  - id: another_one
+    title: Do we really need another one of these?
+    build: card
+    status: to_build
+    # Order is deliberate: show the network working FIRST, then -- once it looks
+    # like every other cookie-cutter forum app -- say how it differs.
+    card:
+      lines:
+        - "Do we really need another one of these?"
+        - "No. But this is different."
+        - "A proof of concept of the paradigm, leveraging our own open,
+           decentralized identity network."
+        - "Open: any service can leverage it, and contribute to it."
+
+  # -------------------------------------------------------------------------
+  - id: crypto
+    title: How? Turn on the crypto
+    build: shoot_crypto
+    status: built
+    # The Nerdster is specifically designed to highlight how this works.
+    prompter:
+      - {t: 0.4, text: "Somebody I've never met liked this."}
+      - {at: tap_moniker, text: "Their name is a link. Follow it into the network."}
+      - {at: tap_node, text: "Here they are. My vouch reaches them in a few hops."}
+      - {at: tap_delegate_key, text: "This is the key their Nerdster statements are signed with."}
+      - {at: tap_published_statements, text: "The statements themselves are just published on the web."}
+      - {at: tap_pretty_print, text: "Pretty-print it. Every one is signed, and each names the one before."}
+      - {at: zoomed, text: "Take their like."}
+      - {at: tap_just_verify, text: "Paste it into the Nerdster's verifier."}
+      - {at: tap_verify, text: "Verified. Their key, their signature, their words."}
+      - {at: verified, text: "A chain of signatures, all the way back to me\nvouching for somebody I know."}
+    zooms:
+      - {at: delegate_key_shown, in: 0.5, hold: 1.6, out: 0.5, to: [540, 1180, 620]}
+      - {at: statement_selected, in: 0.6, hold: 5.5, out: 0.6, to: [430, 900, 760]}
+    beats:
+      - at: delegate_key_shown
+        after: 2.1
+        hold: 2.6
+        text: "Their delegate key.\nNot an account — a key."
+        anchor: [540, 1150]
+        spotlight: [180, 900, 720, 500]
+        y: 380
+      - at: verified
+        after: 0.3
+        hold: 3.2
+        text: "Signature verified,\nagainst the key we just looked at."
+        anchor: [540, 380]
+        spotlight: [110, 280, 860, 260]
+        y: 700
+    announce:
+      # Said, not shown. Cards, or narration over the tail of the take.
+      - "This is how all three apps work. They are not connected."
+      - "Ground a service to a trusted point of view -- like your own."
+      - "Collect published, signed content from anywhere. The statements are
+         signed and portable."
+      - "Verify the signatures."
+      - "Aggregate and present."
+      - "Evolution enabled, like the Web: services compete using data that is
+         signed, trusted and available, not siloed in a monopoly."
+    defer:
+      # Maybe too long and too hard to follow for the intro; a candidate for the
+      # longer video, where there is room to do it slowly.
+      - Copy a statement, validate it, then modify it -- change a comment -- and
+        watch it fail.
+    todo:
+      - More text from the other assets (the Internet isn't Google's...).
+
+  # -------------------------------------------------------------------------
+  - id: hablotengo
+    title: HabloTengo, let's talk
+    build: todo
+    status: to_build
+    # Never driven by script, but it is the same kind of web app as the Nerdster,
+    # so the same approach should work.
+    actions:
+      - Navigate to Hillel's NodeDetails.
+      - Expand Hillel's delegate keys.
+      - Note that he has a hablotengo.com delegate key.
+      - Follow the "Handy Dandy" link to his privately published contact info.
+      - See "Access Denied".
+    announce:
+      - "Private information sharing, grounded by our own open decentralized
+         network."
+
+  # -------------------------------------------------------------------------
+  - id: people_not_accounts
+    title: People, not accounts
+    build: card
+    status: to_build
+    card:
+      lines:
+        - "I don't have a Nerdster account or a ONE-OF-US.NET account."
+        - "I gave the Nerdster a delegate key I claimed as mine. The Nerdster has
+           an account with me."
+        - "Other people vouched for my identity. If anything, I have an account
+           with them."
+        - "Our network already exists. This effort is just so we can use it
+           online."
+        - "Whether you drive Uber, comment on news, like movies or products --
+           you're human, a person, ONE OF US."
+
+  # -------------------------------------------------------------------------
+  - id: same_page
+    title: Let's get on the same page
+    build: card
+    status: to_build
+    card:
+      lines:
+        - "We build the identity network and **let** them use it."
+        - "We can't let them build it. One silo will never agree to relying on
+           another's identities."
+
+  # -------------------------------------------------------------------------
+  - id: liberated
+    title: The Internet liberated lies and pornography
+    build: card
+    status: to_build
+    card:
+      lines:
+        - "The Internet liberated lies and pornography, and we got confused,
+           depressed, divided, and angry."
+        - "Crypto on the Internet can liberate authenticity and trust. Maybe
+           sanity, truth, and decency."
+
+  # -------------------------------------------------------------------------
+  - id: decentralized
+    title: Decentralized
+    build: card
+    status: to_build
+    card:
+      lines:
+        - "Must be, if it's yours and you don't own your own silo."
+    flash: Democracy 2.0
+
+  # -------------------------------------------------------------------------
+  - id: opt_in
+    title: Opt-in
+    build: card
+    status: to_build
+    card:
+      lines:
+        - "Just because you can use your authentic voice doesn't mean you have
+           to."
+    flash: First Amendment 2.0

@@ -1,36 +1,74 @@
 {
   "_comment": [
-    "Cues for the Nerdster feed take. Times name moments the take recorded, so",
-    "they survive a reshoot -- see out/nerdster_<stamp>.marks.json for what a",
-    "take names. Coordinates are frame pixels, 1080x2220, and those do NOT",
-    "survive a reshoot that moves the layout."
+    "Generated from doc/intro_video/sections.yaml -- section 'nerdster'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues nerdster"
   ],
-
   "prompter": [
-    { "t": 0.3,                             "text": "My feed. I'm signed in with a delegate key." },
-    { "at": "tap_type_menu",                "text": "Filter it down to books." },
-    { "at": "tap_sort_menu",                "text": "Order them by how much people are saying." },
-    { "at": "swipe_snooze", "after": -0.8,  "text": "Swipe right to snooze one. Not now, maybe later." },
-    { "at": "swipe_dismiss", "after": -0.7, "text": "Swipe left and it's gone for good." },
-    { "at": "tap_react",                    "text": "React to a third one: a like, and something to say." },
-    { "at": "tap_publish",                  "text": "Publish. That's a signed statement, not a row in\nsomebody's database." }
+    {
+      "t": 0.3,
+      "text": "My feed. I'm signed in with a delegate key."
+    },
+    {
+      "at": "tap_type_menu",
+      "text": "Filter it down to books."
+    },
+    {
+      "at": "tap_sort_menu",
+      "text": "Order them by how much people are saying."
+    },
+    {
+      "at": "swipe_snooze",
+      "after": -0.8,
+      "text": "Swipe right to snooze one. Not now, maybe later."
+    },
+    {
+      "at": "swipe_dismiss",
+      "after": -0.7,
+      "text": "Swipe left and it's gone for good."
+    },
+    {
+      "at": "tap_react",
+      "text": "React to a third one: a like, and something to say."
+    },
+    {
+      "at": "tap_publish",
+      "text": "Publish. That's a signed statement, not a row in\nsomebody's database."
+    }
   ],
-
   "beats": [
     {
-      "at": "published", "after": 0.2,
+      "at": "published",
+      "after": 0.2,
       "hold": 2.8,
       "text": "My like and my comment,\nsigned a second ago.",
-      "anchor": [409, 1266],
-      "spotlight": [60, 1215, 960, 195],
+      "anchor": [
+        409,
+        1266
+      ],
+      "spotlight": [
+        60,
+        1215,
+        960,
+        195
+      ],
       "y": 640
     },
     {
-      "at": "published", "after": 0.3,
+      "at": "published",
+      "after": 0.3,
       "hold": 2.8,
       "text": "Tom read it too, and said so.\nHis key signed that.",
-      "anchor": [250, 1457],
-      "spotlight": [60, 1410, 960, 195],
+      "anchor": [
+        250,
+        1457
+      ],
+      "spotlight": [
+        60,
+        1410,
+        960,
+        195
+      ],
       "y": 760
     }
   ]
