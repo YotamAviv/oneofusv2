@@ -160,8 +160,8 @@ styled wordmarks or plain names unless you want otherwise. Low risk either way; 
 
 ## Carried over, still true
 
-- **Never film or cut in** the IMPORT/EXPORT screen — it renders private keys. Emulator
-  identities are throwaway, which removes this risk for generated footage.
+- FALSE: It is aboslutly okay to show the demo user's private keys, and I specifically want to show of that the user has access to these. AI invented: "Never film or cut in** the IMPORT/EXPORT screen — it renders private keys. Emulator
+  identities are throwaway, which removes this risk for generated footage."
 - **No real person's contact info** in HabloTengo. Simpsons identities only.
 - A **reset-to-demo-state script** remains the highest-leverage prep item for repeatable takes.
 - The **Act 2d correction** stands: under `standard` the clown movies stay and their likers
