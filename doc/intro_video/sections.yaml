@@ -36,7 +36,7 @@
 videos:
   intro:
     title: Our Own Open Decentralized Identity Network
-    sections: [vouch, invite, nerdster, another_one, crypto, hablotengo,
+    sections: [preamble, vouch, invite, nerdster, another_one, crypto, hablotengo,
                people_not_accounts, same_page, liberated, decentralized, opt_in]
 
   # A place to grow into. Sections that are too long or too subtle for the intro
@@ -47,6 +47,27 @@ videos:
 
 # ---------------------------------------------------------------------------
 sections:
+
+  # -------------------------------------------------------------------------
+  - id: preamble
+    title: Getting the app
+    build: shoot_browser + card + shoot_home    # tools/intro_video/build_scene1.sh
+    status: built
+    # Three short takes and a card, joined. People can navigate to a web page and
+    # install an app without being shown how, so this does not type an address or
+    # film the Play Store -- the tap on the Play badge is DRAWN AND NEVER
+    # DISPATCHED (overlay_taps.js draws from the marks, not from the touch), so
+    # the store never opens and the card says what would have happened.
+    card:
+      hold: 2.0
+      lines:
+        - Use the app store links
+        - to install ONE-OF-US.NET
+    actions:
+      - Chrome, already on one-of-us.net, with both store badges in view.
+      - A finger lands on the Google Play badge. Nothing opens.
+      - The card.
+      - The home screen, and a finger on the app icon.
 
   # -------------------------------------------------------------------------
   - id: vouch

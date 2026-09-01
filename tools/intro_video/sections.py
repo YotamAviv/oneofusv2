@@ -5,17 +5,22 @@
     python3 sections.py --cues nerdster    writes cues/nerdster.json
     python3 sections.py --cues all         writes one for every built section
     python3 sections.py --check            cues/ matches the doc
+    python3 sections.py --card preamble    renders that section's card to out/
 
 doc/intro_video/sections.yaml is where the copy lives, because a person editing
 what the video says should not have to edit JSON, and because prose wants
 comments and line breaks that JSON has no room for. annotate.js still eats
 cues/*.json; this is the step between.
 
-Only prompter, beats and zooms cross over -- they are the things annotate.js
-knows about. Everything else in the doc (cards, flashes, actions, announce,
-defer, todo) is for people, and for whoever builds those sections next.
+prompter, beats and zooms become cue files, which is what annotate.js reads.
+Cards are rendered straight from here by card.js -- the card in the preamble is
+the one screen in the video made of nothing but words, and its words had been
+sitting in a shell script rather than in the doc that is supposed to hold them.
+
+The rest (flashes, actions, announce, defer, todo) is for people, and for
+whoever builds those sections next.
 """
-import argparse, json, sys
+import argparse, json, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -69,8 +74,26 @@ def main():
     p.add_argument('--list', action='store_true')
     p.add_argument('--cues', metavar='ID')
     p.add_argument('--check', action='store_true')
+    p.add_argument('--card', metavar='ID', help="render this section's card")
     args = p.parse_args()
     doc, sections = load()
+
+    if args.card:
+        s = sections.get(args.card)
+        if s is None:
+            sys.exit(f"no section '{args.card}'. Try --list.")
+        card = s.get('card')
+        if not card:
+            sys.exit(f"section '{args.card}' has no card")
+        if 'words' in card:
+            sys.exit(f"section '{args.card}' wants a word-by-word card; "
+                     "card.js does not do those yet")
+        out = HERE / 'out' / f"card_{args.card}.mp4"
+        cmd = ['node', str(HERE / 'card.js'), str(out),
+               str(card.get('hold', 2.0))] + [str(l) for l in card['lines']]
+        print(' '.join(cmd))
+        subprocess.run(cmd, check=True)
+        return
 
     if args.list or not (args.cues or args.check):
         for name, video in doc['videos'].items():

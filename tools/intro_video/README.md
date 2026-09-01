@@ -261,7 +261,7 @@ run, and nothing else here does, so nothing else should have to.
 | | | |
 | --- | --- | --- |
 | `node shoot_browser.js` | the page in a browser, and a tap on the Play badge | ~11s |
-| `node card.js out/card_install.mp4 3.6 "Use the app store links" "to install ONE-OF-US.NET"` | a text card | 3.6s |
+| `python3 sections.py --card preamble` | a text card | 2s |
 | `node shoot_home.js` | the home screen, and a tap on the app icon | ~4s |
 
 It opens on the page rather than typing an address in, and **the tap on the Play
@@ -271,6 +271,12 @@ badge and leaves the browser where it is. The store never opens. That keeps the
 take inside the browser, so re-recording it costs no cleanup, and it avoids a
 listing that says "Update" under a red internal-tester warning. What would have
 happened next is the card's job to say.
+
+The card's words are not in that command: they are in
+[doc/intro_video/sections.yaml](../../doc/intro_video/sections.yaml), section
+`preamble`, along with the rest of the video's copy. `sections.py` renders it.
+That is the general rule — **what the video says lives in the sections doc**, and
+the tools here read it. `sections.py --list` shows every section and its state.
 
 `./build_scene1.sh` runs all of it — the three preamble takes, the vouch take,
 the touch indicators, the scan composite, both joins and the assembly — and

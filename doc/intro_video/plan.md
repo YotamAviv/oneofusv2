@@ -303,6 +303,51 @@ a branch build is installed again:
 (`/data` on that AVD runs ~90% full; the all-ABI debug APK is 127MB and will not
 fit, hence `--target-platform`.)
 
+### In flight — 1 Sep 2026, mid-change
+
+**Goal: the V1 Intro.** No statement verification in it -- that moves to a later
+"How it works" video. The Nerdster is where the effort goes; the identity phone
+app gets simple takes or hand-tweaked scripts.
+
+**Decisions just made, not all implemented yet:**
+
+- **Cards use the same timing vocabulary as everything else** -- `at: <mark>`,
+  `after:`, `hold:` -- so a card can land anywhere in a section, not only at its
+  ends. "At the start" is `t: 0`; "at the end" is a late mark.
+- **A card at a mark is the same mechanism as a beat.** annotate.js already
+  freezes the timeline at a mark, splices a still in for `hold` seconds, and
+  shifts every later cue. A card is that splice with a rendered card instead of
+  a dimmed frame. `lib/card.js` was extracted so card.js and annotate.js render
+  identical cards.
+- **Flash is the other kind** -- drawn OVER the running video, bright then faded,
+  not stopping it. Also wanted at any mark. NOT BUILT.
+- **HabloTengo section**: Hillel's NodeDetails, Handy Dandy link, Access Denied,
+  back to the Nerdster.
+- **The crypto material splits in two**: up to Hillel's NodeDetails and the
+  delegate keys for the Intro; published statements and verification for "How it
+  works".
+
+**The vouch section is the one in progress.** Its build path never annotates, so
+its four prompter lines have never reached the screen. The fix is an annotate
+step, and the order matters:
+
+    shoot_vouch -> overlay_taps -> annotate(cues/vouch.json) -> composite_scan -> trim
+
+annotate must run BEFORE the composite, because it finds a take's marks by
+filename convention (stripping `_taps` / `_annotated`) and the composite's output
+is named differently.
+
+**A trap to fix properly later:** annotate splices pauses, which shift the
+timeline; composite_scan then resolves `scanWindow` against the UNSHIFTED marks.
+Vouch's cues are prompter-only today so nothing shifts. The day a beat or card
+lands before the scan window, the composite goes to the wrong place, silently.
+
+**Uncommitted at this point:** `find_flash.js` (variable-rate fix -- screenrecord
+emits few frames for a still screen, so a frame-count median is weighted by
+motion; now samples at fps=10), `build_preamble.sh` (new, extracted from
+build_scene1.sh), `lib/card.js` (new, extracted), `sections.yaml` (preamble
+section added), `sections.py` (--card), `build_scene1.sh`, `README.md`.
+
 ### Worth doing, not done
 
 **A QR decoder (`zbar-tools`) would remove the demo-identity dance.** The vouch

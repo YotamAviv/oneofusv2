@@ -16,12 +16,20 @@ const { execFileSync } = require('child_process');
 const src = process.argv[2];
 if (!src) { console.error('usage: find_flash.js <take.mp4>'); process.exit(1); }
 
-// Mean luma per frame over the first 15s; the flash is far brighter than any UI.
+// Mean luma over the first 15s, sampled at a FIXED rate; the flash is far
+// brighter (or darker) than any UI.
+//
+// fps=10 matters. screenrecord is variable-rate: a screen that isn't moving
+// emits almost no frames, so a median taken over frames is weighted by motion
+// rather than by time. On a take that sat still on a dark home screen and then
+// opened an app with a white splash, that put the median at 216 against a peak
+// of 233 and the flash was declared missing. Sampling evenly makes the median
+// mean what it looks like it means.
 const out = execFileSync('ffmpeg', ['-v', 'error', '-t', '15', '-i', src,
   '-vf', 'scale=64:-1,signalstats,metadata=print:key=lavfi.signalstats.YAVG',
   '-f', 'null', '-'], { encoding: 'utf8', stderr: 'pipe' }) || '';
 const raw = execFileSync('bash', ['-c',
-  `ffmpeg -v error -t 15 -i '${src}' -vf "scale=64:-1,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-" -f null - 2>/dev/null`],
+  `ffmpeg -v error -t 15 -i '${src}' -vf "fps=10,scale=64:-1,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-" -f null - 2>/dev/null`],
   { encoding: 'utf8' });
 
 const frames = [];

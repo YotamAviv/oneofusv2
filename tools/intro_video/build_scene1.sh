@@ -33,32 +33,13 @@ at() { node -e "
   console.log(((typeof v === 'object' ? v.start : v) - TRIM_PAD - (+process.argv[3])).toFixed(2));
 " "$1" "$2" "$3"; }
 
-echo "== 1/6  the page, and a finger on the Play badge =="
-node shoot_browser.js >/dev/null
-BROWSER=$(newest out/browser_*.mp4 | grep -v taps || newest out/browser_*.mp4)
-node overlay_taps.js "$BROWSER" >/dev/null 2>&1
-BROWSER_T="${BROWSER%.mp4}_taps.mp4"
-
-echo "== 2/6  the card =="
-node card.js out/card_install.mp4 2.0 \
-  "Use the app store links" "to install ONE-OF-US.NET" >/dev/null
-
-echo "== 3/6  the home screen, and a finger on the app =="
-node shoot_home.js >/dev/null
-HOME=$(newest out/home_*.mp4 | grep -v taps || newest out/home_*.mp4)
-node overlay_taps.js "$HOME" >/dev/null 2>&1
-HOME_T="${HOME%.mp4}_taps.mp4"
-
-echo "== 4/6  joining the preamble =="
+# The preamble is its own script -- it wipes nothing, so it is re-recordable on
+# its own, and the vouch take below is not.
+echo "== 1/2  the preamble =="
 SCENE0="out/scene0_preamble_${STAMP}.mp4"
-ffmpeg -y -v error -ss "$(at "$BROWSER_T" page 0.7)" -i "$BROWSER_T" \
-  -i out/card_install.mp4 \
-  -ss "$(at "$HOME_T" home_screen 0.5)" -i "$HOME_T" \
-  -filter_complex "[0:v]fps=25,setsar=1[a];[1:v]fps=25,setsar=1[b];[2:v]fps=25,setsar=1[c];\
-[a][b][c]concat=n=3:v=1:a=0,format=yuv420p[v]" \
-  -map "[v]" -c:v libx264 -crf 19 -preset medium "$SCENE0"
+STAMP="$STAMP" ./build_preamble.sh "$SCENE0" | sed 's/^/  /'
 
-echo "== 5/6  the vouch (wipes the app) =="
+echo "== 2/2  the vouch (wipes the app) =="
 node shoot_vouch.js >/dev/null
 VOUCH=$(newest out/vouch_*.mp4 | grep -v taps || newest out/vouch_*.mp4)
 node overlay_taps.js "$VOUCH" >/dev/null 2>&1
@@ -71,7 +52,7 @@ ffmpeg -y -v error -ss "$(at "$VOUCH_T" welcome 0.6)" -i out/_scene1_untrimmed.m
   -c:v libx264 -crf 19 -preset medium -pix_fmt yuv420p "$SCENE1"
 rm -f out/_scene1_untrimmed.mp4
 
-echo "== 6/6  assembling =="
+echo "== assembling =="
 ./assemble.sh "out/scene1_full_${STAMP}.mp4" "$SOUND" "$SCENE0" "$SCENE1" | tail -2
 
 echo
