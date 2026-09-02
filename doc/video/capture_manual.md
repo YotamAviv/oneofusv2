@@ -9,7 +9,7 @@ That only holds if the *how* is written down. This is the how.
 
 Companions: [production_plan.md](production_plan.md) (what we're
 shooting and why), [language.md](language.md) (copy),
-[../tools/intro_video/README.md](../../tools/intro_video/README.md) (the web-capture tool).
+[../tools/video/README.md](../../tools/video/README.md) (the web-capture tool).
 
 ---
 
@@ -48,11 +48,11 @@ Always say which. When a doc or a commit message says just "emulator", assume it
 
 ## 2. Rig A — web apps (Nerdster, HabloTengo)
 
-The tool: [../tools/intro_video/](../../tools/intro_video/). Read its README too; this section
+The tool: [../tools/video/](../../tools/video/). Read its README too; this section
 is the part that isn't obvious from the code.
 
 ```bash
-cd ~/src/github/oneofus/tools/intro_video
+cd ~/src/github/oneofus/tools/video
 npm install && npx playwright install chromium ffmpeg   # first time only
 node record_nerdster.js --scene identity-bar --pov milhouse   # not committed
 ./build.sh milhouse_identity-bar captions/milhouse_identity_bar.ass
@@ -225,7 +225,7 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 ### Running it
 
 ```bash
-cd tools/intro_video
+cd tools/video
 adb -s emulator-5554 forward tcp:9222 localabstract:chrome_devtools_remote
 node reset_browser.js
 node shoot_signin.js
@@ -318,7 +318,7 @@ whole sequence exists for never happens.
 
 There is no fixture generator. The demo identity is one created on a real phone
 (filmed anyway, in the shot where the camera sees the identity on the desk), and
-its token goes in `tools/intro_video/demo_identity.json`.
+its token goes in `tools/video/demo_identity.json`.
 
 Three places hold the state, and all three must be cleared:
 
@@ -350,7 +350,7 @@ form. Computing from compact JSON gives tokens that match nothing.
 
 ## 6. Post
 
-### Speech bubbles — `tools/intro_video/bubbles.js`
+### Speech bubbles — `tools/video/bubbles.js`
 
 Rendered in a headless browser as full-frame transparent PNGs, composited by ffmpeg, one
 faded overlay per cue. CSS does the layout, so fonts, fills, shadows and tail geometry are
@@ -406,7 +406,7 @@ A timestamped contact sheet is the fastest way to locate a moment in a long take
 
 ### Voice
 
-`tools/intro_video/setup_tts.sh` installs both, no root needed:
+`tools/video/setup_tts.sh` installs both, no root needed:
 
 - **Piper** (neural, local) for narration — voices in `voices/`, samples in
   `~/Videos/intro_video_demos/voice_casting.mp4`.
@@ -428,10 +428,10 @@ copy runs long against its beats.
 
 | | |
 | --- | --- |
-| Web capture tooling | `oneofus/tools/intro_video/` |
-| Truncate published statements | `oneofus/tools/intro_video/truncate_statements.js` |
+| Web capture tooling | `oneofus/tools/video/` |
+| Truncate published statements | `oneofus/tools/video/truncate_statements.js` |
 | Filming deep links | `oneofus/lib/core/config.dart` (`filmTools`), `oneofus/lib/ui/app_shell.dart` |
-| Demo identity allowlist | `oneofus/tools/intro_video/demo_identity.json` |
+| Demo identity allowlist | `oneofus/tools/video/demo_identity.json` |
 | Cut footage | `~/Videos/intro_video_demos/` |
 | Source phone takes | `~/Videos/intro_video_source/` |
 

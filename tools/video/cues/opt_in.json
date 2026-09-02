@@ -2,7 +2,7 @@
   "_comment": [
     "Generated from video/ -- section 'opt_in'.",
     "Edit the copy THERE, not here, and run:",
-    "  python3 tools/intro_video/sections.py --cues opt_in"
+    "  python3 tools/video/sections.py --cues opt_in"
   ],
   "cards": [
     {

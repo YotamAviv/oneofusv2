@@ -1,7 +1,7 @@
 # The how-it-works video, as sections. This file is the copy.
 #
 # Everything a person would want to change -- what is said, when it is said,
-# what gets pointed at -- lives here. The scripts under tools/intro_video/
+# what gets pointed at -- lives here. The scripts under tools/video/
 # record the app; this says what the recording means. Change a word here,
 # re-run the annotation, and the video says something different without
 # reshooting anything.
@@ -10,8 +10,8 @@
 # cards, zooms, how a cue says WHEN, and why beat coordinates are the one
 # unfriendly thing in these files.
 #
-#   python3 tools/intro_video/sections.py --list          what exists, and its state
-#   python3 tools/intro_video/sections.py --cues <id>     writes cues/<id>.json
+#   python3 tools/video/sections.py --list          what exists, and its state
+#   python3 tools/video/sections.py --cues <id>     writes cues/<id>.json
 #
 # ONE FILE PER VIDEO, and the order of `sections:` IS the running order. Section
 # ids have to be unique across all of video/*.yaml, because the cue files they

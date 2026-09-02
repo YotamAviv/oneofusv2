@@ -1,7 +1,7 @@
 {
   "_comment": [
     "The soundtrack is not in this repository and is not required to build. Put a",
-    "file at tools/intro_video/soundtrack.mp3 and assemble.sh uses it; leave it",
+    "file at tools/video/soundtrack.mp3 and assemble.sh uses it; leave it",
     "out and the video is built silent.",
     "",
     "Kept here so a published video's music has a provenance: a stock licence",

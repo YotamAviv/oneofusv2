@@ -1,0 +1,104 @@
+diff --git a/bin/serve_web.sh b/bin/serve_web.sh
+index de030ed..4687e99 100755
+--- a/bin/serve_web.sh
++++ b/bin/serve_web.sh
+@@ -15,8 +15,18 @@ set -euo pipefail
+ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ source "$SCRIPT_DIR/_restructure_web.sh"
+ 
++# FILM_KEYMEID=1 builds the filming rig: the "https://one-of-us.net/..." sign-in
++# button keeps its label but hands off over keymeid://, the only transport that
++# reaches an app in an Android emulator from a desktop browser. Compile-time on
++# purpose — a URL parameter would be visible in the address bar while filming.
++DART_DEFINES=""
++if [ "${FILM_KEYMEID:-}" = "1" ]; then
++    DART_DEFINES="--dart-define=filmKeymeid=true"
++    echo "*** FILMING BUILD: universal-link button will use keymeid:// ***"
++fi
++
+ echo "=== Building Flutter web app (base href /app/) ==="
+-flutter build web --base-href /app/
++flutter build web --base-href /app/ $DART_DEFINES
+ 
+ echo ""
+ restructure_web
+diff --git a/lib/ui/sign_in_widget.dart b/lib/ui/sign_in_widget.dart
+index 9df82c7..5ca7de4 100644
+--- a/lib/ui/sign_in_widget.dart
++++ b/lib/ui/sign_in_widget.dart
+@@ -34,6 +34,21 @@ const Map<String, dynamic> _kDevIdentityKey = {
+ /// Set to true (via ?forceIphone=true URL param) to simulate iOS sign-in UI on non-iOS platforms.
+ final bool forceIphone = kIsWeb && Uri.base.queryParameters['forceIphone'] == 'true';
+ 
++/// FILMING ONLY. The universal-link button keeps its "https://one-of-us.net/..."
++/// label but hands off over keymeid://, which is the only transport that reaches
++/// an app running in an Android emulator from a desktop browser.
++/// See SignInConfig.filmingUseKeymeid.
++///
++/// Compile-time, deliberately NOT a URL parameter: the address bar is in frame
++/// when filming, and a `?filmKeymeid=true` would be visible to viewers. Build
++/// the filming rig with:
++///
++///   flutter build web --dart-define=filmKeymeid=true
++///
++/// or `FILM_KEYMEID=1 ./bin/serve_web.sh`. A normal build has it off and cannot
++/// be switched on at runtime.
++const bool filmKeymeid = bool.fromEnvironment('filmKeymeid');
++
+ Future<void> _signInAsDev(BuildContext context) async {
+   final key = await crypto.parsePublicKey(_kDevIdentityKey);
+   final Json keyJson = await key.json;
+@@ -105,6 +120,7 @@ SignInConfig buildNerdsterSignInConfig() {
+     termsUrl: 'https://nerdster.org/terms.html',
+     safetyUrl: 'https://nerdster.org/safety.html',
+     forceIphone: forceIphone,
++    filmingUseKeymeid: filmKeymeid,
+   );
+ }
+ 
+diff --git a/packages/nerdster_common/lib/ui/sign_in_dialog.dart b/packages/nerdster_common/lib/ui/sign_in_dialog.dart
+index b262347..6f04188 100644
+--- a/packages/nerdster_common/lib/ui/sign_in_dialog.dart
++++ b/packages/nerdster_common/lib/ui/sign_in_dialog.dart
+@@ -45,6 +45,20 @@ class SignInConfig {
+   final String? safetyUrl;
+   final bool forceIphone; // simulate iOS UI on non-iOS (for testing)
+ 
++  /// FILMING ONLY. Makes the "https://one-of-us.net/..." button hand off over
++  /// keymeid:// while keeping its label.
++  ///
++  /// Why: on a real phone the universal link is what runs, and that is the UI a
++  /// viewer should see. But a desktop browser driving an Android emulator can
++  /// only reach the app through keymeid://, so recording the honest-looking path
++  /// on that rig would otherwise be impossible. This shows the real label and
++  /// takes the route that works on the rig; the sign-in that results is genuine.
++  ///
++  /// Set from a compile-time flag, never a URL parameter — the address bar is in
++  /// frame when filming. A normal build has this off and cannot switch it on at
++  /// runtime. See `filmKeymeid` in the app that constructs this config.
++  final bool filmingUseKeymeid;
++
+   const SignInConfig({
+     required this.sessionFactory,
+     required this.firestore,
+@@ -67,6 +81,7 @@ class SignInConfig {
+     this.termsUrl,
+     this.safetyUrl,
+     this.forceIphone = false,
++    this.filmingUseKeymeid = false,
+   });
+ }
+ 
+@@ -167,6 +182,12 @@ class _SignInDialogState extends State<SignInDialog> {
+             label: 'https://one-of-us.net/...',
+             subtitle: 'Link to your ONE-OF-US.NET app',
+             onPressed: () {
++              // Filming rig: same button, keymeid:// underneath. See
++              // [SignInConfig.filmingUseKeymeid].
++              if (_c.filmingUseKeymeid) {
++                _magicLinkSignIn(context);
++                return;
++              }
+               _magicLinkSignIn(context, useUniversalLink: true,
+                   precreatedSessionFuture: _sessionFuture, autoLaunch: false);
+               launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);

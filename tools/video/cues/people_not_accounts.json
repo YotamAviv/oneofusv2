@@ -2,7 +2,7 @@
   "_comment": [
     "Generated from video/ -- section 'people_not_accounts'.",
     "Edit the copy THERE, not here, and run:",
-    "  python3 tools/intro_video/sections.py --cues people_not_accounts"
+    "  python3 tools/video/sections.py --cues people_not_accounts"
   ],
   "cards": [
     {

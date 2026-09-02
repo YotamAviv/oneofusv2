@@ -125,7 +125,7 @@ you can't pause mid-sentence to wait for it.
 Claude can drive ffmpeg directly, and can extract frames and view them to check
 framing/timing rather than editing blind.
 
-### Scripted capture — [tools/intro_video/](../../tools/intro_video/)
+### Scripted capture — [tools/video/](../../tools/video/)
 
 **The web apps don't need a phone or an emulator.** Nerdster and HabloTengo run
 in Chromium at a phone-sized viewport, driven by a script, recorded at
@@ -236,7 +236,7 @@ ffmpeg -ss 378.5 -t 6 -i raw.mp4 -ss 392 -t 6 -i raw.mp4 -an -filter_complex \
 ## Where things stand — 30 Aug 2026
 
 Picking up from here: everything below is committed on `intro-video-tooling`,
-and every finished file is in `tools/intro_video/out/` (gitignored, stamped, and
+and every finished file is in `tools/video/out/` (gitignored, stamped, and
 nothing is overwritten).
 
 **Three scenes shoot end to end, from one command each.**

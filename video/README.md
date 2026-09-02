@@ -2,7 +2,7 @@
 
 This directory is the **copy** — what each video says, in order, and what is on
 screen while it says it. It is source, not documentation: `sections.py` reads it
-and generates `tools/intro_video/cues/*.json`, which `annotate.js` eats.
+and generates `tools/video/cues/*.json`, which `annotate.js` eats.
 
 The prose *about* making videos — rigs, gotchas, what a shoot script costs to
 write — is in [../doc/video/](../doc/video/), and
@@ -14,12 +14,12 @@ write — is in [../doc/video/](../doc/video/), and
 | [how_it_works.yaml](how_it_works.yaml) | the longer one, where things get shown slowly |
 
 ```bash
-python3 tools/intro_video/sections.py --list            what exists, and its state
-python3 tools/intro_video/sections.py --cues <id>       writes cues/<id>.json
-python3 tools/intro_video/sections.py --cues all        every section that has cues
-python3 tools/intro_video/sections.py --check           cues/ matches these files
-python3 tools/intro_video/sections.py --card <id>       renders a section that IS a card
-python3 tools/intro_video/sections.py --build <id>      shoots and finishes a section
+python3 tools/video/sections.py --list            what exists, and its state
+python3 tools/video/sections.py --cues <id>       writes cues/<id>.json
+python3 tools/video/sections.py --cues all        every section that has cues
+python3 tools/video/sections.py --check           cues/ matches these files
+python3 tools/video/sections.py --card <id>       renders a section that IS a card
+python3 tools/video/sections.py --build <id>      shoots and finishes a section
 ```
 
 **One file per video, and the order of `sections:` is the running order.** Section
@@ -49,7 +49,7 @@ All of them say WHEN the same way, so a card can land anywhere in a section:
 **WHEN is a mark the take recorded, not a number of seconds** — `at: tap_publish`.
 Reshooting moves every number and none of the names. `after:` offsets from the
 mark; a plain `t:` still works where nothing suitable is named. The marks a take
-records are in its `tools/intro_video/out/<stamp>.marks.json`.
+records are in its `tools/video/out/<stamp>.marks.json`.
 
 Two things about marks are worth knowing before trusting one:
 

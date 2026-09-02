@@ -2,7 +2,7 @@
   "_comment": [
     "Generated from video/ -- section 'crypto_chain'.",
     "Edit the copy THERE, not here, and run:",
-    "  python3 tools/intro_video/sections.py --cues crypto_chain"
+    "  python3 tools/video/sections.py --cues crypto_chain"
   ],
   "prompter": [
     {

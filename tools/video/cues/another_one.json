@@ -2,7 +2,7 @@
   "_comment": [
     "Generated from video/ -- section 'another_one'.",
     "Edit the copy THERE, not here, and run:",
-    "  python3 tools/intro_video/sections.py --cues another_one"
+    "  python3 tools/video/sections.py --cues another_one"
   ],
   "cards": [
     {

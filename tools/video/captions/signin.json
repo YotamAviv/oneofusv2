@@ -1,0 +1,26 @@
+[
+  { "start": 0.4, "end": 3.6, "style": "narrator",
+    "text": "TODO — the Nerdster is a web app.\nNothing to install.",
+    "anchor": [540, 120], "y": 620,
+    "_beat": "home page, before the Launch tap" },
+
+  { "start": 6.4, "end": 8.6, "style": "narrator",
+    "text": "TODO — no account, no password.",
+    "anchor": [216, 640], "y": 900,
+    "_beat": "sign-in dialog is up" },
+
+  { "start": 9.2, "end": 14.0, "style": "narrator",
+    "text": "TODO — this is the delegate key.\nThe service acts for me; it never gets my identity key.",
+    "anchor": [540, 900], "y": 260,
+    "_beat": "ONE-OF-US.NET app, Create Delegate Key? dialog" },
+
+  { "start": 14.2, "end": 16.4, "style": "narrator",
+    "text": "TODO — signed with my identity key, on my phone.",
+    "anchor": [540, 1500], "y": 300,
+    "_beat": "the tap on Yes, create delegate, and the send animation" },
+
+  { "start": 19.4, "end": 23.2, "style": "narrator",
+    "text": "TODO — I never had an account here.\nIf anything, the Nerdster has one with me.",
+    "anchor": [150, 250], "y": 800,
+    "_beat": "signed in, feed visible, Tom@nerdster.org contributing" }
+]

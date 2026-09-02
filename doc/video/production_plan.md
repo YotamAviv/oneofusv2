@@ -66,7 +66,7 @@ the action from outside the phone to inside it.
 ## Sections
 
 Your outline, with what each one needs. "Generated" means I can produce it from scripts
-today or with a scene added to `tools/intro_video`.
+today or with a scene added to `tools/video`.
 
 | # | Section | On screen | Source |
 | --- | --- | --- | --- |
@@ -97,7 +97,7 @@ sequence exists for never happens.
 There is no fixture generator. An earlier version minted demo identities in the nerdster
 project; that was removed because the demo identity can simply be the one created on a real
 phone — which gets filmed anyway, in the shot where the camera sees the identity on the
-desk. Its token goes in `tools/intro_video/demo_identity.json`, which is also the safety
+desk. Its token goes in `tools/video/demo_identity.json`, which is also the safety
 allowlist for deletion.
 
 Three places hold sign-in state, and a reset must clear all three:
@@ -147,7 +147,7 @@ styled wordmarks or plain names unless you want otherwise. Low risk either way; 
 1. **Verify the app on the emulator.** Install, deep-link a vouch, confirm the screens render.
    This is the gate — it decides whether §2 and §7 are generated or filmed.
 2. **Lock decisions 1–5.** Everything downstream depends on 2 and 4 especially.
-3. **Build the missing scenes** in `tools/intro_video`: Hablo access-denied, Verify Signature,
+3. **Build the missing scenes** in `tools/video`: Hablo access-denied, Verify Signature,
    delegate-key sign-in, the identity-app vouch. Each is a scene function, same as
    `identity-bar`.
 4. **Write the commentary and slogan copy** against the section list, drawing on

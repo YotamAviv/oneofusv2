@@ -72,7 +72,7 @@ def cue_file(section):
     out = {'_comment': [
         f"Generated from video/ -- section '{section['id']}'.",
         "Edit the copy THERE, not here, and run:",
-        f"  python3 tools/intro_video/sections.py --cues {section['id']}",
+        f"  python3 tools/video/sections.py --cues {section['id']}",
     ]}
     out.update(cues)
     return out

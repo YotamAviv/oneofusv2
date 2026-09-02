@@ -2,7 +2,7 @@
   "_comment": [
     "Generated from video/ -- section 'crypto_teaser'.",
     "Edit the copy THERE, not here, and run:",
-    "  python3 tools/intro_video/sections.py --cues crypto_teaser"
+    "  python3 tools/video/sections.py --cues crypto_teaser"
   ],
   "prompter": [
     {

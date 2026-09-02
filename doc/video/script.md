@@ -128,7 +128,7 @@ Watch what that costs the bot farm."
 > Runner-up shot, same idea at feed scale: the clown movies' bogus likers (Seymore Butts,
 > Amanda Hugginkiss) vanish between modes. Use whichever reads better once shot.
 >
-> **2d is now shot** — `tools/intro_video`, scene `identity-bar`, PROD data. Both beats land
+> **2d is now shot** — `tools/video`, scene `identity-bar`, PROD data. Both beats land
 > in one take, and the footage corrected an assumption: the clown movies do **not** vanish
 > under `strict`/`standard`. They stay; their *likers* change from Seymore Butts and Amanda
 > Hugginkiss to Mel@nerdster.org. That's a better argument than disappearance — the mechanism

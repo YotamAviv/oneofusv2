@@ -1,0 +1,114 @@
+[
+  {
+    "start": 1.0,
+    "end": 5.3,
+    "style": "narrator",
+    "text": "Milhouse's point of view.\nNo sign-in — anyone can look through it.",
+    "anchor": [
+      150,
+      52
+    ],
+    "y": 200
+  },
+  {
+    "start": 7.2,
+    "end": 9.8,
+    "style": "milhouse",
+    "text": "Seymore and Amanda like\nthe same movies I do!",
+    "anchor": [
+      300,
+      1025
+    ],
+    "y": 700
+  },
+  {
+    "start": 10.4,
+    "end": 13.6,
+    "style": "narrator",
+    "text": "Identity bar: permissive.\nOne vouch is enough to earn a name.",
+    "anchor": [
+      150,
+      52
+    ],
+    "y": 200
+  },
+  {
+    "start": 14.6,
+    "end": 17.7,
+    "style": "milhouse",
+    "text": "...why does it say 4-Eyes?",
+    "anchor": [
+      150,
+      52
+    ],
+    "y": 210
+  },
+  {
+    "start": 19.3,
+    "end": 22.2,
+    "style": "narrator",
+    "text": "This sets how many independent\npaths a name has to have.",
+    "anchor": [
+      890,
+      500
+    ],
+    "x": 60,
+    "y": 1240
+  },
+  {
+    "start": 23.2,
+    "end": 25.8,
+    "style": "narrator",
+    "text": "Standard: more than one.",
+    "anchor": [
+      500,
+      600
+    ],
+    "x": 60,
+    "y": 1250
+  },
+  {
+    "start": 27.0,
+    "end": 30.0,
+    "style": "narrator",
+    "text": "Same data. Same point of view.\nDifferent threshold.",
+    "anchor": [
+      150,
+      52
+    ],
+    "y": 200
+  },
+  {
+    "start": 30.6,
+    "end": 33.6,
+    "style": "milhouse",
+    "text": "Everything's coming up Milhouse!",
+    "anchor": [
+      150,
+      52
+    ],
+    "y": 210
+  },
+  {
+    "start": 40.2,
+    "end": 42.6,
+    "style": "narrator",
+    "text": "The clown movies stay.\nThe bot farm that liked them doesn't.",
+    "anchor": [
+      220,
+      1047
+    ],
+    "y": 660
+  },
+  {
+    "start": 43.0,
+    "end": 44.7,
+    "style": "milhouse",
+    "text": "...where'd Seymore go?",
+    "anchor": [
+      220,
+      1047
+    ],
+    "y": 790
+  }
+]
