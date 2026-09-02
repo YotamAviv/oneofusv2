@@ -19,6 +19,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+OUT="${1:-}"   # where the finished section goes, if the caller wants it somewhere
+
 SERIAL="${AVD:-emulator-5554}"
 TOKEN=$(node -e "console.log(Object.values(require('./demo_identity.json').demoTokens)[0])")
 
@@ -40,4 +42,12 @@ TAKE=$(node shoot_nerdster.js | tail -2 | head -1 | tr -d ' ')
 TAPS=$(node overlay_taps.js "$TAKE" | tail -1 | cut -d' ' -f1)
 
 echo "== 4/4  prompter, bubbles and zooms =="
-node annotate.js cues/nerdster.json "$TAPS" | tail -1
+ANNOTATED=$(node annotate.js cues/nerdster.json "$TAPS" | tail -1 | cut -d' ' -f2)
+
+# An output path means sections.py --build can drive this the same as any other
+# section. Without one the caller has to go hunting for whatever was written
+# last, which is how a build ends up made of a stale take.
+if [ -n "${OUT:-}" ]; then
+  cp "$ANNOTATED" "$OUT"
+  echo "$OUT"
+fi

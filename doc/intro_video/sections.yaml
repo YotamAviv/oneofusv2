@@ -210,7 +210,16 @@ sections:
   - id: crypto
     # How? Turn on the crypto
     build: shoot_crypto.sh
-    status: built
+    # BLOCKED, 1 Sep 2026. This take needs 32 seconds and screenrecord stops
+    # producing at about 26.5 under its load -- a ceiling, not a flush: three
+    # different stop timings and five extra seconds of content all gave the same
+    # length, while an idle device records 35 seconds faithfully.
+    #
+    # The fix is the split that was planned anyway: the Intro stops at Hillel's
+    # NodeDetails and the delegate keys, and the verification becomes its own
+    # section in a later "How it works" video. Two shorter takes, both under the
+    # ceiling.
+    status: blocked
     # The Nerdster is specifically designed to highlight how this works.
     prompter:
       - {t: 0.4, text: "Somebody I've never met liked this."}

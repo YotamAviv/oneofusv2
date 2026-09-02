@@ -123,6 +123,17 @@ function device(serial = process.env.AVD || 'emulator-5554') {
   /// pulled file, which surfaced two steps later as annotate.js trying to grab a
   /// frame past the end. Signal the process on the device, then watch the size.
   const stopRecording = async (remotePath, timeout = 30000) => {
+    // Let the encoder catch up before asking it to stop. screenrecord captures
+    // ahead of what it has written, and on a loaded emulator it can be seconds
+    // behind; signalling immediately loses those frames. The signature-chain
+    // take came back four and a half seconds short that way, twice, and the
+    // damage only surfaced later as annotate.js reaching past the end.
+    //
+    // A short settle only. Waiting longer was tried at 2.5s and 6s and changed
+    // nothing: under a heavy take screenrecord stops producing at a ceiling of
+    // its own -- see the note on that in shoot_crypto.js -- and when it is not
+    // under load it does not lose anything worth waiting for.
+    await sleep(1500);
     try { E('shell', 'pkill', '-INT', 'screenrecord'); } catch { /* already gone */ }
     const size = () => {
       try { return +Eout('shell', 'stat', '-c', '%s', remotePath).trim() || 0; }

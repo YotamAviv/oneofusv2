@@ -292,6 +292,19 @@ const toDevice = (x, y) => ({
   // ends on.
   await waitFor(page, /VERIFIED/, {}, 15000);
   mark('shown_verified');
+  // THIS TAKE IS TOO LONG TO RECORD ON THIS EMULATOR.
+  //
+  // Under its load -- Chrome, a pinch zoom, a page of JSON -- screenrecord
+  // stops producing at about 26.5 seconds, and the take needs 32. It is a
+  // ceiling, not a flush: stopping at 0s, 2.5s and 6s after the end all gave
+  // the same length, and adding five seconds of content to the take gave the
+  // same length again. screenrecord on an IDLE device records 35 seconds
+  // faithfully, so it is this workload and not the tool.
+  //
+  // The fix is not here, it is in the section list: the Intro's version of this
+  // stops at Hillel's NodeDetails and the delegate keys, and the verification
+  // belongs to a separate, later "How it works" video. Two shorter takes, both
+  // under the ceiling.
   await sleep(3500);
   mark('done');
 
