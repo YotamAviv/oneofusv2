@@ -210,46 +210,121 @@ sections:
   - id: crypto
     # How? Turn on the crypto
     build: shoot_crypto.sh
-    # BLOCKED, 1 Sep 2026. This take needs 32 seconds and screenrecord stops
-    # producing at about 26.5 under its load -- a ceiling, not a flush: three
-    # different stop timings and five extra seconds of content all gave the same
-    # length, while an idle device records 35 seconds faithfully.
+    # The recording no longer stops short, and the reason is now the best guess
+    # anyone has. 1 Sep 2026.
     #
-    # The fix is the split that was planned anyway: the Intro stops at Hillel's
-    # NodeDetails and the delegate keys, and the verification becomes its own
-    # section in a later "How it works" video. Two shorter takes, both under the
-    # ceiling.
-    status: blocked
+    # Every take of the OLD sequence stopped producing frames at 26.5-27.2s, on
+    # two days, and no cause was ever established. The takes whose FILES ran
+    # 33-37s were not counter-examples: same ~26.5s of real frames, then one
+    # frozen frame held for the rest, which inflates the container duration and
+    # hides it. Count frames, not seconds.
+    #
+    # It was never load: a vouch take recorded 41s and 1456 frames on the same
+    # emulator at the same bit rate, twenty minutes before a crypto take died at
+    # 26.5s with 346. The remaining suspect was the second Chrome tab, which only
+    # this take opened -- it navigated out to export.nerdster.org.
+    #
+    # THIS SEQUENCE NEVER LEAVES THE APP, and it records 60.7s with real frames
+    # to 59.1s. That is not proof, but it is the one variable that changed and it
+    # went the way the guess predicted. If a take ever opens a second tab again,
+    # expect the ceiling back.
+    #
+    # Worth knowing anyway: /data on this emulator is 89% full. A failed take
+    # leaves screenrecord running -- `adb shell pkill -INT screenrecord` after
+    # any crash, or they accumulate.
+    status: to_build
+    # Order is deliberate: show the network working FIRST, then -- once it looks
+    # like every other cookie-cutter forum app -- say how it differs.
+    cards:
+      - hold: 3.5
+        lines:
+          - "Do we really need another one of these?"
+          - "No. But this is different."
+          - "A proof of concept of the paradigm, leveraging our own open,
+             decentralized identity network."
+          - "Open: any service can leverage it, and contribute to it."
+
+  # -------------------------------------------------------------------------
+  - id: crypto
+    # How? Turn on the crypto
+    build: shoot_crypto.sh
+    # This take's recording stops short, and NOBODY KNOWS WHY. 1 Sep 2026.
+    #
+    # The fact is solid: every crypto take across two days stops producing frames
+    # at 26.5-27.2s. The takes whose FILES ran 33-37s are not counter-examples --
+    # they carry the same ~26.5s of real frames and then one frozen frame held
+    # for the rest, which inflates the container duration and hides it. Count
+    # frames, not seconds: `ffprobe -select_streams v -show_entries frame=pts_time`
+    # and look for the gap at the end.
+    #
+    # The explanation is NOT load, though that was assumed here for a while.
+    # vouch_20260901-165819 recorded 41.07s and 1456 frames on the same emulator,
+    # same bit rate, twenty-two minutes before the crypto take that died at 26.5s
+    # with 346. Several vouch takes run 39-44s. Whatever stops crypto, it is not
+    # a ceiling the device has.
+    #
+    # Untested guesses, cheapest first, for whoever has an emulator running:
+    #   - orphaned screenrecords. There is a note further down this file's script
+    #     about previous runs quietly filling /data; two writers on
+    #     /sdcard/crypto.mp4 would truncate. `adb shell pgrep screenrecord`
+    #     before a take.
+    #   - Chrome. crypto is the only take that drives Chrome over CDP and
+    #     navigates off to export.nerdster.org; the others drive the app.
+    #   - the pinch zoom, which only this take does.
+    # `adb logcat -s screenrecord` during a take would probably just say.
+    #
+    # What actually broke the section was a mistimed mark. `verified` was set by
+    # a blind sleep(2500) after the Verify tap, but the verdict lands about 0.09s
+    # after it, so the mark sat 2.4s later than the thing it names. The closing
+    # line and the closing beat, both anchored on it, resolved past the end of
+    # the footage -- and annotate.js said nothing, because a prompter line past
+    # the end simply never drew. Both are fixed: the mark is taken from the
+    # waitFor that detects the verdict, and annotate.js now refuses any cue later
+    # than the take.
+    #
+    # With the mark right, the section builds whole. The closing beat freezes the
+    # VERIFIED frame and holds it 3.2s, which is exactly the hold the truncated
+    # tail lost, so the ceiling costs the section nothing visible.
+    #
+    # It is thin, though: the beat lands 0.37s before the footage ends, so
+    # anything added between the pretty-print and the verdict pushes it off again.
+    # The lever if that happens is the head, not the split -- the sleep(4000)
+    # before the sync flash spends four of the ~26.5 recorded seconds on staging.
+    # Halving it buys about two seconds of margin, but it has to be tried against
+    # a running emulator: too short and the flash happens before screenrecord is
+    # capturing, and find_flash.js then mistimes every tap in the take.
+    #
+    # The split is still the right shape if this section ever grows -- the Intro
+    # stopping at the delegate keys, the verification becoming its own section in
+    # a later "How it works" video. It is no longer forced.
+    status: built
+    # REWRITTEN 1 Sep 2026. The old sequence went out to Chrome
+    # and the verifier; this one stays in the app and walks the delegation, with
+    # about four seconds on each line so it can actually be read. The take that
+    # matches it is shoot_crypto.js, which has the full brief at the top.
+    #
+    # NO BEATS OR ZOOMS YET. Both are pixel coordinates -- anchor, spotlight,
+    # `to` -- measured off a frame of a particular take. There is a take to
+    # measure against now (out/crypto_20260901-220039*), so this is the next
+    # thing to do here rather than a blocked one.
+    #
     # The Nerdster is specifically designed to highlight how this works.
     prompter:
       - {t: 0.4, text: "Somebody I've never met liked this."}
-      - {at: tap_moniker, text: "Their name is a link. Follow it into the network."}
-      - {at: tap_node, text: "Here they are. My vouch reaches them in a few hops."}
-      - {at: tap_delegate_key, text: "This is the key their Nerdster statements are signed with."}
-      - {at: tap_published_statements, text: "The statements themselves are just published on the web."}
-      - {at: tap_pretty_print, text: "Pretty-print it. Every one is signed, and each names the one before."}
-      - {at: zoomed, text: "Take their like."}
-      - {at: tap_just_verify, text: "Paste it into the Nerdster's verifier."}
-      - {at: tap_verify, text: "Verified. Their key, their signature, their words."}
-      - {at: verified, text: "A chain of signatures, all the way back to me\nvouching for somebody I know."}
-    zooms:
-      - {at: delegate_key_shown, in: 0.5, hold: 1.6, out: 0.5, to: [540, 1180, 620]}
-      - {at: statement_selected, in: 0.6, hold: 5.5, out: 0.6, to: [430, 900, 760]}
-    beats:
-      - at: delegate_key_shown
-        after: 2.1
-        hold: 2.6
-        text: "Their delegate key.\nNot an account — a key."
-        anchor: [540, 1150]
-        spotlight: [180, 900, 720, 500]
-        y: 380
-      - at: verified
-        after: 0.3
-        hold: 3.2
-        text: "Signature verified,\nagainst the key we just looked at."
-        anchor: [540, 380]
-        spotlight: [110, 280, 860, 260]
-        y: 700
+      - {at: crypto_on, text: "Show Crypto. Now the Nerdster shows its work."}
+      - {at: tap_moniker, text: "Their name is a link into the network."}
+      - {at: node_details, text: "Here they are. My vouch reaches them in a few hops."}
+      - {at: identity_key_shown, text: "This is their identity key."}
+      - {at: identity_raw_shown, text: "Raw, it is just a public key -- the thing itself."}
+      - {at: identity_interpreted_shown,
+         text: "The Nerdster interprets keys it knows,\nso they read as names."}
+      - {at: delegate_key_shown,
+         text: "And this is the delegate key their\nNerdster statements are signed with."}
+      - {at: delegation_shown, text: "The shield holds the delegation itself."}
+      - {at: delegation_raw_shown,
+         text: "Signed by their identity key --\nthe one Tom vouched for."}
+      - {at: delegation_interpreted_shown,
+         text: "They delegated this key to nerdster.org from their\nidentity app. The chain is unbroken."}
     announce:
       # Said, not shown. Cards, or narration over the tail of the take.
       - "This is how all three apps work. They are not connected."

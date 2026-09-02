@@ -32,7 +32,7 @@ Always say which. When a doc or a commit message says just "emulator", assume it
 > Chrome and the identity app on one device, shot as a single continuous take
 > against **production**. That removed every fiction at once — the drawn browser
 > bar, the substituted `keymeid` transport, the localhost-vs-nerdster.org gap, and
-> the two-rigs-cut-together seam. See §9.
+> the two-rigs-cut-together seam. See §4.
 >
 > Rig A is still right for shots that are *only* a web app (feed browsing, PoV
 > switching, trust modes) — it's faster, scriptable, and has the styled finger
@@ -441,15 +441,16 @@ Videos are **not** in source control — the scripts regenerate them.
 
 ## 8. Open problems
 
-1. ~~Reset to "vouched, no delegate"~~ — solved, but it is a **three**-part reset (§9).
-2. ~~Nerdster footage doesn't look like a browser~~ — solved by shooting in the AVD (§9).
+1. ~~Reset to "vouched, no delegate"~~ — solved, but it is a **three**-part reset (§5).
+2. ~~Nerdster footage doesn't look like a browser~~ — solved by shooting in the AVD (§4).
    The drawn `chromebar` is retired; its generator is in `attic/` if a desktop rig ever
    returns.
-3. ~~Two touch indicators~~ — solved: `show_touches` off, styled frames composited (§9).
+3. ~~Two touch indicators~~ — solved: `show_touches` off, styled frames composited (§4).
 4. **AVD disk can't be grown** without a wipe. Editing `disk.dataPartition.size` does
-   nothing to an existing image. Currently ~776 MB free of 6 GB; `pm trim-caches` when an
-   install fails.
-5. **Caption timings are coupled to a take.** Re-record and cues drift.
+   nothing to an existing image. ~698 MB free of 6 GB on 2026-09-01 (89% used) and falling;
+   `pm trim-caches` when an install fails, and kill orphaned recordings (§10).
+5. **Caption timings are coupled to a take.** Re-record and cues drift. Anchor cues on
+   marks rather than seconds, and see §11 for what goes wrong when a mark lies.
 6. ~~The shoot script can't see the screen~~ — solved. Flutter's accessibility tree turns
    on with a real touch at the "Enable accessibility" placeholder's **centre** (a corner tap
    silently does nothing), and `lib/semantics.js` then gives tap-by-name, wait-on-state and
@@ -466,3 +467,135 @@ Videos are **not** in source control — the scripts regenerate them.
    most of a thirty-second take, sitting immediately before a `waitFor` that already did the
    job — and it prompted a speed-ramping step to hide the dead time it created. Removing it
    took the take to under nine seconds at real speed. Wait on conditions.
+
+---
+
+## 9. Driving the Nerdster's UI from a shoot script
+
+Everything here was learned by running `shoot_crypto.js` against the AVD on
+2026-09-01, after writing the whole sequence from the Nerdster source with the
+emulator down. **Reading the source told me what the widgets were and got almost
+none of this right.** Four of the five bugs below are invisible from source and
+obvious within one run. Budget for runs.
+
+### The app bar hides when the feed scrolls
+
+The feed's `Menu` (the hamburger, `tooltip: 'Menu'` in `feed_menu.dart`) lives in
+an app bar that scrolls away with the content. A take that scrolls the feed to
+find somebody and *then* reaches for the menu will not find it, and the error is
+`timeout waiting for /^Menu$/` with a screenful of feed text — which reads like a
+selector problem and is not one.
+
+`window.scrollTo(0, 0)` does nothing about it: the feed scrolls an inner
+container, not the window. Drag downwards until `Menu` is findable, and treat
+that as the definition of "at the top".
+
+### A checkbox's label is not a button
+
+`MyCheckbox` renders `Row([Checkbox, Text(title)])` when it shows its title. The
+title is a `Text`. **Tapping the words does nothing at all.** The tappable thing
+is the `Checkbox`, which is the unnamed node immediately left of the label on the
+same row — see `menuCheckbox()` in `shoot_crypto.js`.
+
+This one hid for a long time because the check that followed it was also wrong,
+which is the real lesson:
+
+### Verify app state by name, never by node geometry
+
+The old `ensureShowCrypto` decided whether Show Crypto was on by counting
+unlabelled 48x48 buttons. The feed has other icon buttons that size, so it always
+answered "already on", returned early, and never toggled anything. It appeared to
+work for weeks because the setting happened to be on by hand.
+
+A geometric heuristic cannot fail loudly — it just answers. Give the widget an
+accessible name and match the name.
+
+### Give icon-only buttons a Tooltip, and they become findable
+
+Flutter surfaces a `Tooltip` message as the semantics node's name, and
+`lib/semantics.js` can then find it. This works both for a widget's own `tooltip:`
+parameter (`FloatingActionButton`, `IconButton`) and for a `Tooltip` wrapped round
+a bare `Icon` — `CryptoShieldButton` was changed that way on 2026-09-01 precisely
+so a take could reach it, replacing a computed tap at the corner of a row.
+
+It is the same change a screen reader needs, so it is not a test hook. Where
+several of the same control sit on one screen, give them distinguishing labels:
+the delegate rows say `Delegation statement`, the rest `Signed statement`.
+
+### BACK is Chrome's, not Flutter's
+
+`showDialog` routes should pop on BACK, and `adb shell input keyevent 4` does pop
+the feed menu (`MenuAnchor` consumes it). But on a tab launched straight into
+`/app` there is no history behind the page, so BACK on a *dialog* closes the tab
+and the take dies with `Target page, context or browser has been closed`.
+
+These dialogs are `barrierDismissible`, so tap the barrier instead —
+`dismissDialog()` taps the top strip, which is outside both dialogs' bodies. Then
+wait on something from the screen underneath, so a swallowed tap fails loudly.
+
+### Settings that are `param:` are not written back
+
+`SettingType.showCrypto` is declared `param: true, persist: false`. That means it
+can be **read** from the query string at load. It is not pushed into the URL when
+the checkbox is toggled, so the address bar says nothing about the live state.
+Do not infer app state from the URL.
+
+---
+
+## 10. Recording length, and how to tell it truncated
+
+**Count frames, not seconds.** `screenrecord` under some conditions stops
+producing frames but the file still reports a long duration, because it carries
+one frozen frame held to the end. Three takes with 33-37s containers held the
+same ~26.5s of real frames and nobody noticed for two days.
+
+```bash
+ffprobe -v error -select_streams v -show_entries frame=pts_time -of csv=p=0 TAKE.mp4 \
+  | python3 -c "import sys; ts=[float(l.strip().rstrip(',')) for l in sys.stdin if l.strip()]; \
+      print('frames',len(ts),'last real',ts[-2],'final pts',ts[-1])"
+```
+
+A large gap between the last two timestamps is the tell.
+
+**The old signature-chain take truncated at 26.5-27.2s, every time, and the cause
+was never established.** It was *not* load — a `vouch` take recorded 41s and 1456
+frames on the same emulator at the same bit rate twenty minutes either side of a
+crypto take that died at 26.5s with 346 frames. The one thing only that take did
+was open a second Chrome tab, out to `export.nerdster.org`. The rewritten
+sequence never leaves the app and records 60.7s cleanly. That is a correlation,
+not a proof: **if a take needs a second tab again, expect the ceiling back**, and
+`adb logcat -s screenrecord` during the take is the first thing to try.
+
+**A failed take leaves `screenrecord` running on the device.** They accumulate and
+quietly fill `/data`, which was 89% full on 2026-09-01. After any crash:
+
+```bash
+adb shell pkill -INT screenrecord
+```
+
+---
+
+## 11. Cues, marks and the take
+
+**A mark must come from the thing it names.** `verified` was once set by a blind
+`sleep(2500)` after the Verify tap, with the `waitFor` that detects the verdict
+placed *after* it — so the wait always returned instantly and the mark sat 2.4s
+later than the event. Every cue anchored on it was late by that much, which on a
+truncated take pushed the closing line off the end of the footage entirely. Mark
+on detection.
+
+**`annotate.js` refuses any cue later than the take.** Beats used to fail several
+steps downstream on a frame ffmpeg never wrote, and prompter lines and zooms
+failed *silently* — the copy simply never drew and the build reported success.
+That is how a section shipped without its closing line. If you see
+
+```
+prompter line at 23.88s is past the end of X_taps.mp4 (22.16s), anchored on mark "verified"
+```
+
+the take is short or the mark is late, and both are worth checking before
+trusting either.
+
+**Beats and zooms are pixel coordinates on one take.** `anchor`, `spotlight` and
+a zoom's `to` are measured off a frame. They cannot be written before there is a
+take to measure, and they need remeasuring when the app's layout moves.

@@ -1,9 +1,62 @@
 #!/usr/bin/env node
-// Shoot the signature-chain sequence: pick somebody in the feed who isn't me,
-// follow them to their node in the graph, open the delegate key their Nerdster
-// statements are signed with, follow that to the signed statements themselves in
-// Chrome, pretty-print them, take their like, and verify its signature in the
-// Nerdster's own Verify dialog.
+// Shoot the delegation sequence: turn Show Crypto on in shot, pick somebody in
+// the feed who isn't me, follow them to their node in the graph, look at their
+// identity key and then the delegate key it authorised, and open the shield on
+// that delegate to see the signed statement in which one named the other --
+// toggling interpreted and raw at each key, because the readable version is the
+// Nerdster's reading and the raw one is the thing itself.
+//
+// REQUESTED CHANGES -- Yotam, 1 Sep 2026. Built, NEVER RUN: written against a
+// dead emulator, so every selector below is read off the Nerdster source rather
+// than off a running app. Expect the first pass to need fixing, and see the
+// notes at the end of this comment for the parts most likely to be wrong.
+//
+// The old sequence moves too quickly to follow, and it ends outside the app in
+// Chrome. The new one stays in the Nerdster and walks the delegation itself,
+// slowly. It may not end up in the brief Intro at all, so it is not bound by the
+// Intro's budget: put enough time between actions that a normal human can keep
+// up with the prompter text.
+//
+// Depends on a Nerdster change, made alongside this and tested and pushed by
+// Yotam: the crypto shield icon that already sits to the right of vouches now
+// also sits to the right of DELEGATE KEYS when Show Crypto is on, showing that
+// Hillel's identity key delegated those keys. The point of the whole section is
+// a complete cryptographic signature chain to every piece of data on screen, and
+// the delegate keys were the missing link in it.
+//
+//   1. Turn on "Show Crypto" right at the start.
+//   2. Navigate to Hillel's NodeDetail.
+//   3. Show his IDENTITY key. Click back and forth between the interpreted and
+//      un-interpreted views, and say in the prompter that the Nerdster
+//      interprets known keys to make them readable.
+//   4. Show Hillel's delegate key -- the CURRENT one, not his old delegate key.
+//   5. Click the crypto shield on it, toggle interpreted / un-interpreted again,
+//      and explain that Hillel delegated this key to nerdster.org using his
+//      identity app, and that the delegation is signed by his identity key --
+//      the key Tom vouched for.
+//
+// The take STOPS THERE. Everything the old sequence did after the delegate key
+// -- the published statements in Chrome, the pretty-print, the Verify dialog and
+// the VERIFIED verdict -- is not part of this. Whether it comes back as its own
+// section is a later question.
+//
+// UNVERIFIED, in rough order of how likely it is to bite:
+//
+//   - The shield's tooltip reaching the semantics tree as a findable name. It
+//     should, by the same route the mode button's "Interpreted → Raw" does, but
+//     that one is a FloatingActionButton's own tooltip and this is a Tooltip
+//     wrapped round an Icon. If /^Delegation statement$/ is not found, that is
+//     why, and the fix is a Semantics(label:) in CryptoShieldButton.
+//     NEEDS THE DEPLOYED NERDSTER: the tooltip is a change of 1 Sep 2026.
+//   - BACK closing the key dialogs. showDialog is barrier-dismissible and BACK
+//     should pop it, but BACK in Chrome is also a navigation; each one waits for
+//     the tabs to reappear rather than assuming.
+//   - Whether this take still truncates. The old one stopped recording at 26.5s
+//     for reasons nobody established -- see doc/intro_video/sections.yaml. One
+//     of the guesses there was the second Chrome tab, which THIS sequence never
+//     opens, so it may simply not happen. If it does, the seams between the
+//     identity key, the delegate key and the delegation are where this splits
+//     into separate takes, the way build_preamble.sh joins three.
 //
 //   node shoot_crypto.js
 //
@@ -105,10 +158,9 @@ const toDevice = (x, y) => ({
   marks.viewportToDevice = VIEW2DEV;
   await waitFor(page, /^Mark to Relate\/Equate$/, { role: 'button' }, 60000);
 
-  // Show Crypto has to be on before the recording starts: the shields, the key
-  // views and the Verify dialog all hang off it, and toggling it on camera is a
-  // menu trip that says nothing.
-  await ensureShowCrypto(page, cdp);
+  // OFF before the recording starts. The take's first act is turning it on, and
+  // it can only do that from a known state -- see setShowCrypto.
+  await setShowCrypto(page, cdp, false);
 
   // Somebody else has to be on screen for the sequence to mean anything, and
   // the top card is usually just me and Tom -- so scroll until a third name
@@ -120,14 +172,18 @@ const toDevice = (x, y) => ({
     if (!who) { await drag(cdp, 200, 600, 0, { dy: -500, holdMs: 0 }); await sleep(900); }
   }
   if (!who) throw new Error('nobody in the feed but me and the identity I vouched for');
-  // Scrolling stops the moment their name appears, which is usually at the very
-  // bottom edge -- where a tap lands on the browser's own chrome instead. Nudge
-  // it into the middle of the screen before recording.
-  for (let i = 0; i < 6; i++) {
-    const n = await find(page, new RegExp(`^${esc(who)}$`), { role: 'button' });
-    if (n && n.y > 150 && n.y < 560) break;
-    await drag(cdp, 200, 600, 0, { dy: -180, holdMs: 0 });
-    await sleep(800);
+  // Back to the top before recording. The app bar HIDES WHEN THE FEED SCROLLS,
+  // and the Show Crypto menu lives in it -- so a take that opens on the scrolled
+  // feed cannot reach the menu at all, which is exactly how the first run of
+  // this sequence failed. Finding their name again is done on camera below,
+  // after the crypto is on.
+  for (let i = 0; i < 14; i++) {
+    if (await find(page, /^Menu$/, { role: 'button' })) break;
+    await drag(cdp, 200, 300, 0, { dy: 600, holdMs: 0 });
+    await sleep(500);
+  }
+  if (!await find(page, /^Menu$/, { role: 'button' })) {
+    throw new Error('could not scroll back to the top: the app bar never reappeared');
   }
   const name = who.split('@')[0];
   console.log(`  following ${who}`);
@@ -149,163 +205,117 @@ const toDevice = (x, y) => ({
   marks.syncFlash = { heldMs: 400 };
   await sleep(900);
 
+  // --- turn the crypto on, before anything else ---
+  // Everything this section claims is invisible with Show Crypto off: the
+  // shields are what carry the chain. Doing it on camera, first, means the
+  // viewer sees the ordinary app and then sees what turning it on reveals,
+  // rather than wondering why their own Nerdster looks different from this one.
+  tapped('menu', await tapNamed(page, cdp, /^Menu$/, { role: 'button' }));
+  await sleep(1400);
+  // findStill and tapAt rather than tapNamed, for the same reason setShowCrypto
+  // uses them: the menu is still animating, and a coordinate read mid-flight
+  // lands on whatever has slid into that spot by the time the tap arrives.
+  const cryptoBox = await menuCheckbox(page, /^Show Crypto$/);
+  await tapAt(cdp, cryptoBox.x, cryptoBox.y);
+  tapped('show_crypto', cryptoBox);
+  await sleep(1200);
+  if (!await showCryptoOn(page)) throw new Error('Show Crypto did not turn on in shot');
+  mark('crypto_on');
+  await sleep(1800);
+  E('shell', 'input', 'keyevent', '4');            // close the menu
+  await sleep(1600);
+
   // --- their name in my feed -> their node in the graph ---
+  // Scrolled to on camera, because the app bar the menu lives in is only there
+  // at the top. Their name is usually near the bottom edge when it first shows,
+  // which is where a tap lands on the browser's own chrome instead, so this
+  // keeps going until it sits in the middle of the screen.
+  for (let i = 0; i < 18; i++) {
+    const n = await find(page, new RegExp(`^${esc(who)}$`), { role: 'button' });
+    if (n && n.y > 150 && n.y < 560) break;
+    await drag(cdp, 200, 600, 0, { dy: -520, holdMs: 0 });
+    await sleep(420);
+  }
+  mark('scrolled_to_them');
+  await sleep(1400);
+
   tapped('moniker', await tapNamed(page, cdp, new RegExp(`^${esc(who)}$`), { role: 'button' }));
-  const node = await waitFor(page, new RegExp(`^${esc(name)}$`), { role: 'button' }, 20000);
+  await waitFor(page, new RegExp(`^${esc(name)}$`), { role: 'button' }, 20000);
   mark('graph');
-  await sleep(900);
+  await sleep(2200);
 
   tapped('node', await tapNamed(page, cdp, new RegExp(`^${esc(name)}$`), { role: 'button' }));
   await waitFor(page, /^delegate$/, { role: 'button' }, 15000);
   mark('node_details');
-  await sleep(700);
+  await sleep(2400);
 
-  // --- the delegate key their Nerdster statements are signed with ---
+  // --- his identity key, and what "interpreted" means ---
+  // The identity tab's rows are labelled with the plain label and a trailing
+  // space -- '$label ${isCanonical ? "" : "(Replaced)"}' -- so this is a prefix
+  // match, not an anchored one.
+  tapped('identity_tab', await tapNamed(page, cdp, /^identity$/, { role: 'button' }));
+  await sleep(1800);
+  tapped('identity_key', await tapNamed(page, cdp, new RegExp(`^${esc(name)}`), { role: 'button' }));
+  // KeyInfoView opens interpreted, so the mode button offers the other way.
+  await waitFor(page, /Interpreted → Raw/, {}, 15000);
+  mark('identity_key_shown');
+  await sleep(3400);
+
+  tapped('identity_raw', await tapNamed(page, cdp, /Interpreted → Raw/, { role: 'button' }));
+  await waitFor(page, /"crv"/, {}, 15000);
+  mark('identity_raw_shown');
+  await sleep(4000);
+
+  tapped('identity_interpreted', await tapNamed(page, cdp, /Raw → Interpreted/, { role: 'button' }));
+  await waitFor(page, /Interpreted → Raw/, {}, 15000);
+  mark('identity_interpreted_shown');
+  await sleep(3600);
+
+  // Wait for the tabs to prove we are back in NodeDetails, not merely that a tap
+  // went out.
+  await dismissDialog(page, cdp);
+  await waitFor(page, /^delegate$/, { role: 'button' }, 15000);
+  await sleep(1600);
+
+  // --- his delegate key ---
+  // He has two live nerdster.org delegates, and the labeller tells them apart by
+  // suffixing one with " (2)". NEITHER is revoked -- Yotam, 1 Sep 2026 -- so
+  // this is a choice of which to film, not a correctness question, and the
+  // anchored match takes the unsuffixed one because that is the one to show.
   tapped('delegate_tab', await tapNamed(page, cdp, /^delegate$/, { role: 'button' }));
+  await sleep(1800);
   tapped('delegate_key', await tapNamed(page, cdp, new RegExp(`^${esc(who)}$`), { role: 'button' }));
-  // The key opens showing what it MEANS -- "Hillel TT@nerdster.org". One tap
-  // turns that back into the thing itself, which is the point of the sequence.
-  tapped('raw', await tapNamed(page, cdp, /Interpreted → Raw/, { role: 'button' }));
-  const keyJson = await waitFor(page, /"crv"/, {}, 15000);
+  await waitFor(page, /Interpreted → Raw/, {}, 15000);
   mark('delegate_key_shown');
-  await sleep(2000);                       // let the key and its QR be readable
+  await sleep(4000);
 
-  // --- out to the signed statements themselves ---
-  // The link has no name in the tree, so it is reached by where it sits: just
-  // under the key it belongs to.
-  const link = { x: keyJson.x, y: keyJson.y + keyJson.h / 2 + 26 };
-  await tapAt(cdp, link.x, link.y);
-  tapped('published_statements', link);
+  await dismissDialog(page, cdp);
+  await waitFor(page, /^delegate$/, { role: 'button' }, 15000);
+  await sleep(1600);
 
-  let json = null;
-  for (let i = 0; i < 60 && !json; i++) {
-    json = ctx.pages().find(p => p.url().includes('export.nerdster.org'));
-    await sleep(250);
-  }
-  if (!json) throw new Error('the published-statements link did not open a tab');
-  await json.waitForLoadState('domcontentloaded').catch(() => {});
-  const jcdp = await ctx.newCDPSession(json);
-  mark('statements_tab');
-  await sleep(1200);
+  // --- the delegation itself: who said this key speaks for them ---
+  // Found by name. The shield used to be an unnamed Icon and had to be tapped at
+  // a computed corner of its row; it now carries a Tooltip, which is both its
+  // accessible name and what makes it reachable from here. The delegate rows say
+  // "Delegation statement" so they can be told apart from the vouch and follow
+  // shields on the same screen, which keep the generic label.
+  tapped('shield', await tapNamed(page, cdp, /^Delegation statement$/, {}));
+  await waitFor(page, /Interpreted → Raw/, {}, 15000);
+  mark('delegation_shown');
+  await sleep(3600);
 
-  // Chrome renders raw JSON as one long line. Pretty-print is the difference
-  // between a wall of text and something a viewer can read a statement out of.
-  const box = await json.evaluate(() => {
-    const cb = document.querySelector('input[type=checkbox]');
-    if (!cb) return null;
-    const r = cb.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-  });
-  if (box) {
-    await tapAt(jcdp, box.x, box.y);
-    marks.taps.push({ t: at(), ...toDevice(box.x, box.y), what: 'pretty_print' });
-  } else {
-    // Chrome's JSON viewer isn't part of the page's DOM, so the checkbox can't
-    // be found or tapped through CDP. It is always in the same place, though --
-    // the first row under the toolbar -- so tap the device there instead.
-    const pt = { x: 117, y: VIEW2DEV.offY + 15 };
-    E('shell', 'input', 'tap', String(pt.x), String(pt.y));
-    marks.taps.push({ t: at(), ...pt, what: 'pretty_print' });
-  }
-  mark('tap_pretty_print');
-  await sleep(1500);
+  tapped('delegation_raw', await tapNamed(page, cdp, /Interpreted → Raw/, { role: 'button' }));
+  await waitFor(page, /"statement"|"I"|"crv"/, {}, 15000);
+  mark('delegation_raw_shown');
+  await sleep(4200);
 
-  // Their statement about the book, found in the page rather than fetched
-  // separately, and highlighted so the viewer can see which one is meant.
-  const statement = await json.evaluate(() => {
-    const body = document.body.innerText;
-    const data = JSON.parse(body.replace(/^Pretty-print\s*/i, ''));
-    const stmts = Object.values(data)[0] || [];
-    const s = stmts.find(x => x.statement === 'org.nerdster' && (x.comment || x.with)) || stmts[0];
-    if (!s) return null;
-    // Select it on the page: scroll to the line its time appears on and paint
-    // the selection, so the copy is something the viewer watches happen.
-    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
-      const i = n.nodeValue.indexOf(s.time);
-      if (i < 0) continue;
-      const r = document.createRange();
-      r.setStart(n, Math.max(0, i - 400));
-      r.setEnd(n, Math.min(n.nodeValue.length, i + 900));
-      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
-      n.parentElement?.scrollIntoView({ block: 'center' });
-      break;
-    }
-    return s;
-  });
-  if (!statement) throw new Error('no statement to verify on that page');
-  console.log(`  verifying their ${statement.statement} of ${statement.time}`);
-  mark('statement_selected');
-  await sleep(1200);
+  tapped('delegation_interpreted', await tapNamed(page, cdp, /Raw → Interpreted/, { role: 'button' }));
+  mark('delegation_interpreted_shown');
 
-  // Pinch in on it. A page of JSON at phone size is unreadable, and this is the
-  // moment the video is asking the viewer to actually read something -- so zoom
-  // the way a person would rather than leaving it to a crop in post.
-  await jcdp.send('Input.synthesizePinchGesture',
-    { x: 196, y: 380, scaleFactor: 2.6, relativeSpeed: 500 }).catch(e =>
-      console.log('  pinch unavailable:', e.message));
-  mark('zoomed');
-  await sleep(3000);
-
-  // --- back into the Nerdster, and verify it ---
-  E('shell', 'input', 'keyevent', '4');
-  await sleep(1500);
-  mark('back');
-  await page.bringToFront().catch(() => {});
-  await page.evaluate(SEMANTICS_PROBE);
-
-  // The key popup is still open behind the tab switch, and the node dialog
-  // under that. Back dismisses them one at a time -- tapping the scrim doesn't,
-  // since it reports a bounding box the size of the screen and its centre is
-  // the popup itself.
-  for (let i = 0; i < 3; i++) {
-    if (await find(page, /^Menu$/, { role: 'button' })) break;
-    E('shell', 'input', 'keyevent', '4');
-    await sleep(900);
-  }
-
-  tapped('menu', await tapNamed(page, cdp, /^Menu$/, { role: 'button' }));
-  tapped('just_verify', await tapNamed(page, cdp, /^Just Verify$/, { role: 'button' }));
-  await waitFor(page, /Verify, Tokenize/, {}, 15000);
-  mark('verify_open');
-  await sleep(700);
-
-  // The input is the big unlabelled box in the middle of the dialog.
-  const field = await biggestBlank(page);
-  await tapAt(cdp, field.x, field.y);
-  tapped('paste_field', field);
-  await sleep(400);
-  await jcdp.detach().catch(() => {});
-  await cdp.send('Input.insertText', { text: JSON.stringify(statement, null, 2) });
-  mark('pasted');
-  // Leave the keyboard alone. BACK hides it but Chrome also treats it as a
-  // navigation and slides its history sheet over the verdict; ESC clears the
-  // field outright. The results route replaces the whole dialog anyway, so the
-  // keyboard is gone by the time the verdict is on screen.
-  await sleep(600);
-
-  tapped('verify', await tapNamed(page, cdp, /Verify, Tokenize/, { role: 'button' }));
-  await sleep(2500);
-  mark('verified');
-
-  // "✔ VERIFIED!" is the whole point of the sequence, and it is what the take
-  // ends on.
-  await waitFor(page, /VERIFIED/, {}, 15000);
-  mark('shown_verified');
-  // THIS TAKE IS TOO LONG TO RECORD ON THIS EMULATOR.
-  //
-  // Under its load -- Chrome, a pinch zoom, a page of JSON -- screenrecord
-  // stops producing at about 26.5 seconds, and the take needs 32. It is a
-  // ceiling, not a flush: stopping at 0s, 2.5s and 6s after the end all gave
-  // the same length, and adding five seconds of content to the take gave the
-  // same length again. screenrecord on an IDLE device records 35 seconds
-  // faithfully, so it is this workload and not the tool.
-  //
-  // The fix is not here, it is in the section list: the Intro's version of this
-  // stops at Hillel's NodeDetails and the delegate keys, and the verification
-  // belongs to a separate, later "How it works" video. Two shorter takes, both
-  // under the ceiling.
-  await sleep(3500);
+  // The take ends here, on the delegation. Everything the old sequence did next
+  // -- out to export.nerdster.org, pretty-print, the Verify dialog, VERIFIED --
+  // is deliberately not part of this one.
+  await sleep(4500);
   mark('done');
 
   // Stop it on the DEVICE and wait for the file to settle. Killing the local
@@ -330,19 +340,75 @@ const toDevice = (x, y) => ({
 
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/// Turn Show Crypto on if it is off. The menu item carries no state in the
-/// tree, so this checks for a shield in the feed instead and only toggles when
-/// there isn't one.
-async function ensureShowCrypto(page, cdp) {
-  const shields = async () => (await findAll(page, /^$/, { role: 'button' }))
-    .filter(n => Math.round(n.w) === 48 && Math.round(n.h) === 48).length;
-  if (await shields()) { console.log('  Show Crypto already on'); return; }
-  await tapNamed(page, cdp, /^Menu$/, { role: 'button' });
-  const item = await findStill(page, /^Show Crypto$/);
-  await tapAt(cdp, item.x, item.y);
+/// The tappable half of a MyCheckbox in the feed menu.
+///
+/// MyCheckbox renders Row([Checkbox, Text(title)]) when it shows its title, so
+/// THE LABEL IS NOT A BUTTON -- it is a Text, and tapping it does nothing at
+/// all. That is how this used to "turn on" Show Crypto without turning anything
+/// on: it tapped the words, and the check that followed was looking for
+/// unlabelled 48x48 buttons which the feed has anyway, so it always agreed.
+/// The checkbox is the unnamed node immediately left of the label, same row.
+async function menuCheckbox(page, label) {
+  const item = await findStill(page, label);
+  const all = await page.evaluate(() => window.__sem());
+  const box = all
+    .filter(n => !n.text && n.x < item.x && Math.abs(n.y - item.y) < 26 && n.w < 70)
+    .sort((a, b) => b.x - a.x)[0];
+  if (!box) throw new Error(`no checkbox beside "${label}" in the menu`);
+  return box;
+}
+
+/// Close a key dialog by tapping its barrier.
+///
+/// NOT the BACK key. Both of these are showDialog(), so BACK ought to pop the
+/// Flutter route -- but Chrome also treats BACK as its own navigation, and on a
+/// tab launched straight into /app there is nothing behind it, so the tab closes
+/// and the take dies with "Target page has been closed". The barrier covers the
+/// page and swallows the tap, so anywhere outside the dialog works; the top
+/// strip is furthest from both dialogs' bodies. (The feed MENU is different --
+/// MenuAnchor consumes BACK itself, and those two sites still use it.)
+async function dismissDialog(page, cdp) {
+  const w = await page.evaluate(() => innerWidth);
+  await tapAt(cdp, Math.round(w / 2), 40);
   await sleep(900);
-  if (!await shields()) throw new Error('Show Crypto would not turn on');
-  console.log('  Show Crypto turned on');
+}
+
+/// Whether Show Crypto is on: are there shields in the feed.
+///
+/// Not the URL. SettingType.showCrypto is declared `param: true`, which means it
+/// can be READ from the query string at load -- it is not written back when the
+/// checkbox is toggled, so the address bar says nothing about the live state.
+///
+/// Not unlabelled 48x48 buttons either, which is what this used to look for
+/// when the shield was a nameless Icon: the feed has other icon buttons that
+/// size, so it answered "on" whatever the truth was. The shields carry their
+/// Tooltip into the semantics tree as a name, so just count the name.
+async function showCryptoOn(page) {
+  return (await findAll(page, /^Signed statement$/, {})).length > 0;
+}
+
+/// Put Show Crypto into a known state, off camera.
+///
+/// This used to only ever turn it ON, before recording, on the reasoning that a
+/// menu trip says nothing. That was right while the shields were plumbing. They
+/// are the SUBJECT of this section now -- the whole point is what turning it on
+/// reveals -- so the take starts with it OFF and turns it on in shot, and this
+/// is what guarantees the starting state.
+async function setShowCrypto(page, cdp, want) {
+  if ((await showCryptoOn(page)) === want) {
+    console.log(`  Show Crypto already ${want ? 'on' : 'off'}`);
+    return;
+  }
+  await tapNamed(page, cdp, /^Menu$/, { role: 'button' });
+  const box = await menuCheckbox(page, /^Show Crypto$/);
+  await tapAt(cdp, box.x, box.y);
+  await sleep(1200);
+  if ((await showCryptoOn(page)) !== want) {
+    throw new Error(`Show Crypto would not turn ${want ? 'on' : 'off'}`);
+  }
+  console.log(`  Show Crypto turned ${want ? 'on' : 'off'}`);
+  E('shell', 'input', 'keyevent', '4');       // close the menu
+  await sleep(700);
 }
 
 /// The Verify dialog's input: the largest node in it with nothing to say.

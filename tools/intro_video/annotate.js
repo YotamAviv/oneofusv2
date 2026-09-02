@@ -83,6 +83,27 @@ const probe = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v',
   '-of', 'default=nw=1:nk=1', inVideo], { encoding: 'utf8' }).trim().split('\n');
 const W = +probe[0], H = +probe[1], DUR = +probe[2];
 
+// A cue later than the take is a cue-vs-take mismatch, and left alone each kind
+// fails differently. A beat dies further down on a frame ffmpeg never wrote, so
+// it at least stops; a prompter line or a zoom simply never appears, and the
+// copy goes missing from the finished video with nothing said about it. That is
+// how the signature chain's closing line -- the whole point of the section --
+// was absent from a build that reported success.
+//
+// The mark being late is as likely as the take being short, and the two look
+// identical from here, so name both.
+for (const [what, list] of [['prompter line', lines], ['zoom', zooms],
+                            ['beat or card', splices]]) {
+  for (const c of list) {
+    if (c.t < DUR) continue;
+    throw new Error(
+      `${what} at ${c.t}s is past the end of ${path.basename(inVideo)} ` +
+      `(${DUR.toFixed(2)}s)` + (c.at ? `, anchored on mark "${c.at}"` : '') + '.\n' +
+      '  Either the take is short -- screenrecord sometimes stops early -- or the\n' +
+      '  mark is late. Check the mark against the footage before trusting it.');
+  }
+}
+
 /// Where a moment in the original take lands once the pauses are spliced in.
 const shift = t => t + splices.filter(b => b.t <= t).reduce((s, b) => s + b.hold, 0);
 

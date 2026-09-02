@@ -4,6 +4,9 @@ Notes for making intro/demo videos covering ONE-0F-US.NET, Nerdster, and Hablote
 
 *** MY HUMAN UPDATES ***
 
+TODO:
+- Crypto works can reference the box on the one-of-us.net home page
+- Not my network, not the ONE-OF-US.NET network can reference the Simpsons Bot Farm where Marge and Luanne (Millhouse's mom) use a different host for their identity statements.
 
 Less is more:
 keep it brief and polished
