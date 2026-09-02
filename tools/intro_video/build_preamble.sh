@@ -8,7 +8,7 @@
 # publishes nothing, so it can be re-recorded as often as the words change --
 # which is why it is its own scene and its own script. build_scene1.sh calls it.
 #
-# The card's words come from doc/intro_video/sections.yaml, section 'preamble'.
+# The card's words come from video/storyboard.yaml, section 'preamble'.
 #
 # Each take opens with a sync flash and overlay_taps.js trims to it, but what is
 # left is the flash page still sliding away -- so each piece starts at the first

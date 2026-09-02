@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Generated from doc/intro_video/sections.yaml -- section 'people_not_accounts'.",
+    "Generated from video/storyboard.yaml -- section 'people_not_accounts'.",
     "Edit the copy THERE, not here, and run:",
     "  python3 tools/intro_video/sections.py --cues people_not_accounts"
   ],

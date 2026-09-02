@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Generated from doc/intro_video/sections.yaml -- section 'another_one'.",
+    "Generated from video/storyboard.yaml -- section 'another_one'.",
     "Edit the copy THERE, not here, and run:",
     "  python3 tools/intro_video/sections.py --cues another_one"
   ],

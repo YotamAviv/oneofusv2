@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Generated from doc/intro_video/sections.yaml -- section 'preamble'.",
+    "Generated from video/storyboard.yaml -- section 'preamble'.",
     "Edit the copy THERE, not here, and run:",
     "  python3 tools/intro_video/sections.py --cues preamble"
   ],

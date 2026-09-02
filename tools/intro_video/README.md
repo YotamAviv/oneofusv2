@@ -90,7 +90,7 @@ Run the steps separately if one of them fails:
     node overlay_taps.js out/signin_<stamp>.mp4
 
 Full detail, including every gotcha with its symptom, is in
-[../../doc/intro_video/capture_manual.md](../../doc/intro_video/capture_manual.md).
+[../../doc/video/capture_manual.md](../../doc/video/capture_manual.md).
 
 ## Files
 
@@ -273,7 +273,7 @@ listing that says "Update" under a red internal-tester warning. What would have
 happened next is the card's job to say.
 
 The card's words are not in that command: they are in
-[doc/intro_video/sections.yaml](../../doc/intro_video/sections.yaml), section
+[video/storyboard.yaml](../../video/storyboard.yaml), section
 `preamble`, along with the rest of the video's copy. `sections.py` renders it.
 That is the general rule — **what the video says lives in the sections doc**, and
 the tools here read it. `sections.py --list` shows every section and its state.

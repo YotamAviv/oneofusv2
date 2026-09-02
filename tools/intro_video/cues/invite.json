@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Generated from doc/intro_video/sections.yaml -- section 'invite'.",
+    "Generated from video/storyboard.yaml -- section 'invite'.",
     "Edit the copy THERE, not here, and run:",
     "  python3 tools/intro_video/sections.py --cues invite"
   ],

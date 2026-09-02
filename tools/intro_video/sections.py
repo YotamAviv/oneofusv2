@@ -7,7 +7,7 @@
     python3 sections.py --check            cues/ matches the doc
     python3 sections.py --card preamble    renders that section's card to out/
 
-doc/intro_video/sections.yaml is where the copy lives, because a person editing
+video/storyboard.yaml is where the copy lives, because a person editing
 what the video says should not have to edit JSON, and because prose wants
 comments and line breaks that JSON has no room for. annotate.js still eats
 cues/*.json; this is the step between.
@@ -24,7 +24,7 @@ import argparse, json, os, re, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-DOC = HERE.parent.parent / 'doc' / 'intro_video' / 'sections.yaml'
+DOC = HERE.parent.parent / 'video' / 'storyboard.yaml'
 CUES = HERE / 'cues'
 
 # What annotate.js reads, and nothing else. Cards are in here because a card at
@@ -49,7 +49,7 @@ def cue_file(section):
     if not cues:
         return None
     out = {'_comment': [
-        f"Generated from doc/intro_video/sections.yaml -- section '{section['id']}'.",
+        f"Generated from video/storyboard.yaml -- section '{section['id']}'.",
         "Edit the copy THERE, not here, and run:",
         f"  python3 tools/intro_video/sections.py --cues {section['id']}",
     ]}
