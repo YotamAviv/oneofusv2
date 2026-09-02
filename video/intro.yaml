@@ -22,7 +22,11 @@ title: Our Own Open Decentralized Identity Network
 sections:
   # -------------------------------------------------------------------------
   - id: preamble
-    # Getting the app
+    title: "Getting the app"
+    preconditions:
+      - Chrome and the identity app installed; the app icon on the home screen.
+    side_effects:
+      - None. The Play badge tap is drawn, never dispatched.
     build: build_preamble.sh    # its own shape: three takes and a card, joined
     status: built
     # Three short takes and a card, joined. People can navigate to a web page and
@@ -43,7 +47,14 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: vouch
-    # Our. Own. Decentralized. Identity. Network.
+    title: "Our. Own. Decentralized. Identity. Network."
+    preconditions:
+      - A filmTools build of the identity app.
+    side_effects:
+      - WIPES THE APP: destroys whatever identity is on the phone.
+      - Publishes a vouch for Tom from a brand-new identity, which is then
+        orphaned in production.
+      - Every take after this one needs ./restore_demo_identity.sh first.
     build: shoot_vouch.js
     status: built
     # Where the section starts. Every take opens with a sync flash and a launch;
@@ -56,10 +67,29 @@ sections:
       window: scanWindow
       hold: 0.7
       fade: 0.15
+    # THE CLOSING CARD IS THE END OF THE SECTION. The take now watches for the
+    # "Trusted: Success" snackbar by its colour and marks `published` when it
+    # appears and `success_cleared` when it goes -- so the section runs to the
+    # end of the act it describes, rather than stopping mid-spinner as it did
+    # while that wait was a blind sleep. Without `until:` the take then carried
+    # on past its own last word: three seconds of the scanner coming back, over
+    # a composite that had already ended.
+    until: success_cleared
+    until_after: 0.6
     prompter:
       - {t: 0.3, text: "A phone with no keys on it."}
       - {at: tap_create_key, text: "One tap and it has an identity."}
       - {at: scanner, text: "Scan somebody you know."}
+      # At the moment the statement is actually signed and published -- a mark
+      # read out of the footage by find_snackbar.js, not guessed at.
+      #
+      # The app says so itself, in a "Trusted: Success" snackbar, and you cannot
+      # see it: the bar sits at y2060-2220 and the prompter band covers y1920 on
+      # down. A beat cannot rescue it (the band is drawn over spliced stills too)
+      # and neither can a zoom (it clamps to the frame edge, so the bar stays at
+      # the bottom). Showing it would mean raising BAND_H for every section. So
+      # the band says it instead, at exactly the right instant.
+      - {at: published, text: "Signed on the phone. Published to the network."}
     cards:
       # Each word appears and stays, building the sentence. At `welcome` rather
       # than t:0 because the scene is trimmed to that mark -- a card before it
@@ -68,8 +98,8 @@ sections:
         hold: 2.0
         words: [Our Own., Decentralized., Identity Network.]
       # The punchline of the section, and a full screen rather than narration.
-      - at: published
-        after: 2.5
+      - at: success_cleared
+        after: 0.6
         hold: 3.5
         lines:
           - That's it.
@@ -83,7 +113,11 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: invite
-    # You have to be trusted, too
+    title: "You have to be trusted, too"
+    preconditions:
+      - An identity on the phone (restore_demo_identity.sh after vouch).
+    side_effects:
+      - None. It stops at the share sheet; the invitation is never sent.
     build: shoot_invite.js
     status: built
     # A cold start spends eight seconds reloading what the identity published;
@@ -120,7 +154,15 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: signin
-    # Enter the Nerdster -- by signing in, without an account
+    title: "Enter the Nerdster"
+    preconditions:
+      - An identity on the phone that somebody has vouched for.
+      - The Nerdster deployed at nerdster.org.
+    side_effects:
+      - Deletes the delegate key from the phone and the browser, then mints
+        a NEW one and publishes its delegate statement.
+      - Leaves the browser SIGNED IN -- which is what nerdster, crypto_teaser
+        and hablotengo all need.
     build: shoot_signin.sh
     status: to_build
     # THE SECTION THAT WAS MISSING. shoot_signin.js has existed and worked since
@@ -157,7 +199,12 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: nerdster
-    # Enter the Nerdster!
+    title: "Enter the Nerdster!"
+    preconditions:
+      - Signed in to the Nerdster with a delegate key (signin).
+    side_effects:
+      - Deletes what earlier takes published to nerdster.org, then publishes
+        a reaction and a comment.
     build: shoot_nerdster.sh
     status: built
     # A gong, like Enter the Dragon. NO ASSET -- deferred 2026-09-01.
@@ -194,7 +241,11 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: another_one
-    # Do we really need another one of these?
+    title: "Do we really need another one of these?"
+    preconditions:
+      - Nothing. Rendered from this file; no device.
+    side_effects:
+      - None.
     build: card
     status: to_build
     # Order is deliberate: show the network working FIRST, then -- once it looks
@@ -210,73 +261,164 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: crypto_teaser
-    # How? Turn on the crypto -- a taste of it
+    title: "Crypto"
+    preconditions:
+      - Signed in to the Nerdster with a delegate key (signin).
+    side_effects:
+      - Deletes what earlier takes published to nerdster.org -- a card already
+        reacted to has no React button to press.
+      - Publishes a rating.
+      - LEAVES Show Crypto AND Show FYI ON.
     build: shoot_crypto_teaser.js
     status: to_build
-    # The intro shows that the crypto is REAL and stops. The full walk -- identity
-    # key, delegate key, the delegation that ties them -- is its own section in
-    # video/how_it_works.yaml, because at four seconds a line it runs a minute,
-    # which is half the intro's budget for one idea.
+    # Updated crypto teaser
+    # Turn on both Show Crypto and Show FYI.
+    # Generate another like.
+    # Highlight something in the area of "To Be signed and published.."
+    # Click Okay on the FYI dialog
+    # Wait a few seconds on the Published dialog and have some narration
+    # Click on the interpret toggle and wait a second
+    # Scroll down inside the FYI dialog so that the final red "signature" line comes into view
+    # Highlight something in the area of "signature:" and have some narration
+    # Wait a few seconds and dismiss (Okay) the FYI dialog.
     #
-    # Three beats and a card. Nothing here explains a signature chain; it shows
-    # that there is one and says where to see it walked.
+    # Have some narration that all 3 apps publish signed statements using the keys you let them use.
+    # 
+    # Click the refresh icon on the nerdster. This briefly (too briefly) shows the 
+    # loading statements progress bar above the top toolbar. 
+    # Try and pause on that in the video, highlight it, and explain that this is these services
+    # (or any other) can read and verify our authentic content.
     #
-    # The script exists (shoot_crypto_teaser.js) and has NEVER BEEN RUN: it needs
-    # a Nerdster carrying the "Vouch statement" label on the trust shield in
-    # NodeDetails, which is committed but not deployed. Without it the take stops
-    # at that tap, because the screen has several shields and they are told apart
-    # by name.
-    #
-    # THE THIRD BEAT OPENS A SECOND CHROME TAB. "Signed, Published Statements"
-    # leaves the app for export.nerdster.org. That was the suspect for the
-    # recording ceiling before device memory turned out to explain it, so it is
-    # probably fine -- but this is the one section that would find out. If takes
-    # start dying near a fixed length, see doc/video/capture_manual.md §10 and
-    # consider shooting it as two takes joined, the way build_preamble.sh does.
+    # Where the section starts: on the feed, a beat before the menu opens. The
+    # launch and the sync flash before it are staging, not content.
+    trim: feed
     prompter:
-      - {at: crypto_on, text: "Turn on Show Crypto."}
-      - {at: vouch_shown,
-         text: "Every vouch is a statement somebody signed.\nThis is one, read back to you."}
-      - {at: vouch_raw_shown,
-         text: "And this is the statement itself."}
-      - {at: statements_tab,
-         text: "Signed, published, and out on the open web\nfor anyone to check."}
-    cards:
-      # The section's exit. Says where the rest went, and gives people something
-      # to do about it now rather than only later.
-      - at: statements_tab
-        after: 3.0
-        hold: 4.0
-        lines:
-          - "How the chain is built and checked:"
-          - "in the next video."
-          - "Crypto demos are on ONE-0F-US.NET now."
+      - {at: feed, after: 0.4,
+         text: "A quick look.. How the crypto is used."}
+      - {at: crypto_on, text: "Show Crypto: Every rating, follow and vouch now carries a shield --\nthe signed statement behind it, yours or anyone's.."}
+      - {at: fyi_on,
+         text: "Show FYI: Show each statement as it's signed and publisheed."}
+      - {at: fyi_shown,
+         text: "What's about to be signed and published.."}
+      - {at: published_shown,
+         text: "Published. Intepreted and slightly more readable (keys to names)."}
+      - {at: raw_shown, text: "The published statement, raw, un-interpreted."}
+      - {at: signature_shown,
+         text: "Cryptographically signed using your Nerdster delegate key."}
+      - {at: dismissed,
+         text: "All three apps work this way: signed statements,\nmade with the keys you delegate for their use."}
+      - {at: loading,
+         text: "Fetching statements, verifying signatures --\nthe only source of all content shown."}
+    beats:
+      # HIGHLIGHTS. The video stops, everything dims but the spotlit rectangle,
+      # and a bubble points at it -- the treatment the invite section uses.
+      #
+      # MEASURED, not guessed. The take writes fyiText, jsonBox and refreshBox
+      # into its marks file in CSS viewport units; these are those boxes through
+      # the take's own viewportToDevice (scale 2.755, offY 216), because beats
+      # are in device pixels. Re-measure if the sheet's layout moves.
+      - at: fyi_shown
+        after: 1.6
+        hold: 2.0
+        text: "FYI, just to highlight how this paradigm works."
+        anchor: [540, 1224]
+        spotlight: [44, 1150, 992, 150]
+        y: 820
+      - at: signature_shown
+        after: 1.2
+        hold: 2.0
+        text: "Key and signature makes the statement portable,\nUsable by any service."
+        # MEASURED, not typed. The take finds the red `signature` line in its own
+        # footage (find_red.js) and records the box; this names it. A rectangle
+        # written by hand missed, because a line inside a scrolling view lands
+        # wherever the scroll got to, which differs every take.
+        box: signatureBox
+        pad: 30
+        y: 1060
+      # The loading bar is on screen for a moment and gone. Stopping on it is the
+      # only way anyone reads it, which is what a beat is for.
+      - at: loading
+        after: 0.5
+        hold: 3.0
+        text: "Fetching statements, verifying signatures .."
+        anchor: [540, 300]
+        spotlight: [0, 250, 1080, 90]
+        y: 560
+    until: loading
+    until_after: 1.0
     todo:
       # The card's second line names a video that does not exist. Before this
       # ships, either that video does or the line changes.
-      - Write shoot_crypto_teaser.js.
+      - Measure the three beats against a real frame -- see the note above them.
       - Confirm the "upcoming video" promise is one we are keeping.
 
   # -------------------------------------------------------------------------
   - id: hablotengo
-    # HabloTengo, let's talk
-    build: todo
+    title: "HabloTengo!\nLet's talk"
+    preconditions:
+      - Signed in to the Nerdster with a delegate key (signin).
+      - An identity with a hablotengo.com delegate key in the feed (Hillel);
+        without one the Nerdster does not draw the HabloTengo link at all.
+    side_effects:
+      - Clears hablotengo.com sign-in state before recording, so the take can
+        reach Access Denied.
+      - Signs the identity in to HabloTengo -- identity only, no delegate key.
+    build: shoot_hablotengo.js
     status: to_build
-    # Never driven by script, but it is the same kind of web app as the Nerdster,
-    # so the same approach should work.
-    actions:
-      - Navigate to Hillel's NodeDetails.
-      - Expand Hillel's delegate keys.
-      - Note that he has a hablotengo.com delegate key.
-      - Follow the "Handy Dandy" link to his privately published contact info.
-      - See "Access Denied".
-    announce:
-      - "Private information sharing, grounded by our own open decentralized
-         network."
+    # The point is that a SECOND, unrelated service rides on the same identity
+    # network -- and that grounding it there is what lets it keep things private
+    # as well as authentic. It ends on being refused, which is the feature.
+    #
+    # The HabloTengo link only appears on a node that HAS a hablotengo.com
+    # delegate key, which is why the section goes to Hillel: he has two
+    # nerdster.org delegates and one hablotengo.com one. node_details.dart opens
+    # hablotengo.com/app?target=<identity> in a new tab.
+    #
+    # NOT YET SHOT. Written from Yotam's outline, 2 Sep 2026. The HabloTengo half
+    # -- signing in with the identity app but no delegate key, and the Access
+    # Denied that follows -- has never been driven by a script, so expect its
+    # selectors to need a pass on the device.
+    trim: feed
+    prompter:
+      - {at: feed, after: 0.4, text: "Somebody I have never met, two hops away."}
+      - {at: node_details,
+         text: "I vouched for Tom. Tom vouched for Hillel.\nThe proof is a chain of signatures, there to check."}
+      - {at: delegates_shown,
+         text: "Two nerdster.org delegate keys -- and one for hablotengo.com,\na service with nothing to do with this one."}
+      - {at: hablotengo_open,
+         text: "The same identity, carried to another service."}
+      - {at: denied,
+         text: "And refused. HabloTengo grounds itself in the same open network\nto keep things private, not only authentic."}
+    beats:
+      # Both boxes are MEASURED by the take and named here, rather than typed --
+      # see the note on crypto_teaser's signature beat for why.
+      - at: hablotengo_link_shown
+        after: 0.8
+        hold: 2.6
+        text: "Handy dandy shortcut to another service."
+        box: habloButtonBox
+        pad: 26
+        y: 1500
+      - at: denied
+        after: 1.0
+        hold: 3.2
+        text: "Refusing is the point.\nAuthentic does not mean public."
+        box: deniedBox
+        pad: 30
+        y: 1200
+    todo:
+      - Shoot it. The HabloTengo sign-in and the Access Denied screen are guesses
+        from Yotam's outline until they have been seen on the device.
+      - The reset must leave HabloTengo SIGNED OUT, or the second run of this
+        take shows a signed-in app and never reaches Access Denied.
 
   # -------------------------------------------------------------------------
   - id: people_not_accounts
-    # People, not accounts
+    title: "People, not accounts"
+    preconditions:
+      - Nothing. Rendered from this file; no device.
+    side_effects:
+      - None.
     build: card
     status: to_build
     cards:
@@ -294,7 +436,11 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: same_page
-    # Let's get on the same page
+    title: "Let's get on the same page"
+    preconditions:
+      - Nothing. Rendered from this file; no device.
+    side_effects:
+      - None.
     build: card
     status: to_build
     cards:
@@ -308,7 +454,11 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: liberated
-    # The Internet liberated lies and pornography
+    title: "The Internet liberated lies and pornography"
+    preconditions:
+      - Nothing. Rendered from this file; no device.
+    side_effects:
+      - None.
     build: card
     status: to_build
     cards:
@@ -321,7 +471,11 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: decentralized
-    # Decentralized
+    title: "Decentralized"
+    preconditions:
+      - Nothing. Rendered from this file; no device.
+    side_effects:
+      - None.
     build: card
     status: to_build
     cards:
@@ -332,7 +486,11 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: opt_in
-    # Opt-in
+    title: "Opt-in"
+    preconditions:
+      - Nothing. Rendered from this file; no device.
+    side_effects:
+      - None.
     build: card
     status: to_build
     cards:

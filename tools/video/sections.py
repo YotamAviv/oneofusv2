@@ -20,7 +20,8 @@ sitting in a shell script rather than in the doc that is supposed to hold them.
 The rest (flashes, actions, announce, defer, todo) is for people, and for
 whoever builds those sections next.
 """
-import argparse, json, os, re, subprocess, sys
+import argparse, hashlib, json, os, re, subprocess, sys
+from datetime import datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -31,6 +32,9 @@ CUES = HERE / 'cues'
 # a mark is spliced into the take exactly as a beat is -- only a card rendered
 # on its own, outside any take, goes through --card.
 CUE_KEYS = ('prompter', 'zooms', 'beats', 'cards')
+
+# How long a section's title holds before its footage starts.
+TITLE_SECONDS = '1.0'
 
 
 def load():
@@ -108,13 +112,118 @@ def run(cmd, **kw):
     subprocess.run([str(c) for c in cmd], check=True, cwd=HERE, **kw)
 
 
-def newest_take(stem):
+def check_device():
+    """The three ways this emulator rots, checked before a take rather than
+    diagnosed after one.
+
+    Each of these has cost a debugging session already: an orphaned screenrecord
+    left by a failed take, /data filling up because those orphans accumulate, and
+    Chrome tabs piling up until the encoder is starved (which is what the 26.5s
+    recording ceiling turned out to be -- doc/video/capture_manual.md §10).
+
+    Orphans are killed, because that is cleanup. Low disk stops the build,
+    because carrying on and failing later is how the last two were found.
+    """
+    def adb(*a):
+        return subprocess.run(['adb', *a], capture_output=True, text=True).stdout.strip()
+
+    pids = [x for x in adb('shell', 'pgrep', 'screenrecord').split() if x]
+    if pids:
+        print(f'  killing {len(pids)} orphaned screenrecord(s) from a failed take')
+        subprocess.run(['adb', 'shell', 'pkill', '-INT', 'screenrecord'],
+                       capture_output=True)
+
+    df = adb('shell', 'df', '/data')
+    free_pct = None
+    for line in df.splitlines()[1:]:
+        parts = line.split()
+        if len(parts) >= 5 and parts[4].endswith('%'):
+            free_pct = 100 - int(parts[4].rstrip('%'))
+    if free_pct is not None:
+        print(f'  /data: {free_pct}% free')
+        if free_pct < 5:
+            sys.exit('/data is nearly full. Takes will fail in confusing ways -- '
+                     'clear out old recordings before shooting.')
+
+
+def build_dir(sid):
+    """A fresh, stamped directory for one build of one section.
+
+    Everything that build makes lives here: the take, its marks, the
+    intermediates, the scratch, the finished section and the manifest. The stamp
+    is on the directory rather than on each file, so a lineage carries one date
+    and derived names stay readable.
+    """
+    d = HERE / 'out' / sid / datetime.now().strftime('%Y%m%d-%H%M%S')
+    if d.exists():
+        sys.exit(f'{d} already exists -- two builds in the same second?')
+    d.mkdir(parents=True)
+    return d
+
+
+def newest_take(where, stem):
     """The take a shoot script just wrote -- the raw one, not its derivatives."""
-    made = [p for p in (HERE / 'out').glob(f'{stem}_*.mp4')
+    made = [p for p in where.glob(f'{stem}*.mp4')
             if not re.search(r'_(taps|composited|annotated)', p.name)]
     if not made:
-        sys.exit(f"{stem} left no take in out/ -- did the shoot fail?")
+        sys.exit(f'{stem} left no take in {where} -- did the shoot fail?')
     return max(made, key=lambda p: p.stat().st_mtime)
+
+
+def write_manifest(section, where, video, take=None):
+    """Say that this build finished, and what it was made of. WRITTEN LAST.
+
+    Its existence is the definition of a complete build: --assemble looks for
+    manifests, not for videos, so a build that died partway leaves nothing that
+    can be mistaken for a section. The cue hash is what catches the quiet
+    failure -- a section built before the copy changed still plays, and still
+    says the old words.
+    """
+    sid = section['id']
+    cues = CUES / f'{sid}.json'
+    m = {
+        'section': sid,
+        'built': datetime.now().isoformat(timespec='seconds'),
+        'video': str(video.relative_to(HERE)),
+        'duration': float(subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+             '-of', 'csv=p=0', str(video)],
+            check=True, capture_output=True, text=True).stdout.strip()),
+        'build': section['build'],
+        'cues': cue_digest(sid),
+        'take': str(take.relative_to(HERE)) if take else None,
+    }
+    path = where / f'{sid}.section.json'
+    path.write_text(json.dumps(m, indent=2) + chr(10))
+    return m
+
+
+def cue_digest(sid):
+    """A fingerprint of the copy a section was built from, or None if it has no
+    cues. Compared later to spot a section older than the words it should say."""
+    f = CUES / f'{sid}.json'
+    if not f.exists():
+        return None
+    return hashlib.sha256(f.read_bytes()).hexdigest()[:16]
+
+
+def end_seconds(annotated, at, after, head):
+    """Where a section should STOP, in the annotated video's own timeline.
+
+    `until:` names a point in the take. Splices at or before it are part of the
+    section, so their holds count towards where it ends -- which is how a closing
+    card becomes the last thing on screen instead of something the take carries
+    on past. Their real lengths come from the timeline annotate.js writes, since
+    a word-by-word card's is measured rather than declared.
+    """
+    t = float(mark_seconds(annotated, at)) + (after or 0)
+    tl = annotated.with_name(annotated.stem + '.timeline.json')
+    if not tl.exists():
+        sys.exit(f'{tl.name} is missing -- annotate.js writes it, so this take '
+                 'was annotated by an older version. Re-annotate.')
+    held = sum(sp['hold'] for sp in json.loads(tl.read_text())['splices']
+               if sp['t'] <= t + 0.001)
+    return round(t + held - head, 3)
 
 
 def mark_seconds(video, mark):
@@ -133,7 +242,37 @@ def mark_seconds(video, mark):
         cwd=HERE, check=True, capture_output=True, text=True).stdout.strip()
 
 
+def drop_if_empty(where):
+    """Remove a build directory that a failed build left with nothing in it.
+
+    NOT error handling -- the failure still propagates untouched. It is only that
+    build_dir() has to make the directory before the build can write into it, so
+    a shoot that dies on its first step leaves a stamped directory holding
+    nothing. Four of those piled up in out/crypto_teaser/ before anyone looked.
+
+    A PARTIAL directory is kept. Half-written intermediates and the scratch that
+    goes with them are the evidence you read to find out why a take failed, and
+    stamped paths mean they are never in the way of the next attempt.
+    """
+    try:
+        if not any(where.iterdir()):
+            where.rmdir()
+            print(f'  removed empty {where.relative_to(HERE)}')
+    except OSError:
+        pass
+
+
 def build(section):
+    """Shoot a section, and clear up after it if it leaves nothing behind."""
+    where = build_dir(section['id'])
+    try:
+        _build(section, where)
+    except BaseException:
+        drop_if_empty(where)
+        raise
+
+
+def _build(section, where):
     """Shoot a section and finish it, in the one order that works.
 
     Compositing precedes annotation: annotation splices cards and beats into the
@@ -145,8 +284,18 @@ def build(section):
     Nothing here has a default. A section that does not say what it needs stops.
     """
     sid = section['id']
-    out = HERE / 'out' / f'section_{sid}.mp4'
+    # NOT <id>.mp4. A shoot script names its take after itself, so for every
+    # section whose id matches its take -- vouch, nerdster, crypto_teaser -- the
+    # finished section was written straight over the raw footage it came from.
+    # The take was gone by the end of its own build, which surfaced later as
+    # find_flash reporting "no clear flash": it was reading the annotated,
+    # trimmed section and looking for a sync flash that had been cut off.
+    out = where / 'section.mp4'
     how = section['build']
+    # Everything the build shells out to writes in here, so a section's take,
+    # intermediates, scratch and finished video stay together and nothing needs
+    # to guess where anything went.
+    env = {**os.environ, 'BUILD_DIR': str(where)}
 
     if how == 'card':
         cards = section.get('cards')
@@ -154,13 +303,16 @@ def build(section):
             sys.exit(f"'{sid}' builds as a card but has "
                      f"{len(cards or [])} of them; it needs exactly one")
         render_card(sid, cards[0], out)
+        write_manifest(section, where, out)
         print(f'\n  {out.relative_to(HERE)}')
         return
 
     if how.endswith('.sh'):
         # A section whose shape is its own -- the preamble joins three takes and
         # a card. The script takes its output path and owns the rest.
-        run(['./' + how, out])
+        check_device()
+        run(['./' + how, out], env=env)
+        write_manifest(section, where, out)
         print(f'\n  {out.relative_to(HERE)}')
         return
 
@@ -169,8 +321,9 @@ def build(section):
                  "script, or a .sh that takes an output path")
 
     stem = how[len('shoot_'):-len('.js')] if how.startswith('shoot_') else how[:-3]
-    run(['node', how])
-    take = newest_take(stem)
+    check_device()
+    run(['node', how], env=env)
+    take = newest_take(where, stem)
     run(['node', 'overlay_taps.js', take])
     cur = take.with_name(take.stem + '_taps.mp4')
 
@@ -181,7 +334,7 @@ def build(section):
                 sys.exit(f"'{sid}' composite is missing '{k}'")
         nxt = cur.with_name(cur.stem + '_composited.mp4')
         run(['./composite_scan.sh', cur, comp['footage'], comp['window'], nxt],
-            env={**os.environ, 'HOLD': str(comp['hold']), 'FADE': str(comp['fade'])})
+            env={**env, 'HOLD': str(comp['hold']), 'FADE': str(comp['fade'])})
         cur = nxt
 
     if cue_file(section):
@@ -195,9 +348,136 @@ def build(section):
                  "actually starts.")
     at = mark_seconds(cur, trim)
     print(f'  trim to {trim} at {at}s')
-    run(['ffmpeg', '-y', '-v', 'error', '-ss', at, '-i', cur,
+    cut = []
+    until = section.get('until')
+    if until:
+        keep = end_seconds(cur, until, section.get('until_after'), float(at))
+        if keep <= 0:
+            sys.exit(f"'{sid}' until: {until} lands before trim: {trim}")
+        print(f'  end at {until}+{section.get("until_after") or 0} -- keeping {keep}s')
+        cut = ['-t', str(keep)]
+    run(['ffmpeg', '-y', '-v', 'error', '-ss', at, '-i', cur, *cut,
          '-c:v', 'libx264', '-crf', '19', '-preset', 'medium', '-pix_fmt', 'yuv420p', out])
+    write_manifest(section, where, out, take)
     print(f'\n  {out.relative_to(HERE)}')
+
+
+def newest_build(sid):
+    """The most recent COMPLETE build of a section, or None.
+
+    Complete means a manifest, which is written last and only on success. A
+    build that crashed leaves a directory full of half-finished files and no
+    manifest, and is therefore invisible here rather than something to be
+    quietly stepped over.
+    """
+    found = []
+    for m in sorted((HERE / 'out' / sid).glob('*/*.section.json')):
+        try:
+            d = json.loads(m.read_text())
+        except json.JSONDecodeError:
+            sys.exit(f'{m} is not readable JSON. A build wrote it badly; delete it.')
+        if not (HERE / d['video']).exists():
+            sys.exit(f"{m} names a video that is not there: {d['video']}")
+        found.append((m.parent.name, d))
+    return max(found, default=None, key=lambda f: f[0])
+
+
+def title_clip(section, dest):
+    """One second of the section's title, to open it with.
+
+    Rendered by card.js, the same thing that renders a card section, so a title
+    and a card look like the same video rather than two different ones.
+    """
+    title = section.get('title')
+    if not title:
+        sys.exit(f"'{section['id']}' has no title:. Every section needs one -- it "
+                 "opens the section on screen and names its YouTube chapter.")
+    run(['node', 'card.js', dest, TITLE_SECONDS, title])
+    return dest
+
+
+def assemble(videos, name, extra):
+    """Join a video's sections in order, and refuse if any of them is missing.
+
+    THIS DOES NOT ASSEMBLE WHAT IT CAN. A cut with sections silently left out
+    looks finished and is not, which is exactly what happened when a partial
+    join got called "intro_preview" and reported as a result. Say what is
+    missing and stop.
+    """
+    doc = next((d for d in videos if d['file'].stem == name), None)
+    if doc is None:
+        sys.exit(f"no video '{name}' in {VIDEOS}. Try --list.")
+
+    chosen, missing, stale = [], [], []
+    for sec in doc['sections']:
+        sid = sec['id']
+        got = newest_build(sid)
+        if got is None:
+            missing.append(sid)
+            continue
+        stamp, man = got
+        if man.get('cues') != cue_digest(sid):
+            stale.append(f"{sid} (built {man['built']} from older copy)")
+        chosen.append((sid, stamp, man))
+
+    if missing or stale:
+        for sid in missing:
+            print(f'  MISSING  {sid}: no complete build in out/{sid}/')
+        for line in stale:
+            print(f'  STALE    {line}')
+        sys.exit(f"\n{name} is not ready: {len(missing)} section(s) unbuilt, "
+                 f"{len(stale)} built before the copy changed.")
+
+    stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+    out = HERE / 'out' / f'{name}_{stamp}.mp4'
+    work = out.with_suffix('.work')
+    if work.exists():
+        sys.exit(f'{work} already exists -- two assemblies in the same second?')
+    work.mkdir(parents=True)
+
+    # EVERY SECTION OPENS WITH ITS TITLE, for a second. It says what the next
+    # stretch is about, and it gives the YouTube chapter something to start on --
+    # a chapter that begins mid-sentence reads as a mistake.
+    sections = {s['id']: s for d in videos for s in d['sections']}
+    clips, at, bounds, ff = [], 0.0, [], [';FFMETADATA1']
+    for sid, sstamp, man in chosen:
+        card = title_clip(sections[sid], work / f'title_{sid}.mp4')
+        held = float(subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+             '-of', 'csv=p=0', str(card)],
+            check=True, capture_output=True, text=True).stdout.strip())
+        clips += [card, HERE / man['video']]
+        # The chapter starts at the TITLE, not after it.
+        end = at + held + man['duration']
+        bounds.append({'section': sid, 'title': sections[sid]['title'],
+                       'build': sstamp, 'start': round(at, 3), 'end': round(end, 3)})
+        ff += ['[CHAPTER]', 'TIMEBASE=1/1000', f'START={int(at * 1000)}',
+               f'END={int(end * 1000)}', f'title={sections[sid]["title"]}']
+        at = end
+    meta = out.with_suffix('.chapters')
+    meta.write_text(chr(10).join(ff) + chr(10))
+
+    # What YouTube wants: one line per chapter in the description, "M:SS Title",
+    # and the first one has to be 0:00 or it ignores the lot.
+    def hhmmss(t):
+        t = int(t)
+        return f'{t // 3600}:{t // 60 % 60:02d}:{t % 60:02d}' if t >= 3600 \
+               else f'{t // 60}:{t % 60:02d}'
+    out.with_suffix('.youtube.txt').write_text(
+        chr(10).join(f"{hhmmss(b['start'])} {b['title']}" for b in bounds) + chr(10))
+
+    run(['./assemble.sh', out, extra or 'soundtrack.mp3'] + clips)
+    run(['ffmpeg', '-y', '-v', 'error', '-i', out, '-i', meta,
+         '-map_metadata', '1', '-codec', 'copy', out.with_name(out.stem + '_chaptered.mp4')])
+    os.replace(out.with_name(out.stem + '_chaptered.mp4'), out)
+
+    out.with_suffix('.sections.json').write_text(
+        json.dumps({'video': name, 'built': stamp, 'sections': bounds}, indent=2) + chr(10))
+
+    print(f'\n  {out.relative_to(HERE)}   {at:.1f}s, {len(chosen)} sections')
+    for b in bounds:
+        print(f"    {b['start']:7.2f}  {b['section']:22} {b['title']}")
+    print(f"\n  chapters for YouTube: {out.with_suffix('.youtube.txt').relative_to(HERE)}")
 
 
 def main():
@@ -208,8 +488,15 @@ def main():
     p.add_argument('--check', action='store_true')
     p.add_argument('--card', metavar='ID', help="render this section's card")
     p.add_argument('--build', metavar='ID', help='shoot and finish a section')
+    p.add_argument('--assemble', metavar='VIDEO',
+                   help='join a video\'s sections, newest complete build of each')
+    p.add_argument('--soundtrack', metavar='MP3', help='music bed for --assemble')
     args = p.parse_args()
     videos, sections = load()
+
+    if args.assemble:
+        assemble(videos, args.assemble, args.soundtrack)
+        return
 
     if args.build:
         s = sections.get(args.build)
@@ -230,7 +517,11 @@ def main():
                      "section whose card IS the section. A card that lands inside a "
                      "take is spliced by annotate.js from the cue file instead.")
         card = cards[0]
-        render_card(args.card, card, HERE / 'out' / f"card_{args.card}.mp4")
+        # Into the build directory when one is set, so a card rendered as part of
+        # a larger section lands with the rest of that build rather than in a
+        # shared out/ where the next build would overwrite it.
+        dest = Path(os.environ['BUILD_DIR']) if os.environ.get('BUILD_DIR') else HERE / 'out'
+        render_card(args.card, card, dest / f"card_{args.card}.mp4")
         return
 
     if args.list or not (args.cues or args.check):

@@ -4,7 +4,7 @@
 //
 //   node shoot_browser.js
 //
-// Writes out/browser_<stamp>.mp4 + .marks.json. Ends on a tap that is drawn but
+// Writes out/browser/<stamp>/browser.mp4 + .marks.json. Ends on a tap that is drawn but
 // never dispatched -- see below.
 //
 // It opens on the page rather than typing the address in. People can navigate to
@@ -25,7 +25,8 @@ const { spawn } = require('child_process');
 const { device, sleep } = require('./lib/device');
 
 const CHROME = 'com.android.chrome';
-const OUT = path.join(__dirname, 'out');
+const { buildDir } = require('./lib/build_dir');
+const OUT = buildDir('browser');
 const URL = process.env.URL || 'one-of-us.net';
 const d = device();
 
@@ -93,13 +94,12 @@ const AT = {
   // and the pulled file is then not a video at all.
   await require('./lib/device').device().stopRecording('/sdcard/browser.mp4');
   rec.kill();
-  const dt = new Date(), p2 = n => String(n).padStart(2, '0');
-  const stamp = `${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}-` +
-                `${p2(dt.getHours())}${p2(dt.getMinutes())}${p2(dt.getSeconds())}`;
-  const name = `browser_${stamp}`;
+  // The stamp is on the build directory (lib/build_dir.js), so the take
+  // inside it is named for what it is and nothing else.
+  const name = 'browser';
   d.E('pull', '/sdcard/browser.mp4', path.join(OUT, `${name}.mp4`));
   // Off the device once it is safely here; see the other shoot scripts.
   d.E('shell', 'rm', '-f', '/sdcard/browser.mp4');
   fs.writeFileSync(path.join(OUT, `${name}.marks.json`), JSON.stringify(marks, null, 2));
-  console.log(`\nout/${name}.mp4\nout/${name}.marks.json  (${marks.taps.length} taps)`);
+  console.log(`\n${path.relative(__dirname, path.join(OUT, `${name}.mp4`))}\n${path.relative(__dirname, path.join(OUT, `${name}.marks.json`))}  (${marks.taps.length} taps)`);
 })().catch(e => { console.error('\nTAKE FAILED:', e.message); process.exit(1); });

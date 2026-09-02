@@ -4,7 +4,7 @@
 //
 //   node shoot_invite.js
 //
-// Writes out/invite_<stamp>.mp4 + .marks.json.
+// Writes out/invite/<stamp>/invite.mp4 + .marks.json.
 //
 // It stops at the share sheet. The link is the point and it is on screen there,
 // in full, with the key in it -- sending it is not, and this identity's
@@ -20,7 +20,8 @@ const { spawn } = require('child_process');
 const { device, sleep } = require('./lib/device');
 
 const APP = 'net.oneofus.app';
-const OUT = path.join(__dirname, 'out');
+const { buildDir } = require('./lib/build_dir');
+const OUT = buildDir('invite');
 const d = device();
 
 // APP-BLIND: coordinates on a 1080x2220 screen, measured off screenshots.
@@ -83,12 +84,11 @@ const AT = {
 
   await require('./lib/device').device().stopRecording('/sdcard/invite.mp4');
   rec.kill();
-  const dt = new Date(), p2 = n => String(n).padStart(2, '0');
-  const stamp = `${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}-` +
-                `${p2(dt.getHours())}${p2(dt.getMinutes())}${p2(dt.getSeconds())}`;
-  const name = `invite_${stamp}`;
+  // The stamp is on the build directory (lib/build_dir.js), so the take
+  // inside it is named for what it is and nothing else.
+  const name = 'invite';
   d.E('pull', '/sdcard/invite.mp4', path.join(OUT, `${name}.mp4`));
   d.E('shell', 'rm', '-f', '/sdcard/invite.mp4');
   fs.writeFileSync(path.join(OUT, `${name}.marks.json`), JSON.stringify(marks, null, 2));
-  console.log(`\nout/${name}.mp4\nout/${name}.marks.json  (${marks.taps.length} taps)`);
+  console.log(`\n${path.relative(__dirname, path.join(OUT, `${name}.mp4`))}\n${path.relative(__dirname, path.join(OUT, `${name}.marks.json`))}  (${marks.taps.length} taps)`);
 })().catch(e => { console.error('\nTAKE FAILED:', e.message); process.exit(1); });

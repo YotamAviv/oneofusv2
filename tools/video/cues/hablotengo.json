@@ -1,0 +1,50 @@
+{
+  "_comment": [
+    "Generated from video/ -- section 'hablotengo'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/video/sections.py --cues hablotengo"
+  ],
+  "prompter": [
+    {
+      "at": "feed",
+      "after": 0.4,
+      "text": "Somebody I have never met, two hops away."
+    },
+    {
+      "at": "node_details",
+      "text": "I vouched for Tom. Tom vouched for Hillel.\nThe proof is a chain of signatures, there to check."
+    },
+    {
+      "at": "delegates_shown",
+      "text": "Two nerdster.org delegate keys -- and one for hablotengo.com,\na service with nothing to do with this one."
+    },
+    {
+      "at": "hablotengo_open",
+      "text": "The same identity, carried to another service."
+    },
+    {
+      "at": "denied",
+      "text": "And refused. HabloTengo grounds itself in the same open network\nto keep things private, not only authentic."
+    }
+  ],
+  "beats": [
+    {
+      "at": "hablotengo_link_shown",
+      "after": 0.8,
+      "hold": 2.6,
+      "text": "Handy dandy shortcut to another service.",
+      "box": "habloButtonBox",
+      "pad": 26,
+      "y": 1500
+    },
+    {
+      "at": "denied",
+      "after": 1.0,
+      "hold": 3.2,
+      "text": "Refusing is the point.\nAuthentic does not mean public.",
+      "box": "deniedBox",
+      "pad": 30,
+      "y": 1200
+    }
+  ]
+}

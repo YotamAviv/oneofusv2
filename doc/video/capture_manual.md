@@ -436,8 +436,19 @@ copy runs long against its beats.
 | Demo identity allowlist | `oneofus/tools/video/demo_identity.json` |
 | Cut footage | `~/Videos/intro_video_demos/` |
 | Source phone takes | `~/Videos/intro_video_source/` |
+| Builds | `oneofus/tools/video/out/<section>/<stamp>/` |
+| Joined videos | `oneofus/tools/video/out/<video>_<stamp>.mp4` |
 
 Videos are **not** in source control — the scripts regenerate them.
+
+**One stamped directory per build**, holding that build's take, intermediates,
+scratch, finished section and manifest. The stamp is on the directory rather
+than on each file, so a lineage carries one date and nothing is ever
+overwritten. `tools/video/README.md` has the layout and the three rules that go
+with it; the one worth knowing here is that a build is **complete** only when
+its `<section>.section.json` manifest exists, because that is written last and
+only on success. `sections.py --assemble` looks for manifests, and refuses to
+join a video that is missing one.
 
 ---
 

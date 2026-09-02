@@ -33,8 +33,80 @@ function device(serial = process.env.AVD || 'emulator-5554') {
       const now = grab();
       if (now === last) { if (Date.now() - since >= quietMs) return true; }
       else { last = now; since = Date.now(); }
+      // JITTER, not a fixed interval. A grab costs most of a second over adb, so
+      // fixed sampling lands about a second apart -- and a spinner that turns
+      // once a second then hashes the SAME every time, which reads as a still
+      // screen. That is how the vouch take came to mark `published` with the
+      // publish still spinning. An irregular interval cannot alias.
+      await sleep(200 + Math.floor(Math.random() * 500));
+    }
+    return false;
+  };
+
+  /// Wait until a REGION of the screen starts changing again.
+  ///
+  /// The inverse of waitForStillScreen, and the right tool when what you are
+  /// waiting for is a dialog to close. The scanner behind it is a LIVE CAMERA
+  /// PREVIEW: it never hashes the same twice, so "wait for the screen to settle"
+  /// can never succeed once the app is back on it -- six consecutive samples of
+  /// that screen gave six different hashes. Waiting for stillness there times
+  /// out and then reports a hang that never happened.
+  ///
+  /// Pass a crop that the dialog covers and the spinner does not. While the
+  /// dialog is up that area is a static form; the moment it closes, the camera
+  /// shows through and every sample differs.
+  const waitForRegionMotion = async (crop, timeout = 45000, needed = 3) => {
+    const grab = () => execFileSync('bash', ['-c',
+      `adb -s ${serial} exec-out screencap -p | ` +
+      `ffmpeg -v error -i - -vf ${crop} -f rawvideo - | md5sum | cut -d' ' -f1`],
+      { encoding: 'utf8' }).trim();
+    const t0 = Date.now();
+    let last = grab(), run = 0;
+    while (Date.now() - t0 < timeout) {
+      await sleep(200 + Math.floor(Math.random() * 400));
+      const now = grab();
+      run = now === last ? 0 : run + 1;
+      last = now;
+      if (run >= needed) return true;
+    }
+    return false;
+  };
+
+  /// The mean colour of a region of the screen, as {r,g,b}.
+  ///
+  /// Scaled to a single pixel by ffmpeg, so this is one average rather than a
+  /// hash: it answers "what colour is that part of the screen", where hashing
+  /// only answers "did it change". For the identity app that difference is the
+  /// whole game -- Flutter exposes no semantics to uiautomator (its node tree
+  /// has no text at all) and the app logs nothing, so pixels are the only
+  /// channel there is, and a saturated snackbar on a grey screen is the most
+  /// separable thing in it.
+  const regionRgb = (crop) => {
+    const buf = execFileSync('bash', ['-c',
+      `adb -s ${serial} exec-out screencap -p | ` +
+      `ffmpeg -v error -i - -vf "${crop},scale=1:1" -pix_fmt rgb24 -f rawvideo -`],
+      { maxBuffer: 1 << 20 });
+    return { r: buf[0], g: buf[1], b: buf[2] };
+  };
+
+  /// Wait until a region satisfies a colour test.
+  ///
+  /// Logs every sample, because a colour threshold that never fires is useless
+  /// without knowing what it saw -- and unlike a hash, what it saw is readable.
+  const waitForRegionColour = async (crop, test, timeout = 45000, label = '') => {
+    const t0 = Date.now();
+    let seen = [];
+    while (Date.now() - t0 < timeout) {
+      const c = regionRgb(crop);
+      seen.push(`${c.r},${c.g},${c.b}`);
+      if (test(c)) {
+        console.log(`  ${label || crop}: matched at rgb(${c.r},${c.g},${c.b})`);
+        return true;
+      }
       await sleep(250);
     }
+    console.error(`  ${label || crop}: never matched. saw ` +
+                  seen.slice(-12).map(x => `(${x})`).join(' '));
     return false;
   };
 
@@ -152,12 +224,38 @@ function device(serial = process.env.AVD || 'emulator-5554') {
   };
 
   return {
-    E, Eout, sleep, waitForStillScreen, foregroundApp, waitForApp, forwardDevtools,
+    E, Eout, sleep, waitForStillScreen, waitForRegionMotion, regionRgb,
+    waitForRegionColour, foregroundApp, waitForApp, forwardDevtools,
     stopRecording,
     brightness, waitForBright, waitForDark,
     tap: (x, y) => E('shell', 'input', 'tap', String(Math.round(x)), String(Math.round(y))),
     type: text => E('shell', 'input', 'text', text.replace(/ /g, '%s')),
     /// One character at a time, so it reads as typing rather than a paste.
+    /// Put the soft keyboard away, and say whether it was there.
+    ///
+    /// A tap at a fixed coordinate assumes a layout, and the keyboard changes
+    /// the layout: with it up, the identity app's dialog rides higher and the
+    /// coordinate meant for PUBLISH lands on the keyboard instead. It hit `j`,
+    /// which typed a j into the moniker and never pressed the button, and the
+    /// take then waited out its timeout for a result that could not come.
+    ///
+    /// BACK only when the keyboard is actually shown -- Android sends BACK to
+    /// the IME first, but with no keyboard up it goes to the app and closes the
+    /// dialog. dumpsys says which, so this never has to guess.
+    hideKeyboard: async (timeout = 4000) => {
+      const shown = () => /mInputShown=true/.test(
+        Eout('shell', 'dumpsys', 'input_method'));
+      if (!shown()) return false;
+      E('shell', 'input', 'keyevent', '4');
+      const t0 = Date.now();
+      while (Date.now() - t0 < timeout) {
+        await sleep(250);
+        if (!shown()) return true;
+      }
+      throw new Error('the soft keyboard would not go away; a tap meant for a '
+        + 'button underneath it would land on a key instead');
+    },
+
     typeSlow: async (text, perCharMs = 180) => {
       for (const ch of text) {
         E('shell', 'input', 'text', ch === ' ' ? '%s' : ch);

@@ -79,7 +79,7 @@ as one continuous take on one device, against production.
 
     ./shoot_signin.sh
 
-Output: `out/signin_<stamp>_taps.mp4`, about nine seconds. That resets all three
+Output: `out/signin/<stamp>/signin_taps.mp4`, about nine seconds. That resets all three
 pieces of sign-in state, records, and adds the touch indicators.
 
 Run the steps separately if one of them fails:
@@ -87,7 +87,7 @@ Run the steps separately if one of them fails:
     adb -s emulator-5554 forward tcp:9222 localabstract:chrome_devtools_remote
     node reset_browser.js
     node shoot_signin.js
-    node overlay_taps.js out/signin_<stamp>.mp4
+    node overlay_taps.js out/signin/<stamp>/signin.mp4
 
 Full detail, including every gotcha with its symptom, is in
 [../../doc/video/capture_manual.md](../../doc/video/capture_manual.md).
@@ -97,7 +97,7 @@ Full detail, including every gotcha with its symptom, is in
 | | |
 | --- | --- |
 | `shoot_signin.sh` | the whole cycle: reset, record, taps, annotate, trim |
-| `shoot_signin.js` | drives and records the take; writes `<stamp>.mp4` + `<stamp>.marks.json` |
+| `shoot_signin.js` | drives and records the take; writes `signin.mp4` + `signin.marks.json` into the build directory |
 | `shoot_nerdster.sh` | the same cycle for the feed take |
 | `shoot_nerdster.js` | drives and records it, then checks what it published |
 | `probe.js` | dumps the accessibility tree of whatever is on screen |
@@ -107,6 +107,7 @@ Full detail, including every gotcha with its symptom, is in
 | `overlay_taps.js` | draws the touch indicators, taps and swipes, and trims the staging head |
 | `tapframes.js` | regenerates `tapfx/`, the touch-indicator frames |
 | `lib/semantics.js` | tap by name, wait on state, assert — via Flutter's accessibility tree |
+| `lib/build_dir.js` | where a take and everything made from it lives — one stamped directory |
 | `demo_identity.json` | the ONLY keys truncation may touch |
 
 ## Why it can see what it's doing
@@ -155,7 +156,7 @@ comment.
 
     ./shoot_nerdster.sh
 
-Output: `out/nerdster_<stamp>_taps.mp4`, about sixteen seconds. Set `COMMENT=` to
+Output: `out/nerdster/<stamp>/nerdster_taps.mp4`, about sixteen seconds. Set `COMMENT=` to
 change what gets typed.
 
 ## It publishes, and the reset is nerdster-only
@@ -215,7 +216,7 @@ statements page, because a page of JSON at phone size is not readable at video
 size, and it ends on the verdict with the signer's name interpreted back out of
 the key.
 
-## Annotation — `node annotate.js cues/<name>.json out/<take>_taps.mp4`
+## Annotation — `node annotate.js cues/<name>.json <take>_taps.mp4`
 
 Both shoot scripts end with this step, so one command gets from nothing to the
 finished video. Run it on its own to re-annotate a take that already exists,
@@ -280,7 +281,7 @@ the tools here read it. `sections.py --list` shows every section and its state.
 
 `./build_scene1.sh` runs all of it — the three preamble takes, the vouch take,
 the touch indicators, the scan composite, both joins and the assembly — and
-writes `out/scene1_full_<stamp>.mp4`. It records every take fresh, so it is also
+writes `out/scene1_full/<stamp>/scene1_full.mp4`. It records every take fresh, so it is also
 the check that this repository holds what the video needs. The one thing it
 cannot regenerate is `footage/`, which is why that is tracked.
 
@@ -334,8 +335,8 @@ gives the touch indicators (`overlay_taps.js`) and lets the composite find its
 own start:
 
     node shoot_vouch.js
-    node overlay_taps.js out/vouch_<stamp>.mp4
-    ./composite_scan.sh out/vouch_<stamp>_taps.mp4 \
+    node overlay_taps.js out/vouch/<stamp>/vouch.mp4
+    ./composite_scan.sh out/vouch/<stamp>/vouch_taps.mp4 \
         footage/vouch_scan_2026-08-31.mp4 scanWindow out/scene1_vouch.mp4
 
 `scanWindow` there is a mark name, not a number — `composite_scan.sh` resolves
@@ -383,11 +384,71 @@ hint come from the footage rather than the emulator, since they are burned into
 the camera region; they line up closely enough that the seam doesn't show, which
 is luck and worth re-checking on a frame.
 
-## Assembling a review copy — `./assemble.sh`
+## How `out/` is laid out
 
-Joins the finished takes into one file with a music bed, crossfaded, encoded the
-way YouTube wants it (H.264 High, yuv420p, AAC 48k stereo, faststart). With no
-arguments it takes `out/music.m4a` and the newest annotated take of each kind.
+One stamped directory per build, and everything that build made is inside it:
+
+```
+out/vouch/20260902-101500/
+    vouch.mp4  vouch.marks.json            the take
+    vouch_taps.mp4                         touch indicators, staging head trimmed
+    vouch_taps_composited.mp4              real camera footage spliced in
+    vouch_taps_composited_annotated.mp4    prompter, beats, zooms
+    vouch_taps_composited_annotated.work/  scratch: frozen frames, card stills
+    vouch.mp4                              the finished section
+    vouch.section.json                     the manifest -- WRITTEN LAST
+out/intro_20260902-103000.mp4              a joined video
+out/intro_20260902-103000.sections.json    where each section starts in it
+out/intro_20260902-103000.chapters         the same, as chapter metadata
+```
+
+Three rules, and they are worth keeping:
+
+**The stamp is on the directory, once.** Derived files inherit the take's name,
+so one lineage carries one date and names stay readable. Nothing is overwritten,
+because nothing is written twice to the same path.
+
+**Scratch lives beside its output, named `<output>.work/`.** Not in a shared
+directory, and never wiped: the frozen frames and card stills are what you read
+when a beat lands in the wrong place, and they stay attached to the build that
+made them. If a `.work/` already exists, the tools stop — a repeat means
+something is being overwritten.
+
+**The manifest defines "complete".** `<section>.section.json` is written last and
+only on success, so a build that died partway leaves nothing that can be mistaken
+for a finished section. It records the take, the duration, and a hash of the cue
+file, which is what catches a section built before the copy changed — it still
+plays, and still says the old words.
+
+`sections.py --build <id>` makes the directory and exports `BUILD_DIR`, so the
+shoot scripts, `card.js`, `annotate.js` and `composite_scan.sh` all write into
+it. Run a shoot script by hand and it names its own stamped directory the same
+way.
+
+## Assembling a video — `sections.py --assemble intro`
+
+Reads the storyboard for the running order, takes the **newest complete build**
+of each section, and joins them:
+
+```bash
+python3 sections.py --assemble intro
+python3 sections.py --assemble intro --soundtrack soundtrack.mp3
+```
+
+**It refuses to assemble a video with a section missing**, listing what is not
+built and what is older than its copy. A cut with sections quietly left out looks
+finished and is not; that is how a partial join once got called a preview and
+reported as a result.
+
+It writes `out/intro/<stamp>/intro.mp4`, chapter metadata naming each section, and a
+`.sections.json` saying where each one starts — so a note about the cut can name
+a section instead of a timestamp, and mpv or VLC will show the section names in
+their chapter list.
+
+`assemble.sh` still does the joining and the encoding — H.264 High, yuv420p,
+AAC 48k stereo, faststart — but it no longer decides what goes in. Given no
+clips it stops and points at `--assemble`, because picking "the newest annotated
+take of each kind" was a way to build a video out of whatever was lying about.
 
 The takes are 1080x2220 — the emulator's screen, taller than 9:16 — and are kept
 that way. Fitting them to 9:16 means scaling down until there are pillars down

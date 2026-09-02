@@ -41,9 +41,19 @@ const page = card.page(lines, { W, H, fontsDir: FONTS });
 const STEP = +(process.env.WORD_STEP || 0.62);
 
 (async () => {
-  const work = path.join(__dirname, 'out', 'card');
+  // Scratch beside the output, named after it -- the same rule annotate.js
+  // follows. It used to be out/card/, shared by every build and never cleaned,
+  // so stills from six different sections piled up in one directory under names
+  // like splice0_3.png that said nothing about where they came from.
+  //
+  // Existing already is an error: output paths are stamped, so a repeat means
+  // something is being overwritten.
+  const work = out.replace(/\.mp4$/, '') + '.work';
+  if (fs.existsSync(work)) {
+    throw new Error(`${work} already exists -- ${path.basename(out)} has been built `
+      + 'before. Build directories are stamped; two builds should never share a path.');
+  }
   fs.mkdirSync(work, { recursive: true });
-  const stem = path.basename(out).replace(/\.mp4$/, '');
 
   const browser = await chromium.launch();
   const p = await browser.newPage({ viewport: { width: W, height: H } });
@@ -59,7 +69,7 @@ const STEP = +(process.env.WORD_STEP || 0.62);
     // Concatenated rather than cross-faded: the words are meant to land.
     const pngs = [];
     for (let n = 1; n <= lines.length; n++) {
-      const f = path.join(work, `${stem}_${n}.png`);
+      const f = path.join(work, `${n}.png`);
       await shoot(card.wordsPage(lines, n, { W, H, fontsDir: FONTS }), f);
       pngs.push(f);
     }
@@ -83,7 +93,7 @@ const STEP = +(process.env.WORD_STEP || 0.62);
     return;
   }
 
-  const png = path.join(work, `${stem}.png`);
+  const png = path.join(work, 'card.png');
   await shoot(page, png);
   await browser.close();
 

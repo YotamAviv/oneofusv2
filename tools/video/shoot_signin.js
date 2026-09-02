@@ -29,7 +29,8 @@ const {
 } = require('./lib/semantics');
 
 const SERIAL = process.env.AVD || 'emulator-5554';
-const OUT = path.join(__dirname, 'out');
+const { buildDir } = require('./lib/build_dir');
+const OUT = buildDir('signin');
 const E = (...a) => execFileSync('adb', ['-s', SERIAL, ...a], { stdio: 'ignore' });
 const Eout = (...a) => execFileSync('adb', ['-s', SERIAL, ...a]).toString();
 
@@ -252,17 +253,16 @@ const toDevice = (x, y) => VIEW2DEV
   await browser.close();
   // Never overwrite: every take is kept, stamped, so a good one can't be lost
   // to a later bad one. (One reshoot was already forced by a deleted raw.)
-  const d = new Date();
-  const p2 = n => String(n).padStart(2, '0');
-  const stamp = `${d.getFullYear()}${p2(d.getMonth()+1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}`;
-  const name = `signin_${stamp}`;
+  // The stamp is on the build directory (lib/build_dir.js), so the take
+  // inside it is named for what it is and nothing else.
+  const name = 'signin';
   E('pull', '/sdcard/signin.mp4', path.join(OUT, `${name}.mp4`));
   // Off the device once it is safely here. Every take used to leave its
   // recording behind, and they were quietly filling /data -- enough that an
   // apk install eventually failed for want of space.
   E('shell', 'rm', '-f', '/sdcard/signin.mp4');
   fs.writeFileSync(path.join(OUT, `${name}.marks.json`), JSON.stringify(marks, null, 2));
-  console.log(`\nout/${name}.mp4\nout/${name}.marks.json  (${marks.taps.length} taps logged)`);
+  console.log(`\n${path.relative(__dirname, path.join(OUT, `${name}.mp4`))}\n${path.relative(__dirname, path.join(OUT, `${name}.marks.json`))}  (${marks.taps.length} taps logged)`);
 })().catch(e => {
   // Loud failure is the point. Previously a wrong take produced a normal file.
   console.error('\nTAKE FAILED:', e.message);

@@ -10,9 +10,15 @@
 # To re-annotate without reshooting -- after changing the copy, or the bubble and
 # prompter styling -- run just that step against a take that already exists:
 #
-#   node annotate.js cues/crypto.json out/crypto_<stamp>_taps.mp4
+#   node annotate.js cues/crypto_chain.json out/crypto/<stamp>/crypto_taps.mp4
 set -euo pipefail
 cd "$(dirname "$0")"
+
+# One stamped directory holds the take, its intermediates and the finished
+# section. sections.py sets BUILD_DIR; run by hand, this names its own.
+BUILD_DIR="${BUILD_DIR:-out/crypto/$(date +%Y%m%d-%H%M%S)}"
+export BUILD_DIR
+mkdir -p "$BUILD_DIR"
 
 OUT="${1:-}"   # where the finished section goes, if the caller wants it somewhere
 
@@ -30,7 +36,7 @@ TAKE=$(node shoot_crypto.js | tail -2 | head -1 | tr -d ' ')
 TAPS=$(node overlay_taps.js "$TAKE" | tail -1 | cut -d' ' -f1)
 
 echo "== 3/3  prompter, bubbles and zooms =="
-ANNOTATED=$(node annotate.js cues/crypto.json "$TAPS" | tail -1 | cut -d' ' -f2)
+ANNOTATED=$(node annotate.js cues/crypto_chain.json "$TAPS" | tail -1 | cut -d' ' -f2)
 
 # An output path means sections.py --build can drive this the same as any other
 # section. Without one the caller has to go hunting for whatever was written

@@ -22,8 +22,9 @@ title: How it works
 sections:
   # -------------------------------------------------------------------------
   - id: crypto_chain
-    # The signature chain, walked: vouch -> identity key ->
-    # delegate key -> the delegation that ties them together.
+    title: "The signature chain"
+    # Walked in full: vouch -> identity key -> delegate key -> the delegation
+    # that ties them together.
     build: shoot_crypto.sh
     # The recording used to stop short, and the reason is now known. 1 Sep 2026.
     #

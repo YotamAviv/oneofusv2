@@ -1,66 +1,20 @@
 #!/usr/bin/env node
-// Shoot the delegation sequence: turn Show Crypto on in shot, pick somebody in
-// the feed who isn't me, follow them to their node in the graph, look at their
-// identity key and then the delegate key it authorised, and open the shield on
-// that delegate to see the signed statement in which one named the other --
-// toggling interpreted and raw at each key, because the readable version is the
-// Nerdster's reading and the raw one is the thing itself.
+// Shoot the HABLOTENGO section: from a stranger two hops away in the Nerdster,
+// to his keys -- two for nerdster.org and one for hablotengo.com -- and out
+// along that link to HabloTengo itself, which recognises the identity and
+// refuses it anyway.
 //
-// REQUESTED CHANGES -- Yotam, 1 Sep 2026. Built, NEVER RUN: written against a
-// dead emulator, so every selector below is read off the Nerdster source rather
-// than off a running app. Expect the first pass to need fixing, and see the
-// notes at the end of this comment for the parts most likely to be wrong.
+// The point is that a SECOND, unrelated service rides on the same identity
+// network, and that being grounded there is what lets it keep things private as
+// well as authentic. Being refused is the feature, not a failure of the take.
 //
-// The old sequence moves too quickly to follow, and it ends outside the app in
-// Chrome. The new one stays in the Nerdster and walks the delegation itself,
-// slowly. It may not end up in the brief Intro at all, so it is not bound by the
-// Intro's budget: put enough time between actions that a normal human can keep
-// up with the prompter text.
+// NEVER RUN AGAINST HABLOTENGO. The Nerdster half reuses selectors this
+// repository has exercised for weeks; everything after the link out is written
+// from an outline and is expected to need a pass on the device.
 //
-// Depends on a Nerdster change, made alongside this and tested and pushed by
-// Yotam: the crypto shield icon that already sits to the right of vouches now
-// also sits to the right of DELEGATE KEYS when Show Crypto is on, showing that
-// Hillel's identity key delegated those keys. The point of the whole section is
-// a complete cryptographic signature chain to every piece of data on screen, and
-// the delegate keys were the missing link in it.
+//   node shoot_hablotengo.js
 //
-//   1. Turn on "Show Crypto" right at the start.
-//   2. Navigate to Hillel's NodeDetail.
-//   3. Show his IDENTITY key. Click back and forth between the interpreted and
-//      un-interpreted views, and say in the prompter that the Nerdster
-//      interprets known keys to make them readable.
-//   4. Show Hillel's delegate key -- the CURRENT one, not his old delegate key.
-//   5. Click the crypto shield on it, toggle interpreted / un-interpreted again,
-//      and explain that Hillel delegated this key to nerdster.org using his
-//      identity app, and that the delegation is signed by his identity key --
-//      the key Tom vouched for.
-//
-// The take STOPS THERE. Everything the old sequence did after the delegate key
-// -- the published statements in Chrome, the pretty-print, the Verify dialog and
-// the VERIFIED verdict -- is not part of this. Whether it comes back as its own
-// section is a later question.
-//
-// UNVERIFIED, in rough order of how likely it is to bite:
-//
-//   - The shield's tooltip reaching the semantics tree as a findable name. It
-//     should, by the same route the mode button's "Interpreted → Raw" does, but
-//     that one is a FloatingActionButton's own tooltip and this is a Tooltip
-//     wrapped round an Icon. If /^Delegation statement$/ is not found, that is
-//     why, and the fix is a Semantics(label:) in CryptoShieldButton.
-//     NEEDS THE DEPLOYED NERDSTER: the tooltip is a change of 1 Sep 2026.
-//   - BACK closing the key dialogs. showDialog is barrier-dismissible and BACK
-//     should pop it, but BACK in Chrome is also a navigation; each one waits for
-//     the tabs to reappear rather than assuming.
-//   - Whether this take still truncates. The old one stopped recording at 26.5s;
-//     the best explanation is device memory pressure -- sixty-odd Chrome tabs
-//     open on the emulator -- and restarting the AVD cleared it. This records
-//     60.7s. If it comes back, the seams between the identity key, the delegate
-//     key and the delegation are where this splits into separate takes, the way
-//     build_preamble.sh joins three. See doc/video/capture_manual.md §10.
-//
-//   node shoot_crypto.js
-//
-// Writes out/crypto/<stamp>/crypto.mp4 + .marks.json.
+// Writes out/hablotengo/<stamp>/hablotengo.mp4 + .marks.json.
 //
 // PROTOTYPE. It publishes nothing, so it needs no reset and can be re-run at
 // will -- the whole sequence is reading and verifying what other people signed.
@@ -76,19 +30,22 @@ const { execFileSync, spawn } = require('child_process');
 const { chromium } = require('playwright');
 const {
   SEMANTICS_PROBE, sleep, enableSemantics, find, findAll, findStill, waitFor,
-  tapNamed, tapAt, drag, attachToAvdChrome,
+  tapNamed, tapAt, drag, assertAbsent, attachToAvdChrome,
 } = require('./lib/semantics');
 
 const SERIAL = process.env.AVD || 'emulator-5554';
 const { buildDir } = require('./lib/build_dir');
-const OUT = buildDir('crypto');
+const { device } = require('./lib/device');
+
+/// The identity this section is about. Not just anybody: the Nerdster only draws
+/// the HabloTengo link on a node that HAS a hablotengo.com delegate key, and
+/// Hillel is the one who does -- two nerdster.org delegates and one there.
+const SUBJECT = /^Hillel/;
+const d = device();
+const OUT = buildDir('hablotengo');
 const E = (...a) => execFileSync('adb', ['-s', SERIAL, ...a], { stdio: 'ignore' });
 const Eout = (...a) => execFileSync('adb', ['-s', SERIAL, ...a]).toString();
 
-// Who the sequence is about. Anyone in the feed who is neither me nor the
-// identity this phone vouched for -- the point is that the chain reaches people
-// I did not sign for myself.
-const SKIP = /^(Me|Tom)@/;
 
 function foregroundApp() {
   const m = Eout('shell', 'dumpsys', 'activity', 'activities')
@@ -143,6 +100,19 @@ const toDevice = (x, y) => ({
   await forwardDevtools();
 
   let { browser, page, cdp } = await attachToAvdChrome(chromium);
+
+  // --- reset: HabloTengo must start SIGNED OUT ---
+  //
+  // The section ends on being refused. Run it twice without this and the second
+  // take arrives at an app that already knows you, never reaches Access Denied,
+  // and quietly films the wrong ending.
+  //
+  // Through the storage service, not removeItem: Chrome flushes localStorage
+  // lazily and this take force-stops it, so unflushed deletes are lost -- which
+  // is exactly how reset_browser.js used to "verify" a sign-out that came back.
+  await cdp.send('Storage.clearDataForOrigin',
+                 { origin: 'https://hablotengo.com', storageTypes: 'local_storage' });
+  console.log('  cleared hablotengo.com sign-in state');
   const ctx = browser.contexts()[0];
 
   for (let i = 0; i < 80; i++) {
@@ -159,21 +129,25 @@ const toDevice = (x, y) => ({
   // it can only do that from a known state -- see setShowCrypto.
   await setShowCrypto(page, cdp, false);
 
-  // Somebody else has to be on screen for the sequence to mean anything, and
-  // the top card is usually just me and Tom -- so scroll until a third name
-  // shows up. Done before recording: the video starts where the point is.
+  // Who this is about. The HabloTengo link only exists on a node that has a
+  // hablotengo.com delegate key, so it cannot be just anybody -- it is Hillel,
+  // who has two nerdster.org delegates and one for hablotengo.com.
   let who = null;
   for (let i = 0; i < 16 && !who; i++) {
     who = (await findAll(page, /@nerdster\.org$/, { role: 'button' }))
-      .map(n => n.text).find(t => !SKIP.test(t));
+      .map(n => n.text).find(t => SUBJECT.test(t));
     if (!who) { await drag(cdp, 200, 600, 0, { dy: -500, holdMs: 0 }); await sleep(900); }
   }
-  if (!who) throw new Error('nobody in the feed but me and the identity I vouched for');
-  // Back to the top before recording. The app bar HIDES WHEN THE FEED SCROLLS,
-  // and the Show Crypto menu lives in it -- so a take that opens on the scrolled
-  // feed cannot reach the menu at all, which is exactly how the first run of
-  // this sequence failed. Finding their name again is done on camera below,
-  // after the crypto is on.
+  if (!who) {
+    throw new Error(`nobody matching ${SUBJECT} in the feed. This section needs an `
+      + 'identity with a hablotengo.com delegate key; without one the Nerdster '
+      + 'does not draw the HabloTengo link at all.');
+  }
+  const name = who.split('@')[0];
+  console.log(`  following ${who}`);
+  marks.subject = who;
+
+  // Back to the top: the app bar hides when the feed scrolls.
   for (let i = 0; i < 14; i++) {
     if (await find(page, /^Menu$/, { role: 'button' })) break;
     await drag(cdp, 200, 300, 0, { dy: 600, holdMs: 0 });
@@ -182,14 +156,11 @@ const toDevice = (x, y) => ({
   if (!await find(page, /^Menu$/, { role: 'button' })) {
     throw new Error('could not scroll back to the top: the app bar never reappeared');
   }
-  const name = who.split('@')[0];
-  console.log(`  following ${who}`);
-  marks.subject = who;
 
   // --- record ---
   const rec = spawn('adb', ['-s', SERIAL, 'shell', 'screenrecord',
-    '--time-limit', '180', '--bit-rate', '8000000', '/sdcard/crypto.mp4']);
-  await sleep(4000); // TODO: Reduce
+    '--time-limit', '180', '--bit-rate', '8000000', '/sdcard/hablotengo.mp4']);
+  await sleep(4000);
   await page.evaluate(() => {
     const f = document.createElement('div');
     f.id = '__syncflash';
@@ -202,139 +173,165 @@ const toDevice = (x, y) => ({
   marks.syncFlash = { heldMs: 400 };
   await sleep(900);
 
-  // --- turn the crypto on, before anything else ---
-  // Everything this section claims is invisible with Show Crypto off: the
-  // shields are what carry the chain. Doing it on camera, first, means the
-  // viewer sees the ordinary app and then sees what turning it on reveals,
-  // rather than wondering why their own Nerdster looks different from this one.
-  tapped('menu', await tapNamed(page, cdp, /^Menu$/, { role: 'button' }));
-  await sleep(1400);
-  // findStill and tapAt rather than tapNamed, for the same reason setShowCrypto
-  // uses them: the menu is still animating, and a coordinate read mid-flight
-  // lands on whatever has slid into that spot by the time the tap arrives.
-  const cryptoBox = await menuCheckbox(page, /^Show Crypto$/);
-  await tapAt(cdp, cryptoBox.x, cryptoBox.y);
-  tapped('show_crypto', cryptoBox);
-  await sleep(1200);
-  if (!await showCryptoOn(page)) throw new Error('Show Crypto did not turn on in shot');
-  mark('crypto_on');
-  await sleep(1800);
-  E('shell', 'input', 'keyevent', '4');            // close the menu
-  await sleep(1600);
+  mark('feed');
+  await sleep(2600);
 
-  // --- their name in my feed -> their node in the graph ---
-  // Scrolled to on camera, because the app bar the menu lives in is only there
-  // at the top. Their name is usually near the bottom edge when it first shows,
-  // which is where a tap lands on the browser's own chrome instead, so this
-  // keeps going until it sits in the middle of the screen.
-  for (let i = 0; i < 18; i++) {
+  // --- somebody two hops away, and their node ---
+  // Scrolled to on camera. He was found before recording so the take knows who
+  // it is about, but the feed was then put back to the top, so he is off screen
+  // again by the time it starts.
+  for (let i = 0; i < 14; i++) {
     const n = await find(page, new RegExp(`^${esc(who)}$`), { role: 'button' });
     if (n && n.y > 150 && n.y < 560) break;
     await drag(cdp, 200, 600, 0, { dy: -520, holdMs: 0 });
     await sleep(420);
   }
-  mark('scrolled_to_them');
+  mark('scrolled_to_him');
   await sleep(1400);
 
   tapped('moniker', await tapNamed(page, cdp, new RegExp(`^${esc(who)}$`), { role: 'button' }));
   await waitFor(page, new RegExp(`^${esc(name)}$`), { role: 'button' }, 20000);
   mark('graph');
-  await sleep(2200);
+  await sleep(2400);
 
   tapped('node', await tapNamed(page, cdp, new RegExp(`^${esc(name)}$`), { role: 'button' }));
   await waitFor(page, /^delegate$/, { role: 'button' }, 15000);
   mark('node_details');
-  await sleep(2400);
+  await sleep(4600);
 
-  // --- his identity key, and what "interpreted" means ---
-  // The identity tab's rows are labelled with the plain label and a trailing
-  // space -- '$label ${isCanonical ? "" : "(Replaced)"}' -- so this is a prefix
-  // match, not an anchored one.
-  tapped('identity_tab', await tapNamed(page, cdp, /^identity$/, { role: 'button' }));
-  await sleep(1800);
-  tapped('identity_key', await tapNamed(page, cdp, new RegExp(`^${esc(name)}`), { role: 'button' }));
-  // KeyInfoView opens interpreted, so the mode button offers the other way.
-  await waitFor(page, /Interpreted → Raw/, {}, 15000);
-  mark('identity_key_shown');
+  // --- his keys: two for one service, one for another ---
+  tapped('delegate_tab', await tapNamed(page, cdp, /^delegate$/, { role: 'button' }));
+  await waitFor(page, /hablotengo\.com$/, {}, 15000);
+  mark('delegates_shown');
+  await sleep(4800);
+
+  // --- the shortcut out to that other service ---
+  // The link only exists on a node that HAS a hablotengo.com delegate, which is
+  // why this section is about Hillel and not about anyone nearer.
+  const hablo = await findStill(page, /^HabloTengo$/, {});
+  const v = marks.viewportToDevice;
+  marks.habloButtonBox = {
+    x: Math.round(hablo.x * v.scale), y: Math.round(hablo.y * v.scale + v.offY),
+    w: Math.round(hablo.w * v.scale), h: Math.round(hablo.h * v.scale),
+  };
+  mark('hablotengo_link_shown');
   await sleep(3400);
 
-  tapped('identity_raw', await tapNamed(page, cdp, /Interpreted → Raw/, { role: 'button' }));
-  await waitFor(page, /"crv"/, {}, 15000);
-  mark('identity_raw_shown');
-  await sleep(4000);
+  await tapAt(cdp, hablo.x, hablo.y);
+  tapped('hablotengo', hablo);
 
-  tapped('identity_interpreted', await tapNamed(page, cdp, /Raw → Interpreted/, { role: 'button' }));
-  await waitFor(page, /Interpreted → Raw/, {}, 15000);
-  mark('identity_interpreted_shown');
-  await sleep(3600);
-
-  // Wait for the tabs to prove we are back in NodeDetails, not merely that a tap
-  // went out.
-  await dismissDialog(page, cdp);
-  await waitFor(page, /^delegate$/, { role: 'button' }, 15000);
-  await sleep(1600);
-
-  // --- his delegate key ---
-  // He has two live nerdster.org delegates, and the labeller tells them apart by
-  // suffixing one with " (2)". NEITHER is revoked -- Yotam, 1 Sep 2026 -- so
-  // this is a choice of which to film, not a correctness question, and the
-  // anchored match takes the unsuffixed one because that is the one to show.
-  tapped('delegate_tab', await tapNamed(page, cdp, /^delegate$/, { role: 'button' }));
-  await sleep(1800);
-  tapped('delegate_key', await tapNamed(page, cdp, new RegExp(`^${esc(who)}$`), { role: 'button' }));
-  await waitFor(page, /Interpreted → Raw/, {}, 15000);
-  mark('delegate_key_shown');
-  await sleep(4000);
-
-  await dismissDialog(page, cdp);
-  await waitFor(page, /^delegate$/, { role: 'button' }, 15000);
-  await sleep(1600);
-
-  // --- the delegation itself: who said this key speaks for them ---
-  // Found by name. The shield used to be an unnamed Icon and had to be tapped at
-  // a computed corner of its row; it now carries a Tooltip, which is both its
-  // accessible name and what makes it reachable from here. The delegate rows say
-  // "Delegation statement" so they can be told apart from the vouch and follow
-  // shields on the same screen, which keep the generic label.
-  tapped('shield', await tapNamed(page, cdp, /^Delegation statement$/, {}));
-  await waitFor(page, /Interpreted → Raw/, {}, 15000);
-  mark('delegation_shown');
-  await sleep(3600);
-
-  tapped('delegation_raw', await tapNamed(page, cdp, /Interpreted → Raw/, { role: 'button' }));
-  await waitFor(page, /"statement"|"I"|"crv"/, {}, 15000);
-  mark('delegation_raw_shown');
+  // node_details.dart opens hablotengo.com/app?target=<identity> with
+  // LaunchMode.externalApplication, so it arrives as a NEW TAB.
+  let hab = null;
+  for (let i = 0; i < 80 && !hab; i++) {
+    hab = ctx.pages().find(p => /hablotengo/.test(p.url()));
+    await sleep(250);
+  }
+  if (!hab) throw new Error('the HabloTengo link did not open a tab');
+  await hab.waitForLoadState('domcontentloaded').catch(() => {});
+  const hcdp = await ctx.newCDPSession(hab);
+  // Wait for Flutter to bootstrap before turning the tree on. The placeholder
+  // only exists once it has, and enabling too early leaves __sem() empty for the
+  // rest of the take -- which surfaced as "timeout waiting for the sign-in" on a
+  // screen that was plainly showing it. Not swallowed: a failure here makes
+  // everything after it meaningless.
+  for (let i = 0; i < 80; i++) {
+    if (await hab.evaluate(() => !!document.querySelector('flt-semantics-placeholder'))
+        .catch(() => false)) break;
+    await sleep(250);
+  }
+  await hab.evaluate(SEMANTICS_PROBE);
+  await enableSemantics(hab, hcdp);
+  mark('hablotengo_open');
   await sleep(4200);
 
-  tapped('delegation_interpreted', await tapNamed(page, cdp, /Raw → Interpreted/, { role: 'button' }));
-  mark('delegation_interpreted_shown');
+  // --- sign in with the identity app, and no delegate key ---
+  //
+  // UNVERIFIED. HabloTengo has never been driven by a script. The names below
+  // are the Nerdster's, on the assumption the two sign-in flows are the same
+  // widget -- they are the same paradigm and probably the same code. If this
+  // fails, dump the tree with probe.js against the hablotengo tab and fix the
+  // names here; nothing else in the take depends on them.
+  // The button, by what it says. HabloTengo's sign-in is the same widget as the
+  // Nerdster's: "Identity app on this device" over a button whose label is the
+  // link plus "Link to your ONE-OF-US.NET app".
+  const signin = await waitFor(hab, /Link to your ONE-OF-US\.NET app/, { role: 'button' }, 30000);
+  await tapAt(hcdp, signin.x, signin.y);
+  tapped('hablo_signin', signin);
+  mark('signin_open');
 
-  // The take ends here, on the delegation. Everything the old sequence did next
-  // -- out to export.nerdster.org, pretty-print, the Verify dialog, VERIFIED --
-  // is deliberately not part of this one.
-  await sleep(4500);
+  // The identity app comes forward. "No, just identity" is the one that signs in
+  // WITHOUT minting a delegate key, which is the state this section needs: an
+  // identity HabloTengo can recognise and still refuse.
+  await waitForApp('net.oneofus.app', 25000);
+  await d.waitForStillScreen(20000, 900);
+  mark('identity_app');
+  await sleep(2600);
+
+  // "No, just identity" -- NOT "Yes, create delegate".
+  //
+  // The section is about being recognised and refused anyway, so it signs in
+  // with the identity alone and takes no delegate key. Device pixels, because
+  // the identity app is native and has no semantics tree to ask: it sits one
+  // button above "Yes, create delegate", which shoot_signin.js has long had at
+  // [693, 1532]. Re-measure both together if that dialog is ever restyled.
+  const JUST_IDENTITY = [733, 1400];
+  E('shell', 'input', 'tap', String(JUST_IDENTITY[0]), String(JUST_IDENTITY[1]));
+  marks.taps.push({ t: at(), x: JUST_IDENTITY[0], y: JUST_IDENTITY[1], what: 'just_identity' });
+  mark('tap_just_identity');
+  await sleep(2400);
+
+  // Back to the browser, where HabloTengo decides what to do with an identity it
+  // can verify and has no reason to trust.
+  //
+  // Brought forward explicitly, not with BACK. shoot_signin.js uses BACK and it
+  // works there, but that flow leaves the identity app on the screen it was
+  // deep-linked into; "No, just identity" returns the app to its own main
+  // screen first, and BACK then just moves around inside it.
+  E('shell', 'am', 'start', '-a', 'android.intent.action.MAIN',
+    '-n', 'com.android.chrome/com.google.android.apps.chrome.Main');
+  await waitForApp('com.android.chrome', 25000);
+  mark('back_to_browser');
+  await sleep(1800);
+
+  // --- refused ---
+  const denied = await waitFor(hab, /Access Denied/i, {}, 45000);
+  marks.deniedBox = {
+    x: Math.round(denied.x * v.scale), y: Math.round(denied.y * v.scale + v.offY),
+    w: Math.round(denied.w * v.scale), h: Math.round(denied.h * v.scale),
+  };
+  mark('denied');
+  await sleep(5200);
   mark('done');
 
   // Stop it on the DEVICE and wait for the file to settle. Killing the local
   // adb first severs the shell before screenrecord can write its moov atom,
   // and the pulled file is then not a video at all.
-  await require('./lib/device').device().stopRecording('/sdcard/crypto.mp4');
+  await require('./lib/device').device().stopRecording('/sdcard/hablotengo.mp4');
   rec.kill();
   await browser.close();
 
   // The stamp is on the build directory (lib/build_dir.js), so the take
   // inside it is named for what it is and nothing else.
-  const nm = 'crypto';
-  E('pull', '/sdcard/crypto.mp4', path.join(OUT, `${nm}.mp4`));
+  const nm = 'hablotengo';
+  E('pull', '/sdcard/hablotengo.mp4', path.join(OUT, `${nm}.mp4`));
   // Off the device once it is safely here. Every take used to leave its
   // recording behind, and they were quietly filling /data -- enough that an
   // apk install eventually failed for want of space.
-  E('shell', 'rm', '-f', '/sdcard/crypto.mp4');
+  E('shell', 'rm', '-f', '/sdcard/hablotengo.mp4');
   fs.writeFileSync(path.join(OUT, `${nm}.marks.json`), JSON.stringify(marks, null, 2));
   console.log(`\n${path.relative(__dirname, path.join(OUT, `${nm}.mp4`))}\n${path.relative(__dirname, path.join(OUT, `${nm}.marks.json`))}  (${marks.taps.length} taps)`);
 })().catch(e => { console.error('\nTAKE FAILED:', e.message); process.exit(1); });
 
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/// The rate dialog's thumbs-up. The two thumb buttons are unlabelled, but the
+/// pair sits inside a node that says "Like or dislike": like is its left half.
+/// Lifted from shoot_nerdster.js, which reacts to a card the same way.
+async function thumbsUp(page) {
+  const n = await findStill(page, /^Like or dislike$/);
+  return { x: n.x - n.w / 4, y: n.y };
+}
 
 /// The tappable half of a MyCheckbox in the feed menu.
 ///

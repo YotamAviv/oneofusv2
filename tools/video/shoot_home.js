@@ -14,7 +14,8 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { device, sleep } = require('./lib/device');
 
-const OUT = path.join(__dirname, 'out');
+const { buildDir } = require('./lib/build_dir');
+const OUT = buildDir('home');
 const d = device();
 const APP_ICON = [536, 818];        // ONE-OF-US.NET on the home screen
 
@@ -64,12 +65,11 @@ const APP_ICON = [536, 818];        // ONE-OF-US.NET on the home screen
   // and the pulled file is then not a video at all.
   await require('./lib/device').device().stopRecording('/sdcard/home.mp4');
   rec.kill();
-  const dt = new Date(), p2 = n => String(n).padStart(2, '0');
-  const stamp = `${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}-` +
-                `${p2(dt.getHours())}${p2(dt.getMinutes())}${p2(dt.getSeconds())}`;
-  const name = `home_${stamp}`;
+  // The stamp is on the build directory (lib/build_dir.js), so the take
+  // inside it is named for what it is and nothing else.
+  const name = 'home';
   d.E('pull', '/sdcard/home.mp4', path.join(OUT, `${name}.mp4`));
   d.E('shell', 'rm', '-f', '/sdcard/home.mp4');
   fs.writeFileSync(path.join(OUT, `${name}.marks.json`), JSON.stringify(marks, null, 2));
-  console.log(`\nout/${name}.mp4\nout/${name}.marks.json`);
+  console.log(`\n${path.relative(__dirname, path.join(OUT, `${name}.mp4`))}\n${path.relative(__dirname, path.join(OUT, `${name}.marks.json`))}`);
 })().catch(e => { console.error('\nTAKE FAILED:', e.message); process.exit(1); });

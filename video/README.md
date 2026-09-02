@@ -20,7 +20,14 @@ python3 tools/video/sections.py --cues all        every section that has cues
 python3 tools/video/sections.py --check           cues/ matches these files
 python3 tools/video/sections.py --card <id>       renders a section that IS a card
 python3 tools/video/sections.py --build <id>      shoots and finishes a section
+python3 tools/video/sections.py --assemble intro  joins a video from built sections
 ```
+
+`--build` writes into a fresh stamped directory, `tools/video/out/<id>/<stamp>/`,
+and finishes by writing a manifest. `--assemble` takes the newest section that
+has one and **refuses to join a video with any section missing or built before
+its copy changed** — it names them rather than quietly leaving them out. See
+`tools/video/README.md` for the layout.
 
 **One file per video, and the order of `sections:` is the running order.** Section
 ids must be unique across every file here, because the cue files they generate

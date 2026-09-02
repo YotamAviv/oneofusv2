@@ -2,11 +2,13 @@
 # Join the finished takes into one file with a music bed, encoded the way
 # YouTube wants it.
 #
-#   ./assemble.sh out/upload.mp4 soundtrack.mp3 out/a_annotated.mp4 out/b_annotated.mp4
+#   ./assemble.sh out/intro_<stamp>.mp4 soundtrack.mp3 CLIP CLIP ...
 #
-# With no arguments it uses soundtrack.mp3 and the newest annotated take of each
-# kind, which is what a review pass wants. No soundtrack, no problem: the video
-# is built silent.
+# Normally driven by `python3 sections.py --assemble intro`, which decides WHICH
+# clips (the newest complete build of each section, in the storyboard's order)
+# and names the output. This end owns the joining and the encoding only.
+#
+# No soundtrack, no problem: the video is built silent.
 #
 # PROTOTYPE. The soundtrack is optional and never committed -- see soundtrack.json
 # for which track this was built against and where it came from.
@@ -25,11 +27,16 @@ SOUND="${2:-soundtrack.mp3}"
 if [ $# -gt 0 ]; then shift; fi
 if [ $# -gt 0 ]; then shift; fi
 CLIPS=("$@")
+# No guessing. This used to pick the newest annotated take of a couple of kinds
+# when given nothing, which was a way to build a video out of whatever happened
+# to be lying about. Sections are chosen by `sections.py --assemble`, which knows
+# the running order, takes the newest COMPLETE build of each, and refuses when
+# one is missing rather than joining what it can.
 if [ ${#CLIPS[@]} -eq 0 ]; then
-  CLIPS=(
-    "$(ls -t out/nerdster_*_taps_annotated.mp4 | head -1)"
-    "$(ls -t out/crypto_*_taps_annotated.mp4 | head -1)"
-  )
+  echo "no clips given." >&2
+  echo "  Use: python3 sections.py --assemble intro" >&2
+  echo "  This joins and encodes; it does not decide what goes in." >&2
+  exit 1
 fi
 # The soundtrack is optional and not in the repository -- the licence on a stock
 # track covers using it in a project, not redistributing the file, and this

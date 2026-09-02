@@ -65,7 +65,41 @@ const cues = JSON.parse(fs.readFileSync(cueFile, 'utf8'));
 const marks = loadMarks(inVideo);
 const resolve = (list, what) => (list || []).map(c => ({ ...c, t: timeOf(c, marks, what) }))
   .sort((a, b) => a.t - b.t);
-const beats = resolve(cues.beats, 'beat');
+// A beat can NAME A MEASUREMENT instead of carrying pixels.
+//
+//   - at: signature_shown
+//     box: signatureBox      # {x, y, w, h} the take wrote into its marks
+//     pad: 26
+//
+// anchor and spotlight are otherwise typed in by hand off a frame, which is fine
+// for something fixed -- a QR code, a toolbar -- and wrong for anything whose
+// position depends on the take. The signature line sits inside a scrolling view
+// and lands somewhere different every time; a rectangle typed for one take
+// pointed at blank white on the next. Where a shoot script can measure the
+// thing, it records the box and the cue names it.
+//
+// Boxes are in the video's own pixels, centre and size, which is what the take
+// measured them in. Explicit anchor/spotlight still win if both are given.
+function fromBox(b, marks) {
+  if (!b.box) return b;
+  const m = marks && marks[b.box];
+  if (!m) {
+    const boxes = Object.entries(marks || {})
+      .filter(([, v]) => v && typeof v === 'object' && 'w' in v && 'h' in v)
+      .map(([k]) => k);
+    throw new Error(`beat names box "${b.box}", which this take did not measure.\n` +
+      `  it measured: ${boxes.join(', ') || '(none)'}`);
+  }
+  const pad = b.pad ?? 24;
+  return {
+    ...b,
+    anchor: b.anchor ?? [Math.round(m.x), Math.round(m.y)],
+    spotlight: b.spotlight ?? [Math.round(m.x - m.w / 2 - pad), Math.round(m.y - m.h / 2 - pad),
+                               Math.round(m.w + pad * 2), Math.round(m.h + pad * 2)],
+  };
+}
+
+const beats = resolve(cues.beats, 'beat').map(b => fromBox(b, marks));
 const cards = resolve(cues.cards, 'card');
 // A card and a beat are the same act: stop the take at a mark, hold a still for
 // a moment, carry on. They differ only in what the still is -- a dimmed frame
@@ -107,8 +141,24 @@ for (const [what, list] of [['prompter line', lines], ['zoom', zooms],
 /// Where a moment in the original take lands once the pauses are spliced in.
 const shift = t => t + splices.filter(b => b.t <= t).reduce((s, b) => s + b.hold, 0);
 
-const work = path.join(__dirname, 'out', 'annotate');
-fs.rmSync(work, { recursive: true, force: true });
+// Scratch lives beside its output, named after it: <output>.work/. Nothing is
+// shared and nothing is global, so two builds cannot collide and the evidence
+// stays attached to the build that made it -- the frozen frames and card stills
+// in here are what you read when a beat lands in the wrong place.
+//
+// This used to be out/annotate/, wiped at the start of every run. That made the
+// evidence survive exactly until the next build, which is the wrong half of the
+// time to have it.
+//
+// It is an error for it to exist already. Output paths are stamped, so a
+// collision means something is being overwritten, and overwriting is how a good
+// build gets lost quietly.
+const out = inVideo.replace(/\.mp4$/, '_annotated.mp4');
+const work = out.replace(/\.mp4$/, '') + '.work';
+if (fs.existsSync(work)) {
+  throw new Error(`${work} already exists -- ${path.basename(out)} has been built `
+    + 'before. Build directories are stamped; two builds should never share a path.');
+}
 fs.mkdirSync(work, { recursive: true });
 
 (async () => {
@@ -179,11 +229,23 @@ fs.mkdirSync(work, { recursive: true });
   }
   await browser.close();
 
+  // What the finished timeline looks like, for whoever trims it.
+  //
+  // A splice STOPS the take and inserts a still, so everything after it moves
+  // later -- and a word-by-word card's length is not knowable from the cue file,
+  // because card.js builds it as a clip and ffprobe measures it. Writing it down
+  // here is the only place that knows both. sections.py reads this to end a
+  // section on its closing card instead of on whatever the take did next.
+  fs.writeFileSync(out.replace(/\.mp4$/, '') + '.timeline.json', JSON.stringify({
+    source: path.basename(inVideo),
+    duration: DUR,
+    splices: splices.map(b => ({ kind: b.kind, t: b.t, hold: +b.hold })),
+  }, null, 2) + '\n');
+
   const paused = path.join(work, 'paused.mp4');
   spliceInPauses(paused);
   const zoomed = path.join(work, 'zoomed.mp4');
   punchIn(paused, zoomed);
-  const out = inVideo.replace(/\.mp4$/, '_annotated.mp4');
   layPrompter(zoomed, out, geom);
   console.log(`\n-> ${out}`);
 })();

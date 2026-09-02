@@ -6,7 +6,7 @@
 //
 // Launch the app with nothing in it, CREATE NEW IDENTITY KEY, acknowledge the
 // congratulations, open the scanner, see Tom's phone, name him. Writes
-// out/vouch_<stamp>.mp4 + .marks.json.
+// out/vouch/<stamp>/vouch.mp4 + .marks.json.
 //
 // PROTOTYPE.
 //
@@ -31,7 +31,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const { device, sleep } = require('./lib/device');
 
 // WHY THE WAITS BELOW ARE SLEEPS, against this project's own rule. There is no
@@ -43,7 +43,8 @@ const { device, sleep } = require('./lib/device');
 // is the shortest that was reliable, plus what the shot needs for reading time.
 
 const APP = 'net.oneofus.app';
-const OUT = path.join(__dirname, 'out');
+const { buildDir } = require('./lib/build_dir');
+const OUT = buildDir('vouch');
 const d = device();
 
 // Whose key gets vouched for, and what he gets called. Tom's identity key, the
@@ -153,6 +154,55 @@ const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
   await sleep(SCAN_HOLD);
   mark('scan_hold_done');
 
+  // SALVAGE THE RECORDING, whatever happens next.
+  //
+  // The take used to pull the file only on the happy path, so a failure threw
+  // the footage away along with the error -- including the run where the publish
+  // was completed by hand and worked, which is exactly the run worth keeping.
+  // Called on the way out either way; the build still fails loudly, it just
+  // fails with the evidence on disk.
+  let pulled = false;
+  const pullTake = async () => {
+    if (pulled) return;
+    pulled = true;
+    // Stop it on the DEVICE and wait for the file to settle. Killing the local
+    // adb first severs the shell before screenrecord can write its moov atom,
+    // and the pulled file is then not a video at all.
+    try { await require('./lib/device').device().stopRecording('/sdcard/vouch.mp4'); }
+    catch (e) { console.error('  (stopRecording failed:', e.message.split('\n')[0], ')'); }
+    try { rec.kill(); } catch { /* already gone */ }
+    // The stamp is on the build directory (lib/build_dir.js), so the take
+    // inside it is named for what it is and nothing else.
+    const name = 'vouch';
+    try {
+      d.E('pull', '/sdcard/vouch.mp4', path.join(OUT, `${name}.mp4`));
+      // Off the device once it is safely here. Every take used to leave its
+      // recording behind, and they were quietly filling /data.
+      d.E('shell', 'rm', '-f', '/sdcard/vouch.mp4');
+    } catch (e) { console.error('  (pull failed:', e.message.split('\n')[0], ')'); }
+    // The snackbar's moments, read out of the take. Video time minus the sync
+    // flash offset gives the script clock the rest of the marks are on.
+    const take = path.join(OUT, `${name}.mp4`);
+    try {
+      const off = JSON.parse(execFileSync('node',
+        [path.join(__dirname, 'find_flash.js'), take], { encoding: 'utf8' })).offset;
+      const sb = JSON.parse(execFileSync('node',
+        [path.join(__dirname, 'find_snackbar.js'), take], { encoding: 'utf8' }));
+      marks.published = +(sb.appeared - off).toFixed(2);
+      if (sb.cleared !== null) marks.success_cleared = +(sb.cleared - off).toFixed(2);
+      console.log(`  published @${marks.published}s, success_cleared ` +
+                  `@${marks.success_cleared ?? '(still up at the end)'}s  (from the footage)`);
+    } catch (e) {
+      console.error('  COULD NOT FIND THE SNACKBAR:', e.message.split('\n')[0]);
+      console.error('  The take is kept. Watch it: if "Trusted: Success" is there, '
+        + 'find_snackbar.js needs its band checked against a frame of it.');
+    }
+    fs.writeFileSync(path.join(OUT, `${name}.marks.json`), JSON.stringify(marks, null, 2));
+    console.log(`\n${path.relative(__dirname, path.join(OUT, `${name}.mp4`))}\n` +
+                `${path.relative(__dirname, path.join(OUT, `${name}.marks.json`))}  ` +
+                `(${marks.taps.length} taps)`);
+  };
+
   // --- the key arrives, as if scanned ---
   // Leave the scanner FIRST. A real scan pops it and shows the dialog over the
   // main screen -- that is what the Aug 11 footage does -- whereas the deep link
@@ -176,34 +226,43 @@ const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
   // somebody they know.
   await d.typeSlow(MONIKER, 220);
   mark('typed_moniker');
+  // The keyboard away BEFORE reaching for PUBLISH. With it up the dialog rides
+  // higher and the tap below lands on the keyboard -- it hit `j`, which is how a
+  // take came back with the moniker "Tomj" and PUBLISH never pressed.
+  if (await d.hideKeyboard()) {
+    console.log('  keyboard dismissed before PUBLISH');
+    await sleep(700);
+  }
   await sleep(1800);                   // a beat on the name, then commit to it
 
   tap('publish', AT.publish);
-  await sleep(4500);                   // the statement being signed, then the
-  mark('published');                   // "Trusted: Success" snackbar
-  // Stay on it -- this is the payoff -- but not so long that the dialog closes
-  // and the scanner comes back, because the composite has ended by then and
-  // what shows through is the emulator's rendered room.
-  await sleep(2400);
+  // WAIT FOR IT, don't sleep through it. This was a blind sleep(4500) and the
+  // take ended with the spinner still turning: the dialog was never seen to
+  // close and the success never appeared, so the payoff of the whole section
+  // was a form with a spinner on it.
+  //
+  // The identity app is native, so there is no semantics tree to wait on. The
+  // screen settling is a good proxy here precisely because the thing moving IS
+  // the spinner -- once signing and publishing finish, the dialog closes and
+  // the screen stops changing.
+  // HOLD, then find the moment in the footage afterwards.
+  //
+  // Not by watching the live screen. Three detectors were written that way --
+  // hashing for stillness, for motion, and for colour -- and the reason the last
+  // one failed is worth keeping: its band sat 115px too high, caught only the
+  // snackbar's top edge, and read green-minus-red of 21 against a threshold of
+  // 25. The bar was plainly on screen and the script reported nothing, twice,
+  // for minutes at a time.
+  //
+  // find_snackbar.js reads the recording instead, at every frame rather than one
+  // sample every 250ms, and cannot be fooled by whatever adb screencap does
+  // while screenrecord holds the display. Same shape as find_flash.js: the take
+  // records, the moment is found in what it recorded.
+  //
+  // 18s covers it with room to spare -- measured, the snackbar arrives about 6s
+  // after Publish and clears about 10s after.
+  await sleep(18000);
 
-  // Stop it on the DEVICE and wait for the file to settle. Killing the local
-  // adb first severs the shell before screenrecord can write its moov atom,
-  // and the pulled file is then not a video at all.
-  await require('./lib/device').device().stopRecording('/sdcard/vouch.mp4');
-  rec.kill();                  // screenrecord finishes writing after it
-                                       // is asked to stop, and pulling early
-                                       // truncates the tail -- which cost the
-                                       // snackbar the first time
-  const dt = new Date(), p2 = n => String(n).padStart(2, '0');
-  const stamp = `${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}-` +
-                `${p2(dt.getHours())}${p2(dt.getMinutes())}${p2(dt.getSeconds())}`;
-  const name = `vouch_${stamp}`;
-  d.E('pull', '/sdcard/vouch.mp4', path.join(OUT, `${name}.mp4`));
-  // Off the device once it is safely here. Every take used to leave its
-  // recording behind, and they were quietly filling /data -- enough that an
-  // apk install eventually failed for want of space.
-  d.E('shell', 'rm', '-f', '/sdcard/vouch.mp4');
-  fs.writeFileSync(path.join(OUT, `${name}.marks.json`), JSON.stringify(marks, null, 2));
-  console.log(`\nout/${name}.mp4\nout/${name}.marks.json  (${marks.taps.length} taps)`);
+  await pullTake();
   console.log(`scan window: ${marks.scanWindow.start}s + ${SCAN_HOLD / 1000}s (script clock)`);
 })().catch(e => { console.error('\nTAKE FAILED:', e.message); process.exit(1); });

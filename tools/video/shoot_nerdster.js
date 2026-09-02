@@ -7,7 +7,7 @@
 //   adb forward tcp:9222 localabstract:chrome_devtools_remote
 //   node shoot_nerdster.js
 //
-// Writes out/nerdster_<stamp>.mp4 + .marks.json, the same contract shoot.sh's
+// Writes out/nerdster/<stamp>/nerdster.mp4 + .marks.json, the same contract shoot.sh's
 // take uses, so overlay_taps.js draws the indicators the same way.
 //
 // THIS TAKE PUBLISHES. Three statements land under the delegate key on
@@ -33,7 +33,8 @@ const {
 const { delegatesOf } = require('./truncate_statements');
 
 const SERIAL = process.env.AVD || 'emulator-5554';
-const OUT = path.join(__dirname, 'out');
+const { buildDir } = require('./lib/build_dir');
+const OUT = buildDir('nerdster');
 // Which book ends up on top depends on the feed, so the copy stays about
 // reading rather than about a particular book. COMMENT= overrides it.
 const COMMENT = process.env.COMMENT || 'Read it twice. #recommended';
@@ -352,18 +353,16 @@ async function commentField(page) {
   rec.kill();
   await browser.close();
 
-  const dt = new Date();
-  const p2 = n => String(n).padStart(2, '0');
-  const stamp = `${dt.getFullYear()}${p2(dt.getMonth() + 1)}${p2(dt.getDate())}-` +
-                `${p2(dt.getHours())}${p2(dt.getMinutes())}${p2(dt.getSeconds())}`;
-  const name = `nerdster_${stamp}`;
+  // The stamp is on the build directory (lib/build_dir.js), so the take
+  // inside it is named for what it is and nothing else.
+  const name = 'nerdster';
   E('pull', '/sdcard/nerdster.mp4', path.join(OUT, `${name}.mp4`));
   // Off the device once it is safely here. Every take used to leave its
   // recording behind, and they were quietly filling /data -- enough that an
   // apk install eventually failed for want of space.
   E('shell', 'rm', '-f', '/sdcard/nerdster.mp4');
   fs.writeFileSync(path.join(OUT, `${name}.marks.json`), JSON.stringify(marks, null, 2));
-  console.log(`\nout/${name}.mp4\nout/${name}.marks.json  ` +
+  console.log(`\n${path.relative(__dirname, path.join(OUT, `${name}.mp4`))}\n${path.relative(__dirname, path.join(OUT, `${name}.marks.json`))}  ` +
               `(${marks.taps.length} taps, ${marks.swipes.length} swipes)`);
 })().catch(e => {
   console.error('\nTAKE FAILED:', e.message);

@@ -215,10 +215,31 @@ async function typeText(cdp, text, perCharMs = 55) {
 ///
 /// Note the page is already loaded when we attach, so addInitScript is too late
 /// — the probe is injected directly instead.
+/// Attach to Chrome on the device, and LEAVE EXACTLY ONE TAB OPEN.
+///
+/// `am force-stop com.android.chrome` does not close tabs -- Chrome restores the
+/// whole set on its next launch -- so every take of every section used to leave
+/// its tabs behind for good. They accumulate forever, and they are not free:
+/// sixty of them starved screenrecord's encoder badly enough that takes stopped
+/// recording at 26.5 seconds and two days went into looking for the cause
+/// somewhere else. See doc/video/capture_manual.md §10.
+///
+/// Two scripts closed stale tabs by hand and six did not. It belongs here, where
+/// every script already passes and where the tab set first becomes visible.
+///
+/// The count is logged rather than asserted. A take that legitimately opens a
+/// second tab does so later, after staging; a number that creeps up here means
+/// something upstream is opening tabs it never closes.
 async function attachToAvdChrome(chromium, port = 9222) {
   const browser = await chromium.connectOverCDP(`http://localhost:${port}`);
   const ctx = browser.contexts()[0];
   const page = ctx.pages().find(p => !p.url().startsWith('chrome://')) || ctx.pages()[0];
+  let closed = 0;
+  for (const p of ctx.pages()) {
+    if (p === page) continue;
+    try { await p.close(); closed++; } catch { /* already gone */ }
+  }
+  if (closed) console.log(`  closed ${closed} stale tab(s)`);
   await page.evaluate(SEMANTICS_PROBE);
   const cdp = await ctx.newCDPSession(page);
   return { browser, page, cdp };

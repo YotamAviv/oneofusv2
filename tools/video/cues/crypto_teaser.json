@@ -6,32 +6,86 @@
   ],
   "prompter": [
     {
+      "at": "feed",
+      "after": 0.4,
+      "text": "A quick look.. How the crypto is used."
+    },
+    {
       "at": "crypto_on",
-      "text": "Turn on Show Crypto."
+      "text": "Show Crypto: Every rating, follow and vouch now carries a shield --\nthe signed statement behind it, yours or anyone's.."
     },
     {
-      "at": "vouch_shown",
-      "text": "Every vouch is a statement somebody signed.\nThis is one, read back to you."
+      "at": "fyi_on",
+      "text": "Show FYI: Show each statement as it's signed and publisheed."
     },
     {
-      "at": "vouch_raw_shown",
-      "text": "And this is the statement itself."
+      "at": "fyi_shown",
+      "text": "What's about to be signed and published.."
     },
     {
-      "at": "statements_tab",
-      "text": "Signed, published, and out on the open web\nfor anyone to check."
+      "at": "published_shown",
+      "text": "Published. Intepreted and slightly more readable (keys to names)."
+    },
+    {
+      "at": "raw_shown",
+      "text": "The published statement, raw, un-interpreted."
+    },
+    {
+      "at": "signature_shown",
+      "text": "Cryptographically signed using your Nerdster delegate key."
+    },
+    {
+      "at": "dismissed",
+      "text": "All three apps work this way: signed statements,\nmade with the keys you delegate for their use."
+    },
+    {
+      "at": "loading",
+      "text": "Fetching statements, verifying signatures --\nthe only source of all content shown."
     }
   ],
-  "cards": [
+  "beats": [
     {
-      "at": "statements_tab",
-      "after": 3.0,
-      "hold": 4.0,
-      "lines": [
-        "How the chain is built and checked:",
-        "in the next video.",
-        "Crypto demos are on ONE-0F-US.NET now."
-      ]
+      "at": "fyi_shown",
+      "after": 1.6,
+      "hold": 2.0,
+      "text": "FYI, just to highlight how this paradigm works.",
+      "anchor": [
+        540,
+        1224
+      ],
+      "spotlight": [
+        44,
+        1150,
+        992,
+        150
+      ],
+      "y": 820
+    },
+    {
+      "at": "signature_shown",
+      "after": 1.2,
+      "hold": 2.0,
+      "text": "Key and signature makes the statement portable,\nUsable by any service.",
+      "box": "signatureBox",
+      "pad": 30,
+      "y": 1060
+    },
+    {
+      "at": "loading",
+      "after": 0.5,
+      "hold": 3.0,
+      "text": "Fetching statements, verifying signatures ..",
+      "anchor": [
+        540,
+        300
+      ],
+      "spotlight": [
+        0,
+        250,
+        1080,
+        90
+      ],
+      "y": 560
     }
   ]
 }

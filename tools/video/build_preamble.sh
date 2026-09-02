@@ -4,7 +4,7 @@
 #
 #   ./build_preamble.sh
 #
-# Writes out/scene0_preamble_<stamp>.mp4, about six seconds. It wipes nothing and
+# Writes out/preamble/<stamp>/preamble.mp4, about six seconds. It wipes nothing and
 # publishes nothing, so it can be re-recorded as often as the words change --
 # which is why it is its own scene and its own script. build_scene1.sh calls it.
 #
@@ -17,10 +17,13 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-STAMP="${STAMP:-$(date +%Y%m%d-%H%M%S)}"
-OUT="${1:-out/scene0_preamble_${STAMP}.mp4}"
+# One stamped directory holds all three takes, the card and the joined result.
+# sections.py sets BUILD_DIR; run by hand, this names its own the same way.
+BUILD_DIR="${BUILD_DIR:-out/preamble/$(date +%Y%m%d-%H%M%S)}"
+export BUILD_DIR
+mkdir -p "$BUILD_DIR"
+OUT="${1:-$BUILD_DIR/preamble.mp4}"
 
-newest() { ls -t "$@" 2>/dev/null | head -1; }
 at() { node -e "
   const { loadMarks, TRIM_PAD } = require('./lib/marks');
   const m = loadMarks(process.argv[1]);
@@ -30,7 +33,7 @@ at() { node -e "
 
 echo "== 1/4  the page, and a finger on the Play badge =="
 node shoot_browser.js >/dev/null
-BROWSER=$(newest out/browser_*.mp4 | grep -v taps || newest out/browser_*.mp4)
+BROWSER="$BUILD_DIR/browser.mp4"
 node overlay_taps.js "$BROWSER" >/dev/null 2>&1
 BROWSER_T="${BROWSER%.mp4}_taps.mp4"
 
@@ -39,13 +42,13 @@ python3 sections.py --card preamble >/dev/null
 
 echo "== 3/4  the home screen, and a finger on the app =="
 node shoot_home.js >/dev/null
-HOME=$(newest out/home_*.mp4 | grep -v taps || newest out/home_*.mp4)
+HOME="$BUILD_DIR/home.mp4"
 node overlay_taps.js "$HOME" >/dev/null 2>&1
 HOME_T="${HOME%.mp4}_taps.mp4"
 
 echo "== 4/4  joining =="
 ffmpeg -y -v error -ss "$(at "$BROWSER_T" page 0.7)" -i "$BROWSER_T" \
-  -i out/card_preamble.mp4 \
+  -i "$BUILD_DIR/card_preamble.mp4" \
   -ss "$(at "$HOME_T" home_screen 0.5)" -i "$HOME_T" \
   -filter_complex "[0:v]fps=25,setsar=1[a];[1:v]fps=25,setsar=1[b];[2:v]fps=25,setsar=1[c];\
 [a][b][c]concat=n=3:v=1:a=0,format=yuv420p[v]" \

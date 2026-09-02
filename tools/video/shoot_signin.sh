@@ -14,13 +14,19 @@
 # anywhere else, because reshooting costs the delegate key and a round of
 # publishing -- run just that step against a take that already exists:
 #
-#   node annotate.js cues/signin.json out/signin_<stamp>_taps.mp4
+#   node annotate.js cues/signin.json out/signin/<stamp>/signin_taps.mp4
 #
 # Prerequisites (see README.md): an Android emulator running, Chrome on it, a
 # filmTools build of the identity app installed, and one-of-us.net approved as a
 # link handler.
 set -euo pipefail
 cd "$(dirname "$0")"
+
+# One stamped directory holds the take, its intermediates and the finished
+# section. sections.py sets BUILD_DIR; run by hand, this names its own.
+BUILD_DIR="${BUILD_DIR:-out/signin/$(date +%Y%m%d-%H%M%S)}"
+export BUILD_DIR
+mkdir -p "$BUILD_DIR"
 
 OUT="${1:-}"   # where the finished section goes, if the caller wants it somewhere
 

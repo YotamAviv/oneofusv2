@@ -16,6 +16,10 @@
     {
       "at": "scanner",
       "text": "Scan somebody you know."
+    },
+    {
+      "at": "published",
+      "text": "Signed on the phone. Published to the network."
     }
   ],
   "cards": [
@@ -29,8 +33,8 @@
       ]
     },
     {
-      "at": "published",
-      "after": 2.5,
+      "at": "success_cleared",
+      "after": 0.6,
       "hold": 3.5,
       "lines": [
         "That's it.",

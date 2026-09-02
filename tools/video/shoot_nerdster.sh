@@ -15,9 +15,15 @@
 # or the bubble and prompter styling -- run just that step against a take that
 # already exists:
 #
-#   node annotate.js cues/nerdster.json out/nerdster_<stamp>_taps.mp4
+#   node annotate.js cues/nerdster.json out/nerdster/<stamp>/nerdster_taps.mp4
 set -euo pipefail
 cd "$(dirname "$0")"
+
+# One stamped directory holds the take, its intermediates and the finished
+# section. sections.py sets BUILD_DIR; run by hand, this names its own.
+BUILD_DIR="${BUILD_DIR:-out/nerdster/$(date +%Y%m%d-%H%M%S)}"
+export BUILD_DIR
+mkdir -p "$BUILD_DIR"
 
 OUT="${1:-}"   # where the finished section goes, if the caller wants it somewhere
 
