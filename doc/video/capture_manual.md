@@ -54,7 +54,7 @@ is the part that isn't obvious from the code.
 ```bash
 cd ~/src/github/oneofus/tools/video
 npm install && npx playwright install chromium ffmpeg   # first time only
-node record_nerdster.js --scene identity-bar --pov milhouse   # not committed
+node record_nerdster.js --scene identity-bar --pov milhouse
 ./build.sh milhouse_identity-bar captions/milhouse_identity_bar.ass
 ```
 
@@ -112,8 +112,10 @@ build and renders more jankily — fine for finding coordinates, not for footage
 trims on those marks rather than hand-timed offsets, so the trim follows the take.
 
 > Rig A's files (`record_nerdster.js`, `build.sh`, `bubbles.js`, `captions/`, the VO
-> scripts) are kept on disk but **not committed** — only the sign-in pipeline is. They work,
-> but they haven't been through the cleanup the sign-in rig has.
+> scripts) **are committed now**, as of 2026-09-01. They were deliberately left out while
+> only the sign-in pipeline was considered finished, and that was a bad trade: work that
+> only exists in one working copy is work that a clean clone silently loses. They still
+> haven't had the cleanup the AVD rig has — treat them as working, not polished.
 
 ---
 
