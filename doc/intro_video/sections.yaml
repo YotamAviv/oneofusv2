@@ -58,7 +58,7 @@ sections:
   # -------------------------------------------------------------------------
   - id: preamble
     # Getting the app
-    build: shoot_browser + card + shoot_home    # tools/intro_video/build_scene1.sh
+    build: build_preamble.sh    # its own shape: three takes and a card, joined
     status: built
     # Three short takes and a card, joined. People can navigate to a web page and
     # install an app without being shown how, so this does not type an address or
@@ -79,8 +79,18 @@ sections:
   # -------------------------------------------------------------------------
   - id: vouch
     # Our. Own. Decentralized. Identity. Network.
-    build: shoot_vouch          # tools/intro_video/build_scene1.sh
+    build: shoot_vouch.js
     status: built
+    # Where the section starts. Every take opens with a sync flash and a launch;
+    # this is the first mark worth seeing, and the words card is spliced here.
+    trim: welcome
+    # The one shot nothing can generate: a real phone, a real card, a real scan.
+    # Composited BEFORE annotation -- see sections.py build().
+    composite:
+      footage: footage/vouch_scan_2026-08-31.mp4
+      window: scanWindow
+      hold: 0.7
+      fade: 0.15
     prompter:
       - {t: 0.3, text: "A phone with no keys on it."}
       - {at: tap_create_key, text: "One tap and it has an identity."}
@@ -109,8 +119,11 @@ sections:
   # -------------------------------------------------------------------------
   - id: invite
     # You have to be trusted, too
-    build: shoot_invite
+    build: shoot_invite.js
     status: built
+    # A cold start spends eight seconds reloading what the identity published;
+    # the scene begins once that has settled.
+    trim: main_screen
     # NOT A LIMITATION -- a thing people have to do. Two points, and the second
     # is the one that makes the network possible at all:
     #
@@ -143,7 +156,7 @@ sections:
   # -------------------------------------------------------------------------
   - id: nerdster
     # Enter the Nerdster!
-    build: shoot_nerdster
+    build: shoot_nerdster.sh
     status: built
     # A gong, like Enter the Dragon. NO ASSET -- deferred 2026-09-01.
     prompter:
@@ -196,7 +209,7 @@ sections:
   # -------------------------------------------------------------------------
   - id: crypto
     # How? Turn on the crypto
-    build: shoot_crypto
+    build: shoot_crypto.sh
     status: built
     # The Nerdster is specifically designed to highlight how this works.
     prompter:

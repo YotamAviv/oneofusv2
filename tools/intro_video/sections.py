@@ -20,7 +20,7 @@ sitting in a shell script rather than in the doc that is supposed to hold them.
 The rest (flashes, actions, announce, defer, todo) is for people, and for
 whoever builds those sections next.
 """
-import argparse, json, subprocess, sys
+import argparse, json, os, re, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -70,6 +70,115 @@ def write_cues(section, quiet=False):
     return path
 
 
+def render_card(sid, card, out):
+    """One card to a clip. `words:` arrive one at a time; `lines:` is a heading
+    and the rest."""
+    if 'words' in card:
+        args = ['--words'] + [str(w) for w in card['words']]
+    elif 'lines' in card:
+        args = [str(l) for l in card['lines']]
+    else:
+        sys.exit(f"'{sid}' has a card with neither words: nor lines:")
+    run(['node', 'card.js', out, card['hold']] + args)
+
+
+def run(cmd, **kw):
+    print('  ' + ' '.join(str(c) for c in cmd))
+    subprocess.run([str(c) for c in cmd], check=True, cwd=HERE, **kw)
+
+
+def newest_take(stem):
+    """The take a shoot script just wrote -- the raw one, not its derivatives."""
+    made = [p for p in (HERE / 'out').glob(f'{stem}_*.mp4')
+            if not re.search(r'_(taps|composited|annotated)', p.name)]
+    if not made:
+        sys.exit(f"{stem} left no take in out/ -- did the shoot fail?")
+    return max(made, key=lambda p: p.stat().st_mtime)
+
+
+def mark_seconds(video, mark):
+    """Where a mark lands in the trimmed take, asked of lib/marks.js so the
+    definition of that lives in exactly one place."""
+    return subprocess.run(
+        ['node', '-e', """
+        const { loadMarks, TRIM_PAD } = require('./lib/marks');
+        const m = loadMarks(process.argv[1]);
+        const v = m[process.argv[2]];
+        if (typeof v !== 'number') {
+          console.error(`no mark "${process.argv[2]}" in that take`); process.exit(1);
+        }
+        console.log((v - TRIM_PAD).toFixed(2));
+        """, str(video), mark],
+        cwd=HERE, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def build(section):
+    """Shoot a section and finish it, in the one order that works.
+
+    Compositing precedes annotation: annotation splices cards and beats into the
+    timeline and everything after them moves, while the composite resolves its
+    window against the marks as recorded. Getting that backwards puts the footage
+    seconds away from where it belongs and shows the emulator's rendered room
+    instead, which is not obvious from the output -- it just looks wrong.
+
+    Nothing here has a default. A section that does not say what it needs stops.
+    """
+    sid = section['id']
+    out = HERE / 'out' / f'section_{sid}.mp4'
+    how = section['build']
+
+    if how == 'card':
+        cards = section.get('cards')
+        if not cards or len(cards) != 1:
+            sys.exit(f"'{sid}' builds as a card but has "
+                     f"{len(cards or [])} of them; it needs exactly one")
+        render_card(sid, cards[0], out)
+        print(f'\n  {out.relative_to(HERE)}')
+        return
+
+    if how.endswith('.sh'):
+        # A section whose shape is its own -- the preamble joins three takes and
+        # a card. The script takes its output path and owns the rest.
+        run(['./' + how, out])
+        print(f'\n  {out.relative_to(HERE)}')
+        return
+
+    if not how.endswith('.js'):
+        sys.exit(f"'{sid}' has build: {how} -- expected 'card', a .js shoot "
+                 "script, or a .sh that takes an output path")
+
+    stem = how[len('shoot_'):-len('.js')] if how.startswith('shoot_') else how[:-3]
+    run(['node', how])
+    take = newest_take(stem)
+    run(['node', 'overlay_taps.js', take])
+    cur = take.with_name(take.stem + '_taps.mp4')
+
+    comp = section.get('composite')
+    if comp:
+        for k in ('footage', 'window', 'hold', 'fade'):
+            if k not in comp:
+                sys.exit(f"'{sid}' composite is missing '{k}'")
+        nxt = cur.with_name(cur.stem + '_composited.mp4')
+        run(['./composite_scan.sh', cur, comp['footage'], comp['window'], nxt],
+            env={**os.environ, 'HOLD': str(comp['hold']), 'FADE': str(comp['fade'])})
+        cur = nxt
+
+    if cue_file(section):
+        run(['node', 'annotate.js', f'cues/{sid}.json', cur])
+        cur = cur.with_name(cur.stem + '_annotated.mp4')
+
+    trim = section.get('trim')
+    if trim is None:
+        sys.exit(f"'{sid}' does not say what to trim to. Every take opens with a "
+                 "sync flash and a launch; `trim: <mark>` says where the section "
+                 "actually starts.")
+    at = mark_seconds(cur, trim)
+    print(f'  trim to {trim} at {at}s')
+    run(['ffmpeg', '-y', '-v', 'error', '-ss', at, '-i', cur,
+         '-c:v', 'libx264', '-crf', '19', '-preset', 'medium', '-pix_fmt', 'yuv420p', out])
+    print(f'\n  {out.relative_to(HERE)}')
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -77,8 +186,16 @@ def main():
     p.add_argument('--cues', metavar='ID')
     p.add_argument('--check', action='store_true')
     p.add_argument('--card', metavar='ID', help="render this section's card")
+    p.add_argument('--build', metavar='ID', help='shoot and finish a section')
     args = p.parse_args()
     doc, sections = load()
+
+    if args.build:
+        s = sections.get(args.build)
+        if s is None:
+            sys.exit(f"no section '{args.build}'. Try --list.")
+        build(s)
+        return
 
     if args.card:
         s = sections.get(args.card)
@@ -92,15 +209,7 @@ def main():
                      "section whose card IS the section. A card that lands inside a "
                      "take is spliced by annotate.js from the cue file instead.")
         card = cards[0]
-        out = HERE / 'out' / f"card_{args.card}.mp4"
-        if 'words' in card:
-            cmd = ['node', str(HERE / 'card.js'), str(out),
-                   str(card['hold']), '--words'] + [str(w) for w in card['words']]
-        else:
-            cmd = ['node', str(HERE / 'card.js'), str(out),
-                   str(card['hold'])] + [str(l) for l in card['lines']]
-        print(' '.join(cmd))
-        subprocess.run(cmd, check=True)
+        render_card(args.card, card, HERE / 'out' / f"card_{args.card}.mp4")
         return
 
     if args.list or not (args.cues or args.check):
