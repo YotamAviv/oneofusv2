@@ -1,0 +1,37 @@
+{
+  "_comment": [
+    "Generated from video/ -- section 'crypto_teaser'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/intro_video/sections.py --cues crypto_teaser"
+  ],
+  "prompter": [
+    {
+      "at": "crypto_on",
+      "text": "Turn on Show Crypto."
+    },
+    {
+      "at": "vouch_shown",
+      "text": "Every vouch is a statement somebody signed.\nThis is one, read back to you."
+    },
+    {
+      "at": "vouch_raw_shown",
+      "text": "And this is the statement itself."
+    },
+    {
+      "at": "statements_tab",
+      "text": "Signed, published, and out on the open web\nfor anyone to check."
+    }
+  ],
+  "cards": [
+    {
+      "at": "statements_tab",
+      "after": 3.0,
+      "hold": 4.0,
+      "lines": [
+        "How the chain is built and checked:",
+        "in the next video.",
+        "Crypto demos are on ONE-0F-US.NET now."
+      ]
+    }
+  ]
+}

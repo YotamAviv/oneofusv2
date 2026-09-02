@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Generated from video/storyboard.yaml -- section 'liberated'.",
+    "Generated from video/ -- section 'liberated'.",
     "Edit the copy THERE, not here, and run:",
     "  python3 tools/intro_video/sections.py --cues liberated"
   ],

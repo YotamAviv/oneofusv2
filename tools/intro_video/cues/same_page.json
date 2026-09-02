@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Generated from video/storyboard.yaml -- section 'same_page'.",
+    "Generated from video/ -- section 'same_page'.",
     "Edit the copy THERE, not here, and run:",
     "  python3 tools/intro_video/sections.py --cues same_page"
   ],

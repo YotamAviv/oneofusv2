@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read the sections doc, and write what the tools eat.
+"""Read the storyboards, and write what the tools eat.
 
     python3 sections.py --list             what exists, and its state
     python3 sections.py --cues nerdster    writes cues/nerdster.json
@@ -7,10 +7,10 @@
     python3 sections.py --check            cues/ matches the doc
     python3 sections.py --card preamble    renders that section's card to out/
 
-video/storyboard.yaml is where the copy lives, because a person editing
-what the video says should not have to edit JSON, and because prose wants
-comments and line breaks that JSON has no room for. annotate.js still eats
-cues/*.json; this is the step between.
+video/*.yaml is where the copy lives -- one file per video -- because a person
+editing what the video says should not have to edit JSON, and because prose
+wants comments and line breaks that JSON has no room for. annotate.js still
+eats cues/*.json; this is the step between. The schema is in video/README.md.
 
 prompter, beats and zooms become cue files, which is what annotate.js reads.
 Cards are rendered straight from here by card.js -- the card in the preamble is
@@ -24,7 +24,7 @@ import argparse, json, os, re, subprocess, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-DOC = HERE.parent.parent / 'video' / 'storyboard.yaml'
+VIDEOS = HERE.parent.parent / 'video'
 CUES = HERE / 'cues'
 
 # What annotate.js reads, and nothing else. Cards are in here because a card at
@@ -34,13 +34,34 @@ CUE_KEYS = ('prompter', 'zooms', 'beats', 'cards')
 
 
 def load():
+    """Every storyboard in video/, and every section in them, by id.
+
+    Ids have to be unique across files because the cue files they generate share
+    one directory. This used to resolve a duplicate silently -- last one wins --
+    and a whole section went missing behind another that happened to sort later.
+    Refuse instead, and say where both are.
+    """
     try:
         import yaml
     except ImportError:
         sys.exit('needs PyYAML:  pip install pyyaml')
-    doc = yaml.safe_load(DOC.read_text())
-    sections = {s['id']: s for s in doc['sections']}
-    return doc, sections
+    videos, sections, seen = [], {}, {}
+    files = sorted(VIDEOS.glob('*.yaml'))
+    if not files:
+        sys.exit(f'no storyboards in {VIDEOS}')
+    for f in files:
+        doc = yaml.safe_load(f.read_text())
+        doc['file'] = f
+        videos.append(doc)
+        for s in doc['sections']:
+            sid = s['id']
+            if sid in seen:
+                sys.exit(f"duplicate section id '{sid}': in {seen[sid].name} "
+                         f"and {f.name}. Ids are shared across all of video/ "
+                         f"because cues/ is one directory.")
+            seen[sid] = f
+            sections[sid] = s
+    return videos, sections
 
 
 def cue_file(section):
@@ -49,7 +70,7 @@ def cue_file(section):
     if not cues:
         return None
     out = {'_comment': [
-        f"Generated from video/storyboard.yaml -- section '{section['id']}'.",
+        f"Generated from video/ -- section '{section['id']}'.",
         "Edit the copy THERE, not here, and run:",
         f"  python3 tools/intro_video/sections.py --cues {section['id']}",
     ]}
@@ -188,7 +209,7 @@ def main():
     p.add_argument('--card', metavar='ID', help="render this section's card")
     p.add_argument('--build', metavar='ID', help='shoot and finish a section')
     args = p.parse_args()
-    doc, sections = load()
+    videos, sections = load()
 
     if args.build:
         s = sections.get(args.build)
@@ -213,22 +234,16 @@ def main():
         return
 
     if args.list or not (args.cues or args.check):
-        for name, video in doc['videos'].items():
-            ids = video['sections']
-            print(f"\n{name}   ({len(ids)} sections)")
+        for doc in videos:
+            ids = [s['id'] for s in doc['sections']]
+            print(f"\n{doc['title']}   ({doc['file'].name}, {len(ids)} sections)")
             for i, sid in enumerate(ids, 1):
-                s = sections.get(sid)
-                if s is None:
-                    print(f"  {i:2}. {sid}  -- NOT IN sections:")
-                    continue
+                s = sections[sid]
                 extras = [k for k in ('flash', 'announce', 'actions',
                                       'defer', 'todo') if s.get(k)]
                 cues = [f'{len(s[k])} {k}' for k in CUE_KEYS if s.get(k)]
-                print(f"  {i:2}. {sid:22} {s['status']:9} build={s['build']:14} "
+                print(f"  {i:2}. {sid:22} {s['status']:9} build={s['build']:22} "
                       f"{', '.join(cues + extras)}")
-        orphans = set(sections) - {i for v in doc['videos'].values() for i in v['sections']}
-        if orphans:
-            print(f"\nnot in any video: {', '.join(sorted(orphans))}")
         return
 
     if args.check:

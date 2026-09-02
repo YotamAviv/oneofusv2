@@ -1,60 +1,25 @@
-# The video, as sections. This file is the copy.
+# The intro video, as sections. This file is the copy.
 #
-# Everything a person would want to change -- what is said, when it is said, what
-# gets pointed at -- lives here. The scripts under tools/intro_video/ record the
-# app; this says what the recording means. Change a word here, re-run the
-# annotation, and the video says something different without reshooting anything.
+# Everything a person would want to change -- what is said, when it is said,
+# what gets pointed at -- lives here. The scripts under tools/intro_video/
+# record the app; this says what the recording means. Change a word here,
+# re-run the annotation, and the video says something different without
+# reshooting anything.
+#
+# THE SCHEMA IS IN video/README.md. Read it once; it explains prompter, beats,
+# cards, zooms, how a cue says WHEN, and why beat coordinates are the one
+# unfriendly thing in these files.
 #
 #   python3 tools/intro_video/sections.py --list          what exists, and its state
-#   python3 tools/intro_video/sections.py --cues nerdster writes cues/nerdster.json
+#   python3 tools/intro_video/sections.py --cues <id>     writes cues/<id>.json
 #
-# FOUR THINGS CAN BE ON SCREEN, and each has a key below.
-#
-#   prompter  the running commentary along the bottom, scrolling as the take goes
-#   beats     the video STOPS -- pause bars, everything dimmed but one spotlit
-#             thing, and a bubble pointing at it
-#   cards     the video STOPS and a screen of text takes over. Same act as a
-#             beat, different still. `lines:` renders the first large and the
-#             rest smaller; `words:` makes them arrive one at a time and stay.
-#             A section whose card IS the section (no take) has exactly one, and
-#             `sections.py --card <id>` renders it.
-#   zooms     a punch-in, for the moments made of small text
-#   flash     a buzzword, bright, then gone.  NOT BUILT YET.
-#
-# All of them say WHEN the same way, so a card can land anywhere in a section --
-# `t: 0` is its start, a late mark is its end, and any mark is anywhere between.
-#
-# WHEN is a mark the take recorded, not a number of seconds: `at: tap_publish`.
-# Reshooting moves every number and none of the names. `after:` offsets from the
-# mark; a plain `t:` still works where nothing suitable is named. The marks a
-# take records are in its out/<stamp>.marks.json.
-#
-# The coordinates in a beat -- anchor, spotlight -- are pixels on a particular
-# take, and are the one thing here that isn't human-friendly. Set them once by
-# looking at a frame; remeasure if the app's layout moves.
+# ONE FILE PER VIDEO, and the order of `sections:` IS the running order. Section
+# ids have to be unique across all of video/*.yaml, because the cue files they
+# generate share one directory; sections.py refuses duplicates.
 
-# ---------------------------------------------------------------------------
-# WHICH SECTIONS MAKE WHICH VIDEO
-#
-# Sections are not tagged short/long, because "short" and "long" aren't
-# properties of a section -- the same section can be in a two-minute intro and in
-# a fifteen-minute talk shot on a big screen for viewing portrait on a TV. So a
-# video is a list of sections in order, and a section can be in more than one.
-videos:
-  intro:
-    # Our Own Open Decentralized Identity Network
-    sections: [preamble, vouch, invite, nerdster, another_one, crypto, hablotengo,
-               people_not_accounts, same_page, liberated, decentralized, opt_in]
+title: Our Own Open Decentralized Identity Network
 
-  # A place to grow into. Sections that are too long or too subtle for the intro
-  # go here rather than being dropped -- see crypto's `defer:` block.
-  long:
-    # (unnamed, 10-15 minutes)
-    sections: []
-
-# ---------------------------------------------------------------------------
 sections:
-
   # -------------------------------------------------------------------------
   - id: preamble
     # Getting the app
@@ -207,75 +172,54 @@ sections:
           - "Open: any service can leverage it, and contribute to it."
 
   # -------------------------------------------------------------------------
-  - id: crypto
-    # How? Turn on the crypto
-    build: shoot_crypto.sh
-    # The recording used to stop short, and the reason is now known. 1 Sep 2026.
+  - id: crypto_teaser
+    # How? Turn on the crypto -- a taste of it
+    build: shoot_crypto_teaser.js
+    status: to_build
+    # The intro shows that the crypto is REAL and stops. The full walk -- identity
+    # key, delegate key, the delegation that ties them -- is its own section in
+    # video/how_it_works.yaml, because at four seconds a line it runs a minute,
+    # which is half the intro's budget for one idea.
     #
-    # Every take of this section stopped producing frames at 26.5-27.2s for two
-    # days. The takes whose FILES ran 33-37s were not counter-examples: they hold
-    # the same ~26.5s of real frames and then one frozen frame to the end, which
-    # pads the container duration and hides it. Count frames, not seconds.
+    # Three beats and a card. Nothing here explains a signature chain; it shows
+    # that there is one and says where to see it walked.
     #
-    # It was device memory pressure. Sixty-odd Chrome tabs were open on the
-    # emulator; restarting it cleared the ceiling, and this section now records
-    # 60.7s. Restart the AVD before a long take. See doc/video/capture_manual.md
-    # §10, which also warns that a failed take leaves screenrecord running and
-    # those accumulate -- /data was 89% full.
+    # THE SCRIPT DOES NOT EXIST YET. The marks below are the contract for it:
+    # whoever writes shoot_crypto_teaser.js has to record these names, and
+    # annotate.js will say so loudly if it does not. Two of the three actions are
+    # already solved in shoot_crypto.js -- turning Show Crypto on in shot (it is
+    # a checkbox, and the label is not tappable) and opening a shield -- so start
+    # from that script rather than from nothing.
     #
-    # What broke the section was separate, and worse because it was quiet: a
-    # mistimed mark. `verified` was set by a blind sleep(2500) after the Verify
-    # tap, but the verdict lands about 0.09s after it, so the mark sat 2.4s later
-    # than the thing it names, and the closing line and beat anchored on it
-    # resolved past the end of the footage. annotate.js said nothing, because a
-    # prompter line past the end simply never drew. Both fixed: the mark comes
-    # from the waitFor that detects the verdict, and annotate.js refuses any cue
-    # later than the take.
-    status: built
-    # REWRITTEN 1 Sep 2026. The old sequence went out to Chrome
-    # and the verifier; this one stays in the app and walks the delegation, with
-    # about four seconds on each line so it can actually be read. The take that
-    # matches it is shoot_crypto.js, which has the full brief at the top.
-    #
-    # NO BEATS OR ZOOMS YET. Both are pixel coordinates -- anchor, spotlight,
-    # `to` -- measured off a frame of a particular take. There is a take to
-    # measure against now (out/crypto_20260901-220039*), so this is the next
-    # thing to do here rather than a blocked one.
-    #
-    # The Nerdster is specifically designed to highlight how this works.
+    # THE THIRD BEAT OPENS A SECOND CHROME TAB. "Signed, Published Statements"
+    # leaves the app for export.nerdster.org. That was the suspect for the
+    # recording ceiling before device memory turned out to explain it, so it is
+    # probably fine -- but this is the one section that would find out. If takes
+    # start dying near a fixed length, see doc/video/capture_manual.md §10 and
+    # consider shooting it as two takes joined, the way build_preamble.sh does.
     prompter:
-      - {t: 0.4, text: "Somebody I've never met liked this."}
-      - {at: crypto_on, text: "Show Crypto. Now the Nerdster shows its work."}
-      - {at: tap_moniker, text: "Their name is a link into the network."}
-      - {at: node_details, text: "Here they are. My vouch reaches them in a few hops."}
-      - {at: identity_key_shown, text: "This is their identity key."}
-      - {at: identity_raw_shown, text: "Raw, it is just a public key -- the thing itself."}
-      - {at: identity_interpreted_shown,
-         text: "The Nerdster interprets keys it knows,\nso they read as names."}
-      - {at: delegate_key_shown,
-         text: "And this is the delegate key their\nNerdster statements are signed with."}
-      - {at: delegation_shown, text: "The shield holds the delegation itself."}
-      - {at: delegation_raw_shown,
-         text: "Signed by their identity key --\nthe one Tom vouched for."}
-      - {at: delegation_interpreted_shown,
-         text: "They delegated this key to nerdster.org from their\nidentity app. The chain is unbroken."}
-    announce:
-      # Said, not shown. Cards, or narration over the tail of the take.
-      - "This is how all three apps work. They are not connected."
-      - "Ground a service to a trusted point of view -- like your own."
-      - "Collect published, signed content from anywhere. The statements are
-         signed and portable."
-      - "Verify the signatures."
-      - "Aggregate and present."
-      - "Evolution enabled, like the Web: services compete using data that is
-         signed, trusted and available, not siloed in a monopoly."
-    defer:
-      # Maybe too long and too hard to follow for the intro; a candidate for the
-      # longer video, where there is room to do it slowly.
-      - Copy a statement, validate it, then modify it -- change a comment -- and
-        watch it fail.
+      - {at: crypto_on, text: "Turn on Show Crypto."}
+      - {at: vouch_shown,
+         text: "Every vouch is a statement somebody signed.\nThis is one, read back to you."}
+      - {at: vouch_raw_shown,
+         text: "And this is the statement itself."}
+      - {at: statements_tab,
+         text: "Signed, published, and out on the open web\nfor anyone to check."}
+    cards:
+      # The section's exit. Says where the rest went, and gives people something
+      # to do about it now rather than only later.
+      - at: statements_tab
+        after: 3.0
+        hold: 4.0
+        lines:
+          - "How the chain is built and checked:"
+          - "in the next video."
+          - "Crypto demos are on ONE-0F-US.NET now."
     todo:
-      - More text from the other assets (the Internet isn't Google's...).
+      # The card's second line names a video that does not exist. Before this
+      # ships, either that video does or the line changes.
+      - Write shoot_crypto_teaser.js.
+      - Confirm the "upcoming video" promise is one we are keeping.
 
   # -------------------------------------------------------------------------
   - id: hablotengo

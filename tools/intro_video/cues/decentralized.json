@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Generated from video/storyboard.yaml -- section 'decentralized'.",
+    "Generated from video/ -- section 'decentralized'.",
     "Edit the copy THERE, not here, and run:",
     "  python3 tools/intro_video/sections.py --cues decentralized"
   ],

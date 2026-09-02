@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Generated from video/storyboard.yaml -- section 'opt_in'.",
+    "Generated from video/ -- section 'opt_in'.",
     "Edit the copy THERE, not here, and run:",
     "  python3 tools/intro_video/sections.py --cues opt_in"
   ],
