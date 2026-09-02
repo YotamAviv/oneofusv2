@@ -35,10 +35,14 @@ const OUT = path.join(__dirname, 'out');
 const E = (...a) => execFileSync('adb', ['-s', SERIAL, ...a], { stdio: 'ignore' });
 const Eout = (...a) => execFileSync('adb', ['-s', SERIAL, ...a]).toString();
 
-// Who the sequence is about. Anyone in the feed who is neither me nor the
-// identity this phone vouched for -- the point is that the chain reaches people
-// I did not sign for myself.
-const SKIP = /^(Me|Tom)@/;
+// Who the sequence is about: THE IDENTITY THIS PHONE ACTUALLY VOUCHED FOR.
+//
+// The opposite of shoot_crypto.js, which deliberately picks a stranger to show
+// the chain reaching someone it never signed for. This section opens MY vouch,
+// so it has to be somebody I vouched for -- and the shield is the null "nothing
+// to show" placeholder for anyone else, which is how the first run of this
+// failed against Hillel. state/demo_vouches_tom.json is that vouch.
+const SUBJECT = /^Tom@/;
 
 function foregroundApp() {
   const m = Eout('shell', 'dumpsys', 'activity', 'activities')
@@ -119,10 +123,13 @@ const toDevice = (x, y) => ({
   let who = null;
   for (let i = 0; i < 16 && !who; i++) {
     who = (await findAll(page, /@nerdster\.org$/, { role: 'button' }))
-      .map(n => n.text).find(t => !SKIP.test(t));
+      .map(n => n.text).find(t => SUBJECT.test(t));
     if (!who) { await drag(cdp, 200, 600, 0, { dy: -500, holdMs: 0 }); await sleep(900); }
   }
-  if (!who) throw new Error('nobody in the feed but me and the identity I vouched for');
+  if (!who) {
+    throw new Error('the identity this phone vouched for is not in the feed. This take '
+      + 'opens MY vouch, so it needs them: see state/demo_vouches_tom.json.');
+  }
   // Back to the top before recording. The app bar HIDES WHEN THE FEED SCROLLS,
   // and the Show Crypto menu lives in it -- so a take that opens on the scrolled
   // feed cannot reach the menu at all, which is exactly how the first run of
@@ -219,12 +226,18 @@ const toDevice = (x, y) => ({
   tapped('identity_tab', await tapNamed(page, cdp, /^identity$/, { role: 'button' }));
   await sleep(1600);
   tapped('identity_key', await tapNamed(page, cdp, new RegExp(`^${esc(name)}`), { role: 'button' }));
-  const link = await waitFor(page, /Signed, Published Statements/, {}, 15000);
+  // The key view opens interpreted, so the JSON reads as the label the Nerdster
+  // knows this key by -- literally `"Tom"`.
+  await waitFor(page, new RegExp(`^"${esc(name)}"$`), {}, 15000);
   mark('key_shown');
-  await sleep(2600);
+  await sleep(2800);
 
-  await tapAt(cdp, link.x, link.y);
-  tapped('published_statements', link);
+  // Found by name. shoot_crypto.js taps this link by where it sits, because an
+  // InkWell round a Text reaches the semantics tree unnamed -- and that offset
+  // is measured from the JSON above it, so it misses whenever the JSON is short.
+  // The link carries a Semantics label now; shoot_crypto.js should follow.
+  tapped('published_statements',
+         await tapNamed(page, cdp, /^Signed, Published Statements$/, {}));
 
   // A SECOND CHROME TAB, and the only thing in the intro that leaves the app.
   // It was the suspect for the recording ceiling before device memory explained

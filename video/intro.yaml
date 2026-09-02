@@ -119,6 +119,43 @@ sections:
       - Show the link. Do NOT actually email or text it.
 
   # -------------------------------------------------------------------------
+  - id: signin
+    # Enter the Nerdster -- by signing in, without an account
+    build: shoot_signin.sh
+    status: to_build
+    # THE SECTION THAT WAS MISSING. shoot_signin.js has existed and worked since
+    # 2026-08-28 -- capture_manual §1 calls it the take that "removed every
+    # fiction at once" -- but when the copy moved into a storyboard it was never
+    # given a section, so it built for nobody. The intro jumped from the
+    # invitation straight to a feed that was already signed in, with nothing on
+    # screen to say how.
+    #
+    # It is one continuous take on one device, against production: the Nerdster's
+    # home page in a browser, into the web app, out to the identity app to
+    # authorise a delegate key, and back signed in.
+    #
+    # The point is what does NOT happen. No account, no password, no email, no
+    # "sign in with Google". A service asks who you are, your identity app makes
+    # it a key of its own, and the identity key never leaves the phone.
+    trim: home
+    prompter:
+      - {at: home, text: "The Nerdster. Somebody else's service --\nnothing to do with my identity app."}
+      - {at: tap_launch, text: "Open the web app."}
+      - {at: app_ready, text: "It needs to know who I am.\nI have no account here, and I am not making one."}
+      - {at: tap_signin, text: "Sign in with ONE-OF-US.NET instead."}
+      - {at: tap_yes, text: "My app makes the Nerdster a key of its own."}
+      - {at: back_to_browser, text: "That key is a delegate: it speaks for me here,\nand nowhere else."}
+      - {at: signed_in, text: "Signed in. My identity key never left the phone."}
+      - {at: dismiss, text: "No password. No email. Nothing to be breached."}
+    todo:
+      # Both need a take of this sequence to measure against, so they cannot be
+      # written until it has been shot once.
+      - A beat on "Identity present / Delegate present", once there are
+        coordinates to point at.
+      - Check the pace against a stopwatch. Eight lines is a lot for one take,
+        and the intro is the video with a budget.
+
+  # -------------------------------------------------------------------------
   - id: nerdster
     # Enter the Nerdster!
     build: shoot_nerdster.sh

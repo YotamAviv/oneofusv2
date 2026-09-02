@@ -22,7 +22,7 @@ debug APK will not install with under a gigabyte free, and the failure is quiet.
 
 `--target-platform` matters: the all-ABI debug APK is 127MB and will not fit.
 Without `filmTools` the `keymeid://deletekey` and `keymeid://importkey` links are
-compiled out, and both `shoot.sh` and `restore_demo_identity.sh` stop working --
+compiled out, and both `shoot_signin.sh` and `restore_demo_identity.sh` stop working --
 silently, because a deep link nothing handles is not an error.
 
 **5. one-of-us.net approved as a link handler.** *Resets on reinstall.*
@@ -49,7 +49,7 @@ by the Flutter accessibility tree rather than by pixel coordinates:
 
 | | |
 | --- | --- |
-| `./shoot.sh` | [the sign-in sequence](#filming-the-sign-in-sequence) — ~9s |
+| `./shoot_signin.sh` | [the sign-in sequence](#filming-the-sign-in-sequence) — ~9s |
 | `./shoot_nerdster.sh` | [the Nerdster feed basics](#filming-the-nerdster-feed-basics) — ~16s |
 
 **Order matters.** `build_scene1.sh` runs `pm clear` to get a phone with no keys
@@ -57,7 +57,7 @@ on it, which destroys whatever identity was there. So:
 
     ./build_scene1.sh              # preamble + vouch -- wipes the app
     ./restore_demo_identity.sh     # put the demo phone's identity back
-    ./shoot.sh                     # sign-in, which creates the delegate
+    ./shoot_signin.sh                     # sign-in, which creates the delegate
     ./shoot_nerdster.sh            # the feed, which needs that delegate
     ./shoot_crypto.sh              # the signature chain
 
@@ -77,7 +77,7 @@ Records the ONE-OF-US.NET sign-in end to end — Nerdster home page, launch the 
 app, hand off to the identity app, create a delegate key, land back signed in —
 as one continuous take on one device, against production.
 
-    ./shoot.sh
+    ./shoot_signin.sh
 
 Output: `out/signin_<stamp>_taps.mp4`, about nine seconds. That resets all three
 pieces of sign-in state, records, and adds the touch indicators.
@@ -96,7 +96,7 @@ Full detail, including every gotcha with its symptom, is in
 
 | | |
 | --- | --- |
-| `shoot.sh` | the whole cycle: reset, record, add taps |
+| `shoot_signin.sh` | the whole cycle: reset, record, taps, annotate, trim |
 | `shoot_signin.js` | drives and records the take; writes `<stamp>.mp4` + `<stamp>.marks.json` |
 | `shoot_nerdster.sh` | the same cycle for the feed take |
 | `shoot_nerdster.js` | drives and records it, then checks what it published |
@@ -306,7 +306,7 @@ number is found by eye (see below).
 **It wipes the app.** `pm clear` is the only route back to "You have no keys on
 this device", and it destroys the identity private key in secure storage — this
 image has no root, so there is no backing it up first. Every take mints a NEW
-identity, which has vouched for nobody and delegated nothing, so `shoot.sh` and
+identity, which has vouched for nobody and delegated nothing, so `shoot_signin.sh` and
 `shoot_nerdster.sh` need their setup redone afterwards: a vouch for Tom, and
 `demo_identity.json` pointed at the new token.
 
@@ -418,7 +418,7 @@ repository is public, so anyone can sign as this identity — which is acceptabl
 *because nobody vouches for it*. It vouches for Tom; Tom does not vouch back and
 neither does anyone else, so an identity nobody trusts has no trust to lend and
 a stranger signing with it produces statements from a nobody. If someone writes
-to the stream, truncate it back to that first vouch — `shoot.sh` finds it by
+to the stream, truncate it back to that first vouch — `shoot_signin.sh` finds it by
 fetching, and `state/` records what it should look like.
 
 That reasoning is worth re-checking if it changes. **If a real identity ever

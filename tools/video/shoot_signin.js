@@ -5,8 +5,8 @@
 //   adb forward tcp:9222 localabstract:chrome_devtools_remote
 //   node shoot_signin.js
 //
-// Writes out/signin_raw.mp4 and out/signin_marks.json (tap times + coordinates,
-// which post-production needs to draw the touch indicators).
+// Writes out/signin_<stamp>.mp4 and out/signin_<stamp>.marks.json (tap times and
+// coordinates, which post-production needs to draw the touch indicators).
 //
 // WHY THIS LOOKS DIFFERENT FROM THE OLD SCRIPT. It has no hardcoded tap
 // coordinates and no sleeps that are guesses. Everything on the browser side
@@ -140,6 +140,12 @@ const toDevice = (x, y) => VIEW2DEV
   // --- home page ---
   await page.evaluate(() => {}); // ensure attached
   const launch = await page.waitForSelector('a.web-app-link, a[href*="/app"]', { timeout: 20000 });
+  // Where the SECTION starts, as opposed to where the recording does. Every take
+  // opens with a launch and a sync flash that are staging, not content, and
+  // sections.py trims to a named mark -- so the home page needs a name, or the
+  // trim has to go to tap_launch and cut the page the section opens on.
+  mark('home');
+  await sleep(1800);                        // let the page be looked at
   const lb = await launch.boundingBox();
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart',
     touchPoints: [{ x: Math.round(lb.x + lb.width / 2), y: Math.round(lb.y + lb.height / 2),
@@ -179,6 +185,12 @@ const toDevice = (x, y) => VIEW2DEV
   await enableSemantics(page, cdp);
   await waitFor(page, /Sign in using your Identity App/, {}, 45000);
   mark('app_ready');
+  // HOLDS, NOT SETTLING TIME. capture_manual bans sleeping to "let it settle" --
+  // that hides a missing wait and pads the take with dead screen. These are the
+  // opposite: they come AFTER the condition has been waited on, and exist so the
+  // prompter line anchored here can actually be read. The take ran 13s with
+  // eight lines on it, which is about half the time a person needs.
+  await sleep(2600);
 
   // The reset must have left us signed out; if not, the take is worthless.
   await assertVisible(page, /Identity\s*not present/);
@@ -210,6 +222,7 @@ const toDevice = (x, y) => VIEW2DEV
   await assertVisible(page, /Identity\s*present/);
   await assertAbsent(page, /Existing Delegate Found/);
   mark('signed_in');
+  await sleep(2800);                       // hold: the sign-in status is the point
   console.log('  verified: both keys present');
 
   await sleep(500);
@@ -223,6 +236,7 @@ const toDevice = (x, y) => VIEW2DEV
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   marks.taps.push({ t: at(), ...dz, what: 'dismiss' });
   mark('dismiss');
+  await sleep(2600);                       // hold, so the closing line is readable
   // Hold long enough for the feed to finish loading, so the take ends on content
   // rather than "Loading delegate content...". Waits on the condition, with a
   // short beat after so it doesn't cut the instant the last card paints.

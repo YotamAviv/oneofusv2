@@ -243,7 +243,7 @@ nothing is overwritten).
 
 | | | |
 | --- | --- | --- |
-| sign-in | `./shoot.sh` | ~9s |
+| sign-in | `./shoot_signin.sh` | ~9s |
 | Nerdster feed basics | `./shoot_nerdster.sh` | ~16s |
 | signature chain | `./shoot_crypto.sh` | ~25s |
 | opening vouch | `node shoot_vouch.js` + 2 steps | ~37s |
@@ -266,7 +266,7 @@ for YouTube. The two-scene review cut is `out/upload.mp4`.
 
 **The demo phone's identity is fresh.** `shoot_vouch.js` runs `pm clear`, which
 destroys the old identity private key — that was the one `demo_identity.json`
-names, so **`shoot.sh` and `shoot_nerdster.sh` will not work until** the new
+names, so **`shoot_signin.sh` and `shoot_nerdster.sh` will not work until** the new
 identity vouches for Tom and `demo_identity.json` is pointed at its token. The
 vouch scene itself publishes that vouch, so the material for it exists; the token
 just needs reading back and writing down.
@@ -297,7 +297,7 @@ what the screen said, not what was true.
 footage composited into it may want re-cutting to match the new timing.
 
 **The emulator now runs a `main` build**, which has no `Config.filmTools`, so
-`keymeid://deletekey` is gone and `shoot.sh` cannot reset the delegate key until
+`keymeid://deletekey` is gone and `shoot_signin.sh` cannot reset the delegate key until
 a branch build is installed again:
 
     flutter build apk --debug --target-platform android-x64
