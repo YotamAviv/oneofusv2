@@ -51,12 +51,12 @@
 //   - BACK closing the key dialogs. showDialog is barrier-dismissible and BACK
 //     should pop it, but BACK in Chrome is also a navigation; each one waits for
 //     the tabs to reappear rather than assuming.
-//   - Whether this take still truncates. The old one stopped recording at 26.5s
-//     for reasons nobody established -- see doc/intro_video/sections.yaml. One
-//     of the guesses there was the second Chrome tab, which THIS sequence never
-//     opens, so it may simply not happen. If it does, the seams between the
-//     identity key, the delegate key and the delegation are where this splits
-//     into separate takes, the way build_preamble.sh joins three.
+//   - Whether this take still truncates. The old one stopped recording at 26.5s;
+//     the best explanation is device memory pressure -- sixty-odd Chrome tabs
+//     open on the emulator -- and restarting the AVD cleared it. This records
+//     60.7s. If it comes back, the seams between the identity key, the delegate
+//     key and the delegation are where this splits into separate takes, the way
+//     build_preamble.sh joins three. See doc/video/capture_manual.md §10.
 //
 //   node shoot_crypto.js
 //

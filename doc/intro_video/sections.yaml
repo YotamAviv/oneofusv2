@@ -219,15 +219,15 @@ sections:
     # frozen frame held for the rest, which inflates the container duration and
     # hides it. Count frames, not seconds.
     #
-    # It was never load: a vouch take recorded 41s and 1456 frames on the same
+    # Not plain load: a vouch take recorded 41s and 1456 frames on the same
     # emulator at the same bit rate, twenty minutes before a crypto take died at
-    # 26.5s with 346. The remaining suspect was the second Chrome tab, which only
-    # this take opened -- it navigated out to export.nerdster.org.
+    # 26.5s with 346.
     #
-    # THIS SEQUENCE NEVER LEAVES THE APP, and it records 60.7s with real frames
-    # to 59.1s. That is not proof, but it is the one variable that changed and it
-    # went the way the guess predicted. If a take ever opens a second tab again,
-    # expect the ceiling back.
+    # DEVICE MEMORY PRESSURE is the best explanation -- about sixty Chrome tabs
+    # were open on the emulator, and restarting it cleared the ceiling (Yotam).
+    # This sequence records 60.7s, but it ran on the restarted emulator AND it
+    # never opens the second Chrome tab that was the earlier suspect, so the take
+    # cannot tell those apart. Restart the AVD before a long take.
     #
     # Worth knowing anyway: /data on this emulator is 89% full. A failed take
     # leaves screenrecord running -- `adb shell pkill -INT screenrecord` after

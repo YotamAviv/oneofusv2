@@ -557,14 +557,26 @@ ffprobe -v error -select_streams v -show_entries frame=pts_time -of csv=p=0 TAKE
 
 A large gap between the last two timestamps is the tell.
 
-**The old signature-chain take truncated at 26.5-27.2s, every time, and the cause
-was never established.** It was *not* load — a `vouch` take recorded 41s and 1456
-frames on the same emulator at the same bit rate twenty minutes either side of a
-crypto take that died at 26.5s with 346 frames. The one thing only that take did
-was open a second Chrome tab, out to `export.nerdster.org`. The rewritten
-sequence never leaves the app and records 60.7s cleanly. That is a correlation,
-not a proof: **if a take needs a second tab again, expect the ceiling back**, and
-`adb logcat -s screenrecord` during the take is the first thing to try.
+**The old signature-chain take truncated at 26.5-27.2s, every time.** Two days of
+takes, on a device where a `vouch` take recorded 41s and 1456 frames at the same
+bit rate twenty minutes either side of a crypto take that died at 26.5s with 346
+frames — so it was never a plain matter of the take being "heavy".
+
+**The best explanation is device memory pressure: about sixty Chrome tabs were
+open on the emulator, and restarting it cleared the ceiling.** (Yotam,
+2026-09-01.) That fits everything — an encoder starved of memory stops producing
+while the rest of the system carries on, and the takes that survived were the
+ones that finished before it gave out.
+
+Do not read the rewritten sequence as the fix. It records 60.7s cleanly and it
+never opens a second Chrome tab, which was the earlier suspect — but it also ran
+on a freshly restarted emulator, so those two changed together and the take says
+nothing about which mattered. The tab theory is unfalsified, not confirmed.
+
+Practically: **restart the AVD and close its tabs before a long take.** If takes
+start dying near a consistent length, watch
+`adb shell dumpsys meminfo com.android.chrome`, and `adb logcat -s screenrecord`
+during the take.
 
 **A failed take leaves `screenrecord` running on the device.** They accumulate and
 quietly fill `/data`, which was 89% full on 2026-09-01. After any crash:
