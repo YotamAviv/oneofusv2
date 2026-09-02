@@ -41,6 +41,9 @@ would drift within a week.
 | `zooms` | a punch-in, for the moments made of small text |
 | `flash` | a buzzword, bright, then gone. **Not built yet.** |
 
+**Card and prompter text is plain text.** `card.js` renders it as-is, so `**bold**`
+puts asterisks on the screen. Capitals are the only emphasis available.
+
 ## Saying when
 
 All of them say WHEN the same way, so a card can land anywhere in a section:

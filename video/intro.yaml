@@ -184,12 +184,11 @@ sections:
     # Three beats and a card. Nothing here explains a signature chain; it shows
     # that there is one and says where to see it walked.
     #
-    # THE SCRIPT DOES NOT EXIST YET. The marks below are the contract for it:
-    # whoever writes shoot_crypto_teaser.js has to record these names, and
-    # annotate.js will say so loudly if it does not. Two of the three actions are
-    # already solved in shoot_crypto.js -- turning Show Crypto on in shot (it is
-    # a checkbox, and the label is not tappable) and opening a shield -- so start
-    # from that script rather than from nothing.
+    # The script exists (shoot_crypto_teaser.js) and has NEVER BEEN RUN: it needs
+    # a Nerdster carrying the "Vouch statement" label on the trust shield in
+    # NodeDetails, which is committed but not deployed. Without it the take stops
+    # at that tap, because the screen has several shields and they are told apart
+    # by name.
     #
     # THE THIRD BEAT OPENS A SECOND CHROME TAB. "Signed, Published Statements"
     # leaves the app for export.nerdster.org. That was the suspect for the
@@ -264,7 +263,9 @@ sections:
     cards:
       - hold: 3.5
         lines:
-          - "We build the identity network and **let** them use it."
+          # LET in capitals, not **let**: card.js renders plain text and the
+          # asterisks came out on screen.
+          - "We build the identity network and LET them use it."
           - "We can't let them build it. One silo will never agree to relying on
              another's identities."
 
