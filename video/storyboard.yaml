@@ -210,93 +210,27 @@ sections:
   - id: crypto
     # How? Turn on the crypto
     build: shoot_crypto.sh
-    # The recording no longer stops short, and the reason is now the best guess
-    # anyone has. 1 Sep 2026.
+    # The recording used to stop short, and the reason is now known. 1 Sep 2026.
     #
-    # Every take of the OLD sequence stopped producing frames at 26.5-27.2s, on
-    # two days, and no cause was ever established. The takes whose FILES ran
-    # 33-37s were not counter-examples: same ~26.5s of real frames, then one
-    # frozen frame held for the rest, which inflates the container duration and
-    # hides it. Count frames, not seconds.
+    # Every take of this section stopped producing frames at 26.5-27.2s for two
+    # days. The takes whose FILES ran 33-37s were not counter-examples: they hold
+    # the same ~26.5s of real frames and then one frozen frame to the end, which
+    # pads the container duration and hides it. Count frames, not seconds.
     #
-    # Not plain load: a vouch take recorded 41s and 1456 frames on the same
-    # emulator at the same bit rate, twenty minutes before a crypto take died at
-    # 26.5s with 346.
+    # It was device memory pressure. Sixty-odd Chrome tabs were open on the
+    # emulator; restarting it cleared the ceiling, and this section now records
+    # 60.7s. Restart the AVD before a long take. See doc/video/capture_manual.md
+    # §10, which also warns that a failed take leaves screenrecord running and
+    # those accumulate -- /data was 89% full.
     #
-    # DEVICE MEMORY PRESSURE is the best explanation -- about sixty Chrome tabs
-    # were open on the emulator, and restarting it cleared the ceiling (Yotam).
-    # This sequence records 60.7s, but it ran on the restarted emulator AND it
-    # never opens the second Chrome tab that was the earlier suspect, so the take
-    # cannot tell those apart. Restart the AVD before a long take.
-    #
-    # Worth knowing anyway: /data on this emulator is 89% full. A failed take
-    # leaves screenrecord running -- `adb shell pkill -INT screenrecord` after
-    # any crash, or they accumulate.
-    status: to_build
-    # Order is deliberate: show the network working FIRST, then -- once it looks
-    # like every other cookie-cutter forum app -- say how it differs.
-    cards:
-      - hold: 3.5
-        lines:
-          - "Do we really need another one of these?"
-          - "No. But this is different."
-          - "A proof of concept of the paradigm, leveraging our own open,
-             decentralized identity network."
-          - "Open: any service can leverage it, and contribute to it."
-
-  # -------------------------------------------------------------------------
-  - id: crypto
-    # How? Turn on the crypto
-    build: shoot_crypto.sh
-    # This take's recording stops short, and NOBODY KNOWS WHY. 1 Sep 2026.
-    #
-    # The fact is solid: every crypto take across two days stops producing frames
-    # at 26.5-27.2s. The takes whose FILES ran 33-37s are not counter-examples --
-    # they carry the same ~26.5s of real frames and then one frozen frame held
-    # for the rest, which inflates the container duration and hides it. Count
-    # frames, not seconds: `ffprobe -select_streams v -show_entries frame=pts_time`
-    # and look for the gap at the end.
-    #
-    # The explanation is NOT load, though that was assumed here for a while.
-    # vouch_20260901-165819 recorded 41.07s and 1456 frames on the same emulator,
-    # same bit rate, twenty-two minutes before the crypto take that died at 26.5s
-    # with 346. Several vouch takes run 39-44s. Whatever stops crypto, it is not
-    # a ceiling the device has.
-    #
-    # Untested guesses, cheapest first, for whoever has an emulator running:
-    #   - orphaned screenrecords. There is a note further down this file's script
-    #     about previous runs quietly filling /data; two writers on
-    #     /sdcard/crypto.mp4 would truncate. `adb shell pgrep screenrecord`
-    #     before a take.
-    #   - Chrome. crypto is the only take that drives Chrome over CDP and
-    #     navigates off to export.nerdster.org; the others drive the app.
-    #   - the pinch zoom, which only this take does.
-    # `adb logcat -s screenrecord` during a take would probably just say.
-    #
-    # What actually broke the section was a mistimed mark. `verified` was set by
-    # a blind sleep(2500) after the Verify tap, but the verdict lands about 0.09s
-    # after it, so the mark sat 2.4s later than the thing it names. The closing
-    # line and the closing beat, both anchored on it, resolved past the end of
-    # the footage -- and annotate.js said nothing, because a prompter line past
-    # the end simply never drew. Both are fixed: the mark is taken from the
-    # waitFor that detects the verdict, and annotate.js now refuses any cue later
-    # than the take.
-    #
-    # With the mark right, the section builds whole. The closing beat freezes the
-    # VERIFIED frame and holds it 3.2s, which is exactly the hold the truncated
-    # tail lost, so the ceiling costs the section nothing visible.
-    #
-    # It is thin, though: the beat lands 0.37s before the footage ends, so
-    # anything added between the pretty-print and the verdict pushes it off again.
-    # The lever if that happens is the head, not the split -- the sleep(4000)
-    # before the sync flash spends four of the ~26.5 recorded seconds on staging.
-    # Halving it buys about two seconds of margin, but it has to be tried against
-    # a running emulator: too short and the flash happens before screenrecord is
-    # capturing, and find_flash.js then mistimes every tap in the take.
-    #
-    # The split is still the right shape if this section ever grows -- the Intro
-    # stopping at the delegate keys, the verification becoming its own section in
-    # a later "How it works" video. It is no longer forced.
+    # What broke the section was separate, and worse because it was quiet: a
+    # mistimed mark. `verified` was set by a blind sleep(2500) after the Verify
+    # tap, but the verdict lands about 0.09s after it, so the mark sat 2.4s later
+    # than the thing it names, and the closing line and beat anchored on it
+    # resolved past the end of the footage. annotate.js said nothing, because a
+    # prompter line past the end simply never drew. Both fixed: the mark comes
+    # from the waitFor that detects the verdict, and annotate.js refuses any cue
+    # later than the take.
     status: built
     # REWRITTEN 1 Sep 2026. The old sequence went out to Chrome
     # and the verifier; this one stays in the app and walks the delegation, with
