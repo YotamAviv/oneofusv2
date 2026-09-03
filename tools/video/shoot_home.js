@@ -7,7 +7,10 @@
 // wipes the app's keys to run and this doesn't. Re-recording the way somebody
 // opens the app should not cost an identity.
 //
-// The icon was dragged out of the app drawer once, by hand, and stays put.
+// The icon has to BE on the home screen. It stays put once placed -- but only
+// in that AVD, and a fresh emulator has a bare home screen, so this records a
+// finger prodding wallpaper while the app never opens. ./place_app_icon.sh puts
+// it there and verifies it launches; run it once per emulator.
 
 const fs = require('fs');
 const path = require('path');

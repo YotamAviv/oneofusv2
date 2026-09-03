@@ -33,6 +33,19 @@ OUT="${1:-}"   # where the finished section goes, if the caller wants it somewhe
 SERIAL="${AVD:-emulator-5554}"
 TOKEN=$(node -e "console.log(Object.values(require('./demo_identity.json').demoTokens)[0])")
 
+# The Nerdster hands off to the identity app with an https App Link
+# (one-of-us.net/sign-in...), and Android only routes that to the app while the
+# domain is VERIFIED for it. Reinstalling the apk resets that state, and the
+# link then opens in Chrome instead -- the app's own "you do not have the app
+# installed" fallback page -- and the take dies much later with the unhelpful
+# "timeout waiting for net.oneofus.app to come to the front".
+#
+# Idempotent and instant, so it runs every time rather than being a setup step
+# somebody has to remember after each build.
+adb -s "$SERIAL" shell pm set-app-links --package net.oneofus.app 2 all >/dev/null 2>&1 || true
+adb -s "$SERIAL" shell pm set-app-links-user-selection --user 0 \
+  --package net.oneofus.app true one-of-us.net >/dev/null 2>&1 || true
+
 echo "== 1/5  clearing published delegate statement =="
 FIRST=$(curl -s "https://export.one-of-us.net/?spec=$TOKEN&includeId=true" | python3 -c "
 import json,sys

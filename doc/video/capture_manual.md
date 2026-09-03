@@ -123,9 +123,44 @@ trims on those marks rather than hand-timed offsets, so the trim follows the tak
 
 ### Starting the AVD
 
+**Launch it with `-gpu host`, or the web apps render as a blank white screen.**
+
 ```bash
-flutter emulators --launch Pixel_3a_API_35
+$ANDROID_HOME/emulator/emulator -avd Pixel_3a_API_35 -gpu host -no-snapshot-load -no-boot-anim
 ```
+
+NOT `flutter emulators --launch Pixel_3a_API_35`, which uses whatever GPU mode the AVD is
+configured for. That resolved to software rendering
+(`Android Emulator OpenGL ES Translator (llvmpipe ...)`), and under it the Nerdster's Flutter
+web build boots but never paints: Chrome shows white, forever.
+
+It is a nasty one to recognise because nothing looks broken. The page loads, Firebase
+initialises, there are no JS errors and no failed requests, and the semantics tree has ~50
+nodes -- so a shoot script driving it by name works fine while the camera records nothing but
+white. It took down `nerdster`, `crypto_teaser`, `hablotengo` and `close_account` at once, and
+it looks like a bad deploy: check the site from a desktop browser before believing that.
+
+`document.querySelectorAll('canvas').length === 0` is NOT the test -- Flutter renders inside a
+shadow root, so it reads 0 even when everything is fine. Take a screenshot instead.
+
+With `-gpu host` the renderer becomes the real GPU (e.g.
+`Android Emulator OpenGL ES Translator (AMD Radeon 780M ...)`) and it renders normally.
+
+### The app icon on the home screen
+
+`shoot_home.js` (the preamble's last shot) taps a fixed point on the home screen. A fresh AVD
+has a bare home screen, so it records a finger prodding wallpaper while nothing opens -- and
+nothing about that looks like a missing icon.
+
+```bash
+./place_app_icon.sh        # once per emulator
+```
+
+It drags the icon out of the app drawer with `input draganddrop` (which holds before moving,
+as the launcher requires -- a plain `input swipe` is too quick and just scrolls the drawer),
+then verifies by tapping where the icon should now be and checking the app comes to the front.
+The drawer is alphabetical, so its source coordinate moves if the set of installed apps
+changes; the script says so when the verification fails.
 
 Screen is **1080×2220**. For a 1080×1920 timeline: `crop=1080:1920:0:150` (drops the status
 bar and the gesture bar, keeps scale identical to the web footage so both halves look like
@@ -212,7 +247,11 @@ production means real data and real signatures.
 
 ```bash
 # the app is debug-signed, so app-link verification fails (pm get-app-links
-# shows state 1024). Approve it by hand — a rig setting, not a code change:
+# shows state 1024). shoot_signin.sh now does this itself on every run, because
+# the state resets on every reinstall and the take then fails much later with
+# "timeout waiting for net.oneofus.app to come to the front" -- what you
+# actually get is the app's own "you do not have the app installed" fallback
+# page, in Chrome. To do it by hand — a rig setting, not a code change:
 adb shell pm set-app-links-user-selection --user 0 \
   --package net.oneofus.app true one-of-us.net
 ```

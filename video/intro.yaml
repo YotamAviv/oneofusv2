@@ -49,12 +49,16 @@ sections:
   - id: vouch
     title: "Our. Own. Decentralized. Identity. Network."
     preconditions:
-      - A filmTools build of the identity app.
+      - Nothing. It wipes the app and builds an identity from scratch, and the
+        one deep link it uses (keymeid://vouch) is the ordinary one a real
+        person follows from an invitation -- not a filming-only link.
     side_effects:
       - WIPES THE APP: destroys whatever identity is on the phone.
       - Publishes a vouch for Tom from a brand-new identity, which is then
         orphaned in production.
-      - Every take after this one needs ./restore_demo_identity.sh first.
+      - Every take after this one needs ./restore_demo_identity.sh first, and
+        THAT needs a filmTools build (it gets the identity in over
+        keymeid://importkey).
     build: shoot_vouch.js
     status: built
     # Where the section starts. Every take opens with a sync flash and a launch;
@@ -152,6 +156,9 @@ sections:
     preconditions:
       - An identity on the phone that somebody has vouched for.
       - The Nerdster deployed at nerdster.org.
+      - A filmTools build of the identity app. The reset uses
+        keymeid://deletekey to get back to "vouched, no delegate yet", which is
+        the only state that shows the "Create Delegate Key?" prompt.
     side_effects:
       - Deletes the delegate key from the phone and the browser, then mints
         a NEW one and publishes its delegate statement.
@@ -423,6 +430,10 @@ sections:
         shows it) and a nerdster.org delegate key outstanding (SERVICES shows it).
       - Signed in on the Nerdster in Chrome on the device, so the delegate key
         being cleared has something to stop working in.
+      - Ratings in the feed signed by THAT delegate key, or there is nothing to
+        watch disappear. Shoot signin then nerdster first, in that order.
+      - A filmTools build of the identity app, for app_state.sh. Its restore
+        rides on keymeid://exportkey and keymeid://importkey.
     side_effects:
       - Publishes one `clear` statement, and that is all it changes on the
         network. UNDOABLE, because the streams are append-only hash chains --
