@@ -149,9 +149,10 @@ const toDevice = (x, y) => ({
   // The default 1200 is empty space on most tabs, but on IMPORT/EXPORT it is
   // inside the keys panel -- a scrollable text area, which swallowed the drag
   // and left the take sitting on the same tab.
-  const swipeTab = async (what, y = 1200) => {
+  const swipeTab = async (what, y = 1200, back = false) => {
     const { ms } = SWIPE;
-    const from = [SWIPE.from[0], y], to = [SWIPE.to[0], y];
+    const from = [back ? SWIPE.to[0] : SWIPE.from[0], y];
+    const to = [back ? SWIPE.from[0] : SWIPE.to[0], y];
     marks.swipes.push({ t: at(), from: { x: from[0], y: from[1] },
                         to: { x: to[0], y: to[1] }, ms });
     d.E('shell', 'input', 'swipe', String(from[0]), String(from[1]),
@@ -301,6 +302,23 @@ const toDevice = (x, y) => ({
   await swipeTab('services');
   await sleep(2600);
 
+  // THE KEYS FIRST, THEN THE CLEAR. Showing the export after clearing meant the
+  // nerdster.org delegate was already gone from it -- the one key the section is
+  // about, missing from the shot that is supposed to show you own your keys.
+  // Seen first, the panel holds both: the identity key and the delegate that is
+  // about to be withdrawn.
+  await swipeTab('export_shown');
+  await sleep(1800);
+
+  tap('export', AT.exportButton);
+  // Long enough for the keys to be on screen and read, since the line about
+  // them is anchored here rather than on arriving at the tab.
+  await sleep(5200);
+
+  // Back one tab, to the delegate we just looked at.
+  await swipeTab('services_again', 2060, true);
+  await sleep(2200);
+
   tap('servicesClear', AT.servicesClear);
   // FIXED WAITS, not waitForStillScreen. The app bar carries a red recording dot
   // that sits inside the region waitForStillScreen compares, so the screen is
@@ -391,24 +409,17 @@ const toDevice = (x, y) => ({
 
   await browser.close();
 
-  // --- back to the app: my keys, and the advanced stuff -------------------
+  // --- back to the app: the advanced stuff ---------------------------------
   d.launch(APP);
   await d.waitForApp(APP);
   await sleep(3000);
-  // Back where it was left, on SERVICES.
-  await swipeTab('export_shown');
-  await sleep(2000);
-
-  // SHOWS THE PRIVATE KEY JSON. This identity's secret goes on screen here and
-  // the video is public -- see the todo in video/intro.yaml. Keep the beat on
-  // the buttons and mask the panel, or cut this tap.
-  tap('export', AT.exportButton);
-  // Long enough for the keys to be on screen and for the line about them to be
-  // read, since that line is anchored here rather than on arriving at the tab.
-  await sleep(5200);
-
+  // The app was left on SERVICES, where the clear happened, so ADVANCED is TWO
+  // tabs on: SERVICES -> IMPORT/EXPORT -> ADVANCED.
+  await swipeTab('past_export');
+  await sleep(1400);
   // Below the EXPORT/COPY/PASTE/IMPORT buttons, on the footer text, which is the
-  // only part of this tab that neither scrolls nor is a control.
+  // only part of that tab that neither scrolls nor is a control -- a swipe
+  // starting inside the keys panel is swallowed by it.
   await swipeTab('advanced', 2060);
   await sleep(5000);
   mark('done');

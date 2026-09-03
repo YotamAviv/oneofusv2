@@ -52,6 +52,30 @@ if (appeared === null) {
   console.error(`no snackbar in ${src}: nothing in the bottom strip went green.`);
   process.exit(1);
 }
+// WHERE it is, as well as when. A beat can point at the snackbar now that the
+// prompter is a caption that comes and goes rather than a band nailed to the
+// bottom of the frame -- but only if something knows the rectangle, and the bar
+// is drawn by the framework, not by a widget any script can ask.
+//
+// Measured, not typed: one frame while the bar is up, scaled to a single column
+// so each pixel is a row average, then the run of teal rows IS the bar. The
+// horizontal extent is the crop's, which is the full width less its margins;
+// the bar spans it.
+const at = (appeared + 0.4).toFixed(2);
+const col = execFileSync('ffmpeg', ['-v', 'error', '-ss', at, '-i', src,
+  '-frames:v', '1', '-vf', 'crop=1000:400:40:1820,scale=1:400',
+  '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'], { maxBuffer: 1 << 24 });
+let top = null, bottom = null;
+for (let y = 0; y < 400; y++) {
+  const r = col[y * 3], g = col[y * 3 + 1];
+  if (g - r > GREEN_OVER_RED) { if (top === null) top = y; bottom = y; }
+}
+const box = top === null ? null : {
+  x: 540, y: Math.round(1820 + (top + bottom) / 2),
+  w: 1000, h: Math.max(1, bottom - top + 1),
+};
+
 // Not finding the end is not a failure -- a take can stop while it is still up.
 console.log(JSON.stringify({ appeared: +appeared.toFixed(2),
-                             cleared: cleared === null ? null : +cleared.toFixed(2) }));
+                             cleared: cleared === null ? null : +cleared.toFixed(2),
+                             box }));

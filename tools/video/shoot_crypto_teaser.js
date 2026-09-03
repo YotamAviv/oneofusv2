@@ -264,6 +264,22 @@ const toDevice = (x, y) => ({
   tapped('fyi_okay', await tapNamed(page, cdp, /^Okay$/, { role: 'button' }));
   await waitFor(page, /^Published ✓$/, {}, 25000);
   mark('published_shown');
+
+  // The export link, measured, so a beat can point at it. It is the statement's
+  // address on the open network -- anyone can fetch it and check the signature,
+  // which is the whole claim this section is making.
+  const link = await find(page, /export\.nerdster\.org/);
+  if (link) {
+    const c = toDevice(link.x, link.y);
+    marks.exportLinkBox = { x: c.x, y: c.y,
+      w: Math.round(link.w * VIEW2DEV.scale), h: Math.round(link.h * VIEW2DEV.scale) };
+    mark('export_link_shown');
+    console.log(`  exportLinkBox ${JSON.stringify(marks.exportLinkBox)}`);
+  } else {
+    // Loud, not silent: the cue that names this box would otherwise fail later
+    // with "beat names box exportLinkBox, which this take did not measure".
+    console.error('  WARNING: no export.nerdster.org link in the Published sheet.');
+  }
   await sleep(4200);
 
   // --- the statement itself, and the signature on the end of it ---
@@ -336,6 +352,12 @@ const toDevice = (x, y) => ({
   // and nothing else in that sheet is, so find_red.js reads the box back out of
   // the frame. The storyboard then names the measurement -- `box: signatureBox`
   // -- instead of naming pixels.
+  //
+  // --value, because only the KEY is red. Without it the highlight goes around
+  // the word "signature" while the signature itself sits outside it, which
+  // points at the label rather than at the thing. --value walks down the ink
+  // that follows and takes the wrapped value in too, however many lines it runs
+  // to.
   try {
     const take = path.join(OUT, `${nm}.mp4`);
     const off = JSON.parse(execFileSync('node',
@@ -346,7 +368,7 @@ const toDevice = (x, y) => ({
                     Math.round(j.w * v.scale), Math.round(j.h * v.scale)];
     const box = JSON.parse(execFileSync('node',
       [path.join(__dirname, 'find_red.js'), take,
-       String(marks.signature_shown + off), ...region.map(String)],
+       String(marks.signature_shown + off), ...region.map(String), '--value'],
       { encoding: 'utf8' }));
     marks.signatureBox = box;
     console.log(`  signatureBox ${box.x},${box.y} ${box.w}x${box.h}  (from the footage)`);

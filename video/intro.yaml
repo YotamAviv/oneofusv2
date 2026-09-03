@@ -94,6 +94,18 @@ sections:
       # the bottom). Showing it would mean raising BAND_H for every section. So
       # the band says it instead, at exactly the right instant.
       - {at: published, text: "Signed on the phone. Published to the network."}
+    beats:
+      # The snackbar itself, measured by the take (find_snackbar.js reports the
+      # rectangle as well as the moment). This could not be shown at all while
+      # the prompter was a fixed band across the bottom -- it sits at y2060-2220,
+      # under it. Now that a caption comes and goes, it can be pointed at.
+      - at: published
+        after: 0.5
+        hold: 4.0
+        text: "The private crypto key on this phone signed Tom's public crypto key,\nwhere Tom's identity statements are hosted,\nand that I know this human as \"Tom\"."
+        box: snackbarBox
+        pad: 20
+        y: 1400
     cards:
       # The punchline of the section, and a full screen rather than narration.
       - at: success_cleared
@@ -135,6 +147,15 @@ sections:
       - {at: tap_share, text: "If we can't meet, I send a link. It carries my public key."}
       - {at: link, after: 3.4, text: "Send them. Don't just accept them."}
     beats:
+      # "Me" is the name on the card because nothing better exists yet: a moniker
+      # comes from somebody else's vouch, and nobody has vouched.
+      - at: main_screen
+        after: 0.8
+        hold: 3.4
+        text: "No one has vouched for me,\nso there is no better name to show."
+        box: meBox
+        pad: 24
+        y: 1500
       - at: link
         after: 1.2
         hold: 3.4
@@ -335,6 +356,14 @@ sections:
         anchor: [540, 1224]
         spotlight: [44, 1150, 992, 150]
         y: 820
+      # The statement's address on the open network. Measured by the take.
+      - at: export_link_shown
+        after: 0.8
+        hold: 3.0
+        text: "The statement's address on the open network.\nLet's go and look at it."
+        box: exportLinkBox
+        pad: 22
+        y: 1100
       - at: signature_shown
         after: 1.2
         hold: 2.0
@@ -343,6 +372,10 @@ sections:
         # footage (find_red.js) and records the box; this names it. A rectangle
         # written by hand missed, because a line inside a scrolling view lands
         # wherever the scroll got to, which differs every take.
+        #
+        # find_red --value, so the box takes in the SIGNATURE as well as the word.
+        # Only the key is red; without it this highlighted the label and left the
+        # signature outside the spotlight.
         box: signatureBox
         pad: 30
         y: 1060
@@ -393,6 +426,14 @@ sections:
     trim: feed
     prompter:
       - {at: feed, after: 0.4, text: "Somebody I have never met, two hops away."}
+      # The three filters, each on the moment it takes effect. Draft copy -- the
+      # marks are what matter here; the words are Yotam's to write.
+      - {at: pov_set,
+         text: "Point of view -- whose network I am looking through."}
+      - {at: tap_context_family, after: 1.4,
+         text: "Context -- which slice of it. Family, here."}
+      - {at: filtered,
+         text: "And a tag, to narrow it to one subject."}
       - {at: node_details,
          text: "I vouched for Tom. Tom vouched for Hillel.\nThe proof is a chain of signatures, there to check."}
       - {at: hablotengo_open,

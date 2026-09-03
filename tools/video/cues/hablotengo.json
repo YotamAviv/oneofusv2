@@ -11,6 +11,19 @@
       "text": "Somebody I have never met, two hops away."
     },
     {
+      "at": "pov_set",
+      "text": "Point of view -- whose network I am looking through."
+    },
+    {
+      "at": "tap_context_family",
+      "after": 1.4,
+      "text": "Context -- which slice of it. Family, here."
+    },
+    {
+      "at": "filtered",
+      "text": "And a tag, to narrow it to one subject."
+    },
+    {
       "at": "node_details",
       "text": "I vouched for Tom. Tom vouched for Hillel.\nThe proof is a chain of signatures, there to check."
     },

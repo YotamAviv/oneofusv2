@@ -312,7 +312,12 @@ const toDevice = (x, y) => ({
   await sleep(1800);
 
   // --- refused ---
-  const denied = await waitFor(hab, /Access Denied/i, {}, 45000);
+  await waitFor(hab, /Access Denied/i, {}, 45000);
+  // findStill, not the node waitFor just returned. The card slides up, and
+  // waitFor returns the instant the node EXISTS -- which is mid-animation, so
+  // the box came out low and the highlight sat under the text instead of on it.
+  // Same lesson as the sign-in link tap; see lib/semantics.js findStill.
+  const denied = await findStill(hab, /Access Denied/i);
   marks.deniedBox = {
     x: Math.round(denied.x * v.scale), y: Math.round(denied.y * v.scale + v.offY),
     w: Math.round(denied.w * v.scale), h: Math.round(denied.h * v.scale),

@@ -70,6 +70,23 @@ const AT = {
 // captured the card, so the cut lands where the app itself would have moved on.
 const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
 
+/// Is a modal dialog still on screen?
+///
+/// Cheap and blind, which is all this app allows: a dialog dims everything
+/// behind it, so the strip along the bottom reads flat grey (~109) with one up
+/// and near-white (~237) without. No semantics, no guessing at pixels of the
+/// dialog itself.
+function dialogStillUp() {
+  const shot = path.join(OUT, '_scrim.png');
+  execFileSync('bash', ['-c',
+    `adb -s ${process.env.AVD || 'emulator-5554'} exec-out screencap -p > ${shot}`]);
+  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', shot,
+    '-vf', 'crop=1000:120:40:2060,scale=1:1', '-pix_fmt', 'rgb24',
+    '-f', 'rawvideo', '-'], { maxBuffer: 1 << 20 });
+  fs.rmSync(shot, { force: true });
+  return raw[0] < 180;
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const marks = { taps: [] };
@@ -195,6 +212,9 @@ const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
         [path.join(__dirname, 'find_snackbar.js'), take], { encoding: 'utf8' }));
       marks.published = +(sb.appeared - off).toFixed(2);
       if (sb.cleared !== null) marks.success_cleared = +(sb.cleared - off).toFixed(2);
+      // WHERE the bar is, so a beat can point at it. Measured off this take
+      // rather than typed: see find_snackbar.js.
+      if (sb.box) marks.snackbarBox = sb.box;
       console.log(`  published @${marks.published}s, success_cleared ` +
                   `@${marks.success_cleared ?? '(still up at the end)'}s  (from the footage)`);
     } catch (e) {
@@ -225,22 +245,54 @@ const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
   await sleep(1400);
 
   tap('moniker_field', AT.moniker);
-  await sleep(900);
+  // WAIT FOR THE KEYBOARD, do not just sleep at it. `input text` goes to
+  // whatever holds the input connection, and if the tap has not focused the
+  // field yet the characters go nowhere at all -- silently. The field then
+  // stays empty, PUBLISH stays DISABLED, the tap on it does nothing, and the
+  // take records a vouch that was never made. Three takes went that way, and it
+  // presented as "the success snackbar never appeared", which is true but is
+  // the last symptom rather than the fault.
+  await d.waitForKeyboard();
+  await sleep(400);
   // Typed, not pasted: a name appearing all at once reads as a script filling in
   // a form, which is what it is, and the whole point is that a person is naming
   // somebody they know.
   await d.typeSlow(MONIKER, 220);
   mark('typed_moniker');
-  // The keyboard away BEFORE reaching for PUBLISH. With it up the dialog rides
-  // higher and the tap below lands on the keyboard -- it hit `j`, which is how a
-  // take came back with the moniker "Tomj" and PUBLISH never pressed.
-  if (await d.hideKeyboard()) {
-    console.log('  keyboard dismissed before PUBLISH');
-    await sleep(700);
-  }
+  // DO NOT SEND BACK HERE. This used to call hideKeyboard(), which is
+  // `input keyevent 4`, on the theory that a docked keyboard pushes the dialog
+  // up and the PUBLISH tap would land on a key instead (it once typed `j`).
+  //
+  // But Gboard on this emulator comes up FLOATING -- a narrow strip of icons
+  // over the dialog's left edge -- as often as docked. Floating, it does not
+  // move the dialog at all, so there is nothing to dismiss; and `mInputShown` is
+  // true either way, so hideKeyboard fired regardless and BACK went to the
+  // DIALOG. The dialog closed, the PUBLISH tap landed on the main screen behind
+  // it, and the take recorded a vouch that was never made: no snackbar, and
+  // "No Trusted People" afterwards. That is what the missing snackbar was.
   await sleep(1800);                   // a beat on the name, then commit to it
 
   tap('publish', AT.publish);
+
+  // AND CHECK IT TOOK. The scrim behind the dialog is a flat grey; with the
+  // dialog gone the same strip is the app's near-white background. Sampling it
+  // says whether PUBLISH actually closed the dialog, which is the difference
+  // between a take worth keeping and forty seconds of footage of nothing.
+  // POLL, do not sample once. Publishing is a signature and a network round
+  // trip, and the dialog stays up until it lands -- a single check at 2.5s
+  // called a working take a failure.
+  let closed = false;
+  for (let i = 0; i < 25 && !closed; i++) {
+    await sleep(1000);
+    closed = !dialogStillUp();
+  }
+  if (!closed) {
+    throw new Error('PUBLISH did not close the "Who\'s Key is This?" dialog in 25s. '
+      + 'Either the moniker never landed (PUBLISH stays disabled until it does) '
+      + 'or the tap missed -- a DOCKED keyboard moves the dialog up, where a '
+      + 'floating one does not.');
+  }
+  console.log('  published: the dialog closed');
   // WAIT FOR IT, don't sleep through it. This was a blind sleep(4500) and the
   // take ended with the spinner still turning: the dialog was never seen to
   // close and the success never appeared, so the payoff of the whole section

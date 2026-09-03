@@ -186,6 +186,89 @@ def newest_take(where, stem):
     return max(made, key=lambda p: p.stat().st_mtime)
 
 
+# --- state, so the sections can run as a sequence ---------------------------
+#
+# The video is meant to play as one continuous story: the likes made in
+# `nerdster` should still be there, unchanged, when `crypto_teaser` and
+# `close_account` film them. Two things carry that state, and both are now
+# saveable and restorable:
+#
+#   the phone  -- the keyring, over the app's filming-only export/import deep
+#                 links (app_state.sh). The delegate key matters especially:
+#                 a DIFFERENT delegate orphans every rating the old one signed.
+#   the network -- the statement streams, which are append-only hash chains, so
+#                 a snapshot of the head plus truncate --keep rewinds exactly
+#                 (snapshot_statements.js).
+#
+# A successful shoot saves both into its own build directory, so every complete
+# build carries the state of the world as it left it.
+#
+# WHAT THIS DOES NOT DO YET, and it is the interesting half. Several takes RESET
+# things on purpose so that they can be re-shot in isolation:
+#
+#   shoot_vouch.js      wipes the app, to get a phone with no keys on it
+#   shoot_signin.sh     truncates the delegate statements and mints a new key
+#   shoot_nerdster.sh   truncates what it published last time, because a card it
+#                       has already reacted to has no React button left
+#
+# Those resets are exactly what breaks continuity, and removing them needs each
+# take to start from the previous section's state instead -- which is what the
+# save below makes possible, but nothing yet consumes. Restoring is a deliberate
+# act for now: `--restore <section>`.
+def state_files(where):
+    return where / 'state.keys.json', where / 'state.statements.json'
+
+
+def save_state(section, where):
+    """Record the phone and the network as this section left them."""
+    sid = section['id']
+    keys, stmts = state_files(where)
+    try:
+        subprocess.run(['./app_state.sh', 'save', str(keys)], check=True, cwd=HERE)
+    except (subprocess.CalledProcessError, OSError) as e:
+        print(f'  (state: could not save the keyring -- {e})')
+    try:
+        token = demo_identity_token()
+        out = subprocess.run(['node', 'snapshot_statements.js', '--token', token,
+                              '--project', 'oneofus', '--prod'],
+                             check=True, cwd=HERE, capture_output=True, text=True)
+        stmts.write_text(out.stdout)
+    except (subprocess.CalledProcessError, OSError) as e:
+        print(f'  (state: could not snapshot the statements -- {e})')
+    print(f'  state saved for {sid}')
+
+
+def demo_identity_token():
+    keys = json.loads((HERE / 'demo_identity.json').read_text())
+    return next(iter(keys['demoTokens'].values()))
+
+
+def restore_state(sid):
+    """Put the phone and the network back to how a section left them.
+
+    The phone first and the network last: the app reads the network on its next
+    launch, so doing it the other way round leaves the app holding what it read
+    before the rewind.
+    """
+    builds = sorted((HERE / 'out' / sid).glob('*/state.keys.json'))
+    if not builds:
+        sys.exit(f'no saved state for {sid}. Only builds shot since this existed '
+                 'have any -- shoot it, or pick another section.')
+    where = builds[-1].parent
+    keys, stmts = state_files(where)
+    print(f'  restoring from {where.relative_to(HERE)}')
+    subprocess.run(['./app_state.sh', 'restore', str(keys)], check=True, cwd=HERE)
+    if stmts.exists():
+        head = json.loads(stmts.read_text())['streams']['statements']['head']
+        if head:
+            subprocess.run(['node', 'truncate_statements.js', '--token',
+                            demo_identity_token(), '--project', 'oneofus', '--prod',
+                            '--keep', head], check=True, cwd=HERE,
+                           env={**os.environ, 'I_MEAN_IT': 'yes'})
+        else:
+            print('  (the snapshot has an empty stream; nothing to rewind to)')
+
+
 def write_manifest(section, where, video, take=None):
     """Say that this build finished, and what it was made of. WRITTEN LAST.
 
@@ -365,6 +448,7 @@ def _build(section, where):
         # a card. The script takes its output path and owns the rest.
         check_device()
         run(['./' + how, out], env=env)
+        save_state(section, where)
         write_manifest(section, where, out)
         print(f'\n  {out.relative_to(HERE)}')
         return
@@ -376,6 +460,10 @@ def _build(section, where):
     stem = how[len('shoot_'):-len('.js')] if how.startswith('shoot_') else how[:-3]
     check_device()
     run(['node', how], env=env)
+    # RIGHT AFTER THE CAMERA, not after post-production: this is the state the
+    # world is in because of the take, and --recut must not overwrite it with
+    # whatever the device happens to hold days later.
+    save_state(section, where)
     finish(section, where, newest_take(where, stem))
 
 
@@ -576,6 +664,8 @@ def main():
     p.add_argument('--check', action='store_true')
     p.add_argument('--card', metavar='ID', help="render this section's card")
     p.add_argument('--build', metavar='ID', help='shoot and finish a section')
+    p.add_argument('--restore', metavar='ID',
+                   help='put the phone and the network back to how a section left them')
     p.add_argument('--recut', metavar='ID',
                    help='re-finish the newest take of a section, without reshooting')
     p.add_argument('--assemble', metavar='VIDEO',
@@ -588,6 +678,12 @@ def main():
 
     if args.assemble:
         assemble(videos, args.assemble, args.soundtrack, args.stale_ok)
+        return
+
+    if args.restore:
+        if args.restore not in sections:
+            sys.exit(f"no section '{args.restore}'. Try --list.")
+        restore_state(args.restore)
         return
 
     if args.recut:

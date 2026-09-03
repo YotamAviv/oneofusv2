@@ -22,6 +22,17 @@
       "text": "Signed on the phone. Published to the network."
     }
   ],
+  "beats": [
+    {
+      "at": "published",
+      "after": 0.5,
+      "hold": 4.0,
+      "text": "The private crypto key on this phone signed Tom's public crypto key,\nwhere Tom's identity statements are hosted,\nand that I know this human as \"Tom\".",
+      "box": "snackbarBox",
+      "pad": 20,
+      "y": 1400
+    }
+  ],
   "cards": [
     {
       "at": "success_cleared",

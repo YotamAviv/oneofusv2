@@ -69,6 +69,40 @@ if (n < 40) {
                 `(${n} red pixels). Has the signature scrolled into view?`);
   process.exit(1);
 }
+// --value: take in the text that FOLLOWS the red key, not just the key.
+//
+// The Nerdster colours the `signature` KEY red and leaves its value black, so
+// the red box alone is a highlight around the word "signature" with the actual
+// signature sitting outside it -- which points at the label rather than at the
+// thing. The value is 128 hex characters and wraps, so how far down it runs is
+// not something to write down.
+//
+// Measured instead: from the key's own line, walk down while rows still carry
+// ink, and stop at the first real gap. That picks up the wrapped value however
+// many lines it takes, and stops before the rest of the document.
+if (process.argv.includes('--value')) {
+  const INK = 120;                 // luma below this is text
+  const GAP = 26;                  // blank rows that end the block
+  const inked = y => {
+    let c = 0, lo = 1e9, hi = -1;
+    for (let x = x0; x < x1; x++) {
+      const i = (y * W + x) * 3;
+      const lum = (raw[i] * 299 + raw[i + 1] * 587 + raw[i + 2] * 114) / 1000;
+      if (lum < INK) { c++; if (x < lo) lo = x; if (x > hi) hi = x; }
+    }
+    return c >= 3 ? { lo, hi } : null;
+  };
+  let blank = 0;
+  for (let y = maxY + 1; y < y1 && blank < GAP; y++) {
+    const row = inked(y);
+    if (!row) { blank++; continue; }
+    blank = 0;
+    if (row.lo < minX) minX = row.lo;
+    if (row.hi > maxX) maxX = row.hi;
+    maxY = y;
+  }
+}
+
 console.log(JSON.stringify({
   x: Math.round((minX + maxX) / 2), y: Math.round((minY + maxY) / 2),
   w: maxX - minX + 1, h: maxY - minY + 1, pixels: n,

@@ -247,6 +247,27 @@ function device(serial = process.env.AVD || 'emulator-5554') {
     /// BACK only when the keyboard is actually shown -- Android sends BACK to
     /// the IME first, but with no keyboard up it goes to the app and closes the
     /// dialog. dumpsys says which, so this never has to guess.
+    /// Wait until the soft keyboard is actually up.
+    ///
+    /// Typing is `input text`, which goes to whatever has the input connection.
+    /// Tap a field and type straight away and the tap may not have landed on it
+    /// yet -- the dialog is still animating -- so there is no connection and the
+    /// characters go NOWHERE. Nothing errors: the field stays empty, PUBLISH
+    /// stays disabled, the tap on it does nothing, and the take runs to the end
+    /// and produces a video of a vouch that was never made. That cost three
+    /// takes and looked like a missing snackbar.
+    waitForKeyboard: async (timeout = 8000) => {
+      const shown = () => /mInputShown=true/.test(
+        Eout('shell', 'dumpsys', 'input_method'));
+      const t0 = Date.now();
+      while (Date.now() - t0 < timeout) {
+        if (shown()) return true;
+        await sleep(250);
+      }
+      throw new Error('the soft keyboard never appeared, so there is nothing to '
+        + 'type into -- the field tap probably missed, or landed mid-animation');
+    },
+
     hideKeyboard: async (timeout = 4000) => {
       const shown = () => /mInputShown=true/.test(
         Eout('shell', 'dumpsys', 'input_method'));

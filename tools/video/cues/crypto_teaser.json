@@ -62,6 +62,15 @@
       "y": 820
     },
     {
+      "at": "export_link_shown",
+      "after": 0.8,
+      "hold": 3.0,
+      "text": "The statement's address on the open network.\nLet's go and look at it.",
+      "box": "exportLinkBox",
+      "pad": 22,
+      "y": 1100
+    },
+    {
       "at": "signature_shown",
       "after": 1.2,
       "hold": 2.0,

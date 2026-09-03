@@ -33,6 +33,11 @@ const AT = {
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const marks = { taps: [] };
+  // APP-BLIND, measured off a screenshot of the main screen: the "Me" printed on
+  // the identity card. It does not move -- the card is a fixed layout -- but it
+  // is recorded as a mark so the cue can NAME a measurement instead of carrying
+  // pixels, the same as every other box in these sections.
+  marks.meBox = { x: 925, y: 907, w: 200, h: 105 };
   let t0 = Date.now();
   const at = () => +((Date.now() - t0) / 1000).toFixed(2);
   const mark = k => { marks[k] = at(); console.log(`  ${k} @${marks[k]}s`); };

@@ -21,6 +21,15 @@
   ],
   "beats": [
     {
+      "at": "main_screen",
+      "after": 0.8,
+      "hold": 3.4,
+      "text": "No one has vouched for me,\nso there is no better name to show.",
+      "box": "meBox",
+      "pad": 24,
+      "y": 1500
+    },
+    {
       "at": "link",
       "after": 1.2,
       "hold": 3.4,
