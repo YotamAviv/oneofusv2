@@ -49,15 +49,24 @@ const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
 const bubble = require('./lib/bubble');
 const { page: cardPage } = require('./lib/card');
-const { loadMarks, timeOf } = require('./lib/marks');
+const { TRIM_PAD, loadMarks, timeOf } = require('./lib/marks');
 
 const FONTS = path.join(__dirname, 'fonts');
-const BAND_H = 300;                 // prompter band, along the bottom
 const SCROLL = 0.45;                // seconds a line takes to slide into place
 
 const [cueFile, inVideo] = process.argv.slice(2);
 if (!inVideo) { console.error('usage: annotate.js <cues.json> <in.mp4>'); process.exit(1); }
 const cues = JSON.parse(fs.readFileSync(cueFile, 'utf8'));
+
+const BAND_H = 300;                 // prompter band, along the bottom
+// ...or along the top, for a section that has to tap the app's own bottom bar.
+// The band is opaque by design, so whatever it covers is simply gone: the Share
+// button in `invite` sits at y=2061, under a band starting at 1920, and on
+// video the share sheet opened with nothing having been pressed.
+const BAND_AT = cues.prompter_at || 'bottom';
+if (!['top', 'bottom'].includes(BAND_AT)) {
+  throw new Error(`prompter_at: ${BAND_AT} -- expected 'top' or 'bottom'.`);
+}
 
 // Resolve every cue's time once, up front, so the rest of this works in
 // seconds. A cue that names a mark is resolved against the take's own marks
@@ -126,6 +135,8 @@ const W = +probe[0], H = +probe[1], DUR = +probe[2];
 //
 // The mark being late is as likely as the take being short, and the two look
 // identical from here, so name both.
+refuseBuriedTaps();
+
 for (const [what, list] of [['prompter line', lines], ['zoom', zooms],
                             ['beat or card', splices]]) {
   for (const c of list) {
@@ -379,7 +390,7 @@ function punchIn(src, out) {
 function layPrompter(src, out, geom) {
   if (!lines.length) { fs.copyFileSync(src, out); return; }
   const total = DUR + splices.reduce((s, b) => s + b.hold, 0);
-  const bandY = H - BAND_H;
+  const bandY = BAND_AT === 'top' ? 0 : H - BAND_H;
 
   // A dark gradient behind the text, so it reads over a bright feed.
   const scrim = path.join(work, 'scrim.png');
@@ -391,7 +402,10 @@ function layPrompter(src, out, geom) {
     // spread over the band's height was still only half opaque, and white text
     // read through and tangled with the prompter line. Reach full cover in forty
     // pixels, not three hundred.
-    `geq=r=0:g=0:b=0:a='255*min(1,Y/40+0.12)'`,
+    // The feather goes on the side that MEETS THE PICTURE: the top edge for a
+    // band along the bottom, the bottom edge for one along the top.
+    (BAND_AT === 'top' ? `geq=r=0:g=0:b=0:a='255*min(1,(${BAND_H}-Y)/40+0.12)'`
+                       : `geq=r=0:g=0:b=0:a='255*min(1,Y/40+0.12)'`),
     '-frames:v', '1', scrim]);
 
   const inputs = ['-loop', '1', '-t', String(total), '-i', scrim];
@@ -425,4 +439,41 @@ function layPrompter(src, out, geom) {
     '-filter_complex', chain.join(';'), '-map', '[v]',
     '-c:v', 'libx264', '-crf', '20', '-preset', 'medium', '-pix_fmt', 'yuv420p', out],
     { stdio: 'inherit' });
+}
+
+
+/// Refuse to build a section whose taps the prompter band would bury.
+///
+/// overlay_taps runs before this -- it has to, since it also trims the head the
+/// marks are measured from -- so the band is drawn ON TOP of the indicators. A
+/// control under it is then tapped invisibly: `invite` taps Share at y=2061,
+/// the band covers everything below 1920, and on video the share sheet just
+/// appears with nothing having been pressed.
+///
+/// Drawing the indicator back on top does not fix it, and was tried: the ring
+/// then floats over the band's own text, pointing at a button that is still
+/// hidden. The band has to move, so this says so and stops.
+function refuseBuriedTaps() {
+  if (!lines.length) return;
+  const R = 140;                                 // tapfx frames are 280x280
+  const covered = BAND_AT === 'bottom'
+    ? t => t.y + R > H - BAND_H
+    : t => t.y - R < BAND_H;
+  const buried = (marks && marks.taps || []).filter(covered);
+  if (!buried.length) return;
+  const where = buried.map(t => `"${t.what}" at (${t.x},${t.y})`).join(', ');
+  // Loud, but not fatal. It WAS fatal, and that was wrong: `vouch` taps two
+  // controls under the band and has shipped that way, so refusing would block
+  // every rebuild of a section on a complaint about something else. The band is
+  // being redesigned, and this is a legibility call rather than a wrong output
+  // -- unlike a missed sync flash, which silently misplaces everything and does
+  // still stop the build.
+  console.error(
+    `\n  WARNING: the prompter band covers ${buried.length > 1 ? 'taps' : 'the tap on'} ` +
+    `${where}.\n` +
+    `  The band is ${BAND_H}px along the ${BAND_AT} of a ${H}px frame, and it is\n` +
+    `  opaque, so the control and its tap indicator are both behind it -- on video\n` +
+    `  the button reacts with nothing having been pressed.\n` +
+    `  \`prompter_at: ${BAND_AT === 'bottom' ? 'top' : 'bottom'}\` on the section moves ` +
+    `the band off it.\n`);
 }

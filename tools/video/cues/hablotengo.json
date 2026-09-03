@@ -15,10 +15,6 @@
       "text": "I vouched for Tom. Tom vouched for Hillel.\nThe proof is a chain of signatures, there to check."
     },
     {
-      "at": "delegates_shown",
-      "text": "Two nerdster.org delegate keys -- and one for hablotengo.com,\na service with nothing to do with this one."
-    },
-    {
       "at": "hablotengo_open",
       "text": "The same identity, carried to another service."
     },

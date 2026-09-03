@@ -34,6 +34,15 @@ const APP_ICON = [536, 818];        // ONE-OF-US.NET on the home screen
   d.E('shell', 'input', 'keyevent', '3');   // HOME, before the camera is rolling
   await sleep(2500);
 
+  // Chrome opens a tab per VIEW intent and nothing closed them; thirty had
+
+  // piled up, and enough of them throttle screenrecord. Swept before the
+
+  // camera, so a crashed take is cleaned up by the next one.
+
+  await d.closeChromeTabs();
+
+
   const rec = spawn('adb', ['-s', process.env.AVD || 'emulator-5554', 'shell', 'screenrecord',
     '--time-limit', '60', '--bit-rate', '8000000', '/sdcard/home.mp4']);
   await sleep(4000);

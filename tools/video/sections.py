@@ -20,7 +20,7 @@ sitting in a shell script rather than in the doc that is supposed to hold them.
 The rest (flashes, actions, announce, defer, todo) is for people, and for
 whoever builds those sections next.
 """
-import argparse, hashlib, json, os, re, subprocess, sys
+import argparse, hashlib, json, os, re, shutil, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
@@ -55,6 +55,15 @@ def load():
         sys.exit(f'no storyboards in {VIDEOS}')
     for f in files:
         doc = yaml.safe_load(f.read_text())
+        # Every file in video/ is a whole video: a mapping with a title and a
+        # list of sections. Anything else here is a scratch file that someone
+        # parked in the wrong directory -- a bare list of removed sections did
+        # exactly that -- and without this the loader died on a TypeError deep
+        # inside itself that said nothing about which file was at fault.
+        if not isinstance(doc, dict) or 'sections' not in doc:
+            sys.exit(f'{f.relative_to(HERE.parent.parent)} is not a video: every '
+                     f'file in video/ needs a top-level `sections:` (this one is '
+                     f'a {type(doc).__name__}). Move scratch files out of video/.')
         doc['file'] = f
         videos.append(doc)
         for s in doc['sections']:
@@ -73,6 +82,13 @@ def cue_file(section):
     cues = {k: section[k] for k in CUE_KEYS if section.get(k)}
     if not cues:
         return None
+    # Which edge the prompter sits on. It defaults to the bottom, and covers the
+    # bottom 300px of the frame -- which is where an app puts its bottom bar. A
+    # section that taps something down there has to move the prompter, or the
+    # control and its tap indicator are both behind the band. annotate.js
+    # refuses to build such a section rather than burying the tap silently.
+    if section.get('prompter_at'):
+        cues['prompter_at'] = section['prompter_at']
     out = {'_comment': [
         f"Generated from video/ -- section '{section['id']}'.",
         "Edit the copy THERE, not here, and run:",
@@ -272,6 +288,40 @@ def build(section):
         raise
 
 
+def recut(section):
+    """Re-finish a section's newest take in a build of its own.
+
+    The take is COPIED into a new stamped directory rather than being finished
+    in place: the old build stays exactly as it shipped, so the two can be put
+    side by side, and a re-cut that fails leaves the good one alone.
+    """
+    sid = section['id']
+    how = section['build']
+    if not how.endswith('.js'):
+        sys.exit(f"'{sid}' builds as {how}; --recut re-finishes a shot take, and "
+                 "only .js sections have one. Use --build.")
+    stem = how[len('shoot_'):-len('.js')] if how.startswith('shoot_') else how[:-3]
+    takes = sorted((HERE / 'out' / sid).glob(f'*/{stem}.mp4'))
+    if not takes:
+        sys.exit(f"no take to re-cut in out/{sid}/ -- nothing matches {stem}.mp4. "
+                 "Shoot it first with --build.")
+    src = takes[-1]
+    where = build_dir(sid)
+    print(f'  re-cutting {src.relative_to(HERE)}')
+    try:
+        take = where / src.name
+        shutil.copy2(src, take)
+        marks = src.with_suffix('.marks.json')
+        if not marks.exists():
+            sys.exit(f'{src.relative_to(HERE)} has no {marks.name} beside it; '
+                     'the take cannot be cut without its marks.')
+        shutil.copy2(marks, where / marks.name)
+        finish(section, where, take)
+    except BaseException:
+        drop_if_empty(where)
+        raise
+
+
 def _build(section, where):
     """Shoot a section and finish it, in the one order that works.
 
@@ -323,7 +373,22 @@ def _build(section, where):
     stem = how[len('shoot_'):-len('.js')] if how.startswith('shoot_') else how[:-3]
     check_device()
     run(['node', how], env=env)
-    take = newest_take(where, stem)
+    finish(section, where, newest_take(where, stem))
+
+
+def finish(section, where, take):
+    """Everything after the camera: taps, composite, annotation, trim, manifest.
+
+    Split out from the shoot so a take can be re-cut without being re-shot.
+    Post-production is where most of the mistakes are, and they are not always
+    visible when they happen: a sync flash read off the take's dim opening put
+    every tap and highlight in `invite` 5.4s out of place on footage that was
+    perfect. Reshooting to fix a cut also costs the state the take ran against,
+    which for several sections cannot be reproduced without reshooting sign-in.
+    """
+    sid = section['id']
+    out = where / 'section.mp4'
+    env = {**os.environ, 'BUILD_DIR': str(where)}
     run(['node', 'overlay_taps.js', take])
     cur = take.with_name(take.stem + '_taps.mp4')
 
@@ -392,11 +457,11 @@ def title_clip(section, dest):
     if not title:
         sys.exit(f"'{section['id']}' has no title:. Every section needs one -- it "
                  "opens the section on screen and names its YouTube chapter.")
-    run(['node', 'card.js', dest, TITLE_SECONDS, title])
+    run(['node', 'card.js', dest, TITLE_SECONDS, title, '--no-fade'])
     return dest
 
 
-def assemble(videos, name, extra):
+def assemble(videos, name, extra, stale_ok=False):
     """Join a video's sections in order, and refuse if any of them is missing.
 
     THIS DOES NOT ASSEMBLE WHAT IT CAN. A cut with sections silently left out
@@ -420,13 +485,18 @@ def assemble(videos, name, extra):
             stale.append(f"{sid} (built {man['built']} from older copy)")
         chosen.append((sid, stamp, man))
 
-    if missing or stale:
+    for line in stale:
+        print(f'  STALE    {line}')
+    if missing or (stale and not stale_ok):
         for sid in missing:
             print(f'  MISSING  {sid}: no complete build in out/{sid}/')
-        for line in stale:
-            print(f'  STALE    {line}')
         sys.exit(f"\n{name} is not ready: {len(missing)} section(s) unbuilt, "
-                 f"{len(stale)} built before the copy changed.")
+                 f"{len(stale)} built before the copy changed."
+                 + ('\n  --stale-ok assembles anyway, with the older words.'
+                    if stale and not missing else ''))
+    if stale:
+        print(f'  --stale-ok: assembling with {len(stale)} section(s) that say '
+              'what they said before the copy changed.')
 
     stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
     out = HERE / 'out' / f'{name}_{stamp}.mp4'
@@ -442,6 +512,10 @@ def assemble(videos, name, extra):
     clips, at, bounds, ff = [], 0.0, [], [';FFMETADATA1']
     for sid, sstamp, man in chosen:
         card = title_clip(sections[sid], work / f'title_{sid}.mp4')
+        # One line for the chapter, whatever the card does. A title may break
+        # across lines on screen -- "HabloTengo!\nLet's talk" -- but a newline in
+        # a chapter name splits the YouTube list in two and it stops parsing.
+        chapter = ' '.join(sections[sid]['title'].split())
         held = float(subprocess.run(
             ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
              '-of', 'csv=p=0', str(card)],
@@ -449,10 +523,10 @@ def assemble(videos, name, extra):
         clips += [card, HERE / man['video']]
         # The chapter starts at the TITLE, not after it.
         end = at + held + man['duration']
-        bounds.append({'section': sid, 'title': sections[sid]['title'],
+        bounds.append({'section': sid, 'title': chapter,
                        'build': sstamp, 'start': round(at, 3), 'end': round(end, 3)})
         ff += ['[CHAPTER]', 'TIMEBASE=1/1000', f'START={int(at * 1000)}',
-               f'END={int(end * 1000)}', f'title={sections[sid]["title"]}']
+               f'END={int(end * 1000)}', f'title={chapter}']
         at = end
     meta = out.with_suffix('.chapters')
     meta.write_text(chr(10).join(ff) + chr(10))
@@ -488,14 +562,25 @@ def main():
     p.add_argument('--check', action='store_true')
     p.add_argument('--card', metavar='ID', help="render this section's card")
     p.add_argument('--build', metavar='ID', help='shoot and finish a section')
+    p.add_argument('--recut', metavar='ID',
+                   help='re-finish the newest take of a section, without reshooting')
     p.add_argument('--assemble', metavar='VIDEO',
                    help='join a video\'s sections, newest complete build of each')
     p.add_argument('--soundtrack', metavar='MP3', help='music bed for --assemble')
+    p.add_argument('--stale-ok', action='store_true',
+                   help='assemble even where a section predates its copy')
     args = p.parse_args()
     videos, sections = load()
 
     if args.assemble:
-        assemble(videos, args.assemble, args.soundtrack)
+        assemble(videos, args.assemble, args.soundtrack, args.stale_ok)
+        return
+
+    if args.recut:
+        s = sections.get(args.recut)
+        if s is None:
+            sys.exit(f"no section '{args.recut}'. Try --list.")
+        recut(s)
         return
 
     if args.build:

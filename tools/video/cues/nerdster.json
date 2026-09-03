@@ -71,5 +71,18 @@
       ],
       "y": 760
     }
+  ],
+  "cards": [
+    {
+      "at": "published",
+      "after": 0.3,
+      "hold": 3.5,
+      "lines": [
+        "Do we really need another one of these?",
+        "No. But this is different.",
+        "A proof of concept of the paradigm, leveraging our own open, decentralized identity network.",
+        "Open: any service can leverage it, and contribute to it."
+      ]
+    }
   ]
 }

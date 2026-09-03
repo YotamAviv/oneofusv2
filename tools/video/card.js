@@ -19,12 +19,16 @@ const { chromium } = require('playwright');
 const W = 1080, H = 2220;
 const FONTS = path.join(__dirname, 'fonts');
 const FADE_MAX = 0.4;
+// --no-fade: cut to it and cut away. A card that argues something wants easing
+// in; a one-second title does not -- at that length the fade IS most of the
+// clip, and it reads as the video hesitating rather than as a title.
+const NO_FADE = process.argv.includes('--no-fade');
 
 // --words makes a word-by-word card: the words arrive one at a time and stay.
 // Anything else is a plain card, first line large and the rest smaller.
 const argv = process.argv.slice(2);
 const wordMode = argv.includes('--words');
-const [out, secs, ...rest] = argv.filter(a => a !== '--words');
+const [out, secs, ...rest] = argv.filter(a => a !== '--words' && a !== '--no-fade');
 const lines = rest;
 if (!lines.length) {
   console.error('usage: card.js <out.mp4> <seconds> "<heading>" ["<line>" ...]\n' +
@@ -33,7 +37,7 @@ if (!lines.length) {
 }
 const DUR = +secs;
 // A short card cannot spend most of itself fading.
-const FADE = Math.min(FADE_MAX, DUR * 0.14);
+const FADE = NO_FADE ? 0 : Math.min(FADE_MAX, DUR * 0.14);
 
 const card = require('./lib/card');
 const page = card.page(lines, { W, H, fontsDir: FONTS });
@@ -84,8 +88,9 @@ const STEP = +(process.env.WORD_STEP || 0.62);
     execFileSync('ffmpeg', ['-y', '-v', 'error', ...inputs, '-filter_complex',
       `${chain.join(';')};${pngs.map((_, i) => `[w${i}]`).join('')}` +
       `concat=n=${pngs.length}:v=1:a=0,format=yuv420p,` +
-      `fade=t=in:st=0:d=${FADE},` +
-      `fade=t=out:st=${(STEP * last + DUR - FADE).toFixed(2)}:d=${FADE}[v]`,
+      (NO_FADE ? '[v]'
+               : `fade=t=in:st=0:d=${FADE},` +
+                 `fade=t=out:st=${(STEP * last + DUR - FADE).toFixed(2)}:d=${FADE}[v]`),
       '-map', '[v]', '-c:v', 'libx264', '-crf', '19', '-preset', 'medium', out],
       { stdio: 'inherit' });
     console.log(`-> ${out}  (${(STEP * last + DUR).toFixed(2)}s, ${lines.length} words)  ` +
@@ -98,8 +103,8 @@ const STEP = +(process.env.WORD_STEP || 0.62);
   await browser.close();
 
   execFileSync('ffmpeg', ['-y', '-v', 'error', '-loop', '1', '-t', String(DUR), '-i', png,
-    '-vf', `fps=25,format=yuv420p,fade=t=in:st=0:d=${FADE},` +
-           `fade=t=out:st=${(DUR - FADE).toFixed(2)}:d=${FADE}`,
+    '-vf', 'fps=25,format=yuv420p' + (NO_FADE ? ''
+             : `,fade=t=in:st=0:d=${FADE},fade=t=out:st=${(DUR - FADE).toFixed(2)}:d=${FADE}`),
     '-c:v', 'libx264', '-crf', '19', '-preset', 'medium', out], { stdio: 'inherit' });
   console.log(`-> ${out}  (${DUR}s)  ${lines.join(' / ')}`);
 })();

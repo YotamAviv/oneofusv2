@@ -267,6 +267,49 @@ function device(serial = process.env.AVD || 'emulator-5554') {
     open: uri => E('shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', uri),
     screencap: path => execFileSync('bash',
       ['-c', `adb -s ${serial} exec-out screencap -p > ${path}`]),
+
+    /// Close every Chrome tab but one, and say how many went.
+    ///
+    /// Tabs accumulate across takes and are NOT free: sixty of them starved
+    /// screenrecord's encoder badly enough that takes stopped recording at 26.5
+    /// seconds, and two days went into looking for the cause somewhere else.
+    ///
+    /// attachToAvdChrome already does this for takes that drive Chrome. It is
+    /// the takes that DON'T that leak: the sync flash is an `am start -a VIEW`
+    /// of a data: URL, and Chrome opens a fresh tab for every VIEW intent it
+    /// gets. `invite` is a native-app take that never attaches, so every run of
+    /// it left another flash tab behind for good. Thirty had piled up.
+    ///
+    /// Called at the START of a take, not the end: it then also cleans up after
+    /// a take that crashed, and it cannot itself be skipped by one that does.
+    ///
+    /// NOT `pm clear com.android.chrome`, which would take the sign-in state
+    /// with it -- the delegate key that vouch, nerdster and crypto_teaser all
+    /// run against, and which costs a reshoot of sign-in to get back.
+    closeChromeTabs: async () => {
+      // Chrome not running yet is a normal state, not a failure -- several
+      // takes start on the native app and only reach Chrome later. It is also
+      // the only forgiving branch here: anything else that goes wrong throws,
+      // because a tab sweep that quietly does nothing is how they piled up.
+      const running = execFileSync('adb', ['-s', serial, 'shell', 'pidof',
+        'com.android.chrome'], { encoding: 'utf8' }).trim();
+      if (!running) return 0;
+      execFileSync('adb', ['-s', serial, 'forward', 'tcp:9222',
+        'localabstract:chrome_devtools_remote'], { stdio: 'ignore' });
+      const get = async path => {
+        const r = await fetch(`http://localhost:9222${path}`);
+        if (!r.ok) throw new Error(`CDP ${path} -> ${r.status}`);
+        return r;
+      };
+      const tabs = (await (await get('/json/list')).json())
+        .filter(t => t.type === 'page');
+      // Leave one. Chrome with no tabs at all opens the new-tab page on its
+      // next launch, which is one more thing on screen than the take expects.
+      const doomed = tabs.slice(1);
+      for (const t of doomed) await get(`/json/close/${t.id}`);
+      if (doomed.length) console.log(`  closed ${doomed.length} stale Chrome tab(s)`);
+      return doomed.length;
+    },
   };
 }
 

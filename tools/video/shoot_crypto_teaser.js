@@ -143,6 +143,11 @@ const toDevice = (x, y) => ({
   }
 
   // --- record ---
+  // Chrome opens a tab per VIEW intent and nothing closed them; thirty had
+  // piled up, and enough of them throttle screenrecord. Swept before the
+  // camera, so a crashed take is cleaned up by the next one.
+  await require('./lib/device').device().closeChromeTabs();
+
   const rec = spawn('adb', ['-s', SERIAL, 'shell', 'screenrecord',
     '--time-limit', '180', '--bit-rate', '8000000', '/sdcard/crypto_teaser.mp4']);
   await sleep(4000);
@@ -177,16 +182,18 @@ const toDevice = (x, y) => ({
   await sleep(900);
   if (!await showCryptoOn(page)) throw new Error('Show Crypto did not turn on in shot');
   mark('crypto_on');
-  // A beat on each toggle, because each one gets a line of narration saying
-  // what it just did. Tapped back to back they were 1.8s apart and the second
-  // line arrived before the first could be read.
-  await sleep(4600);
+  // A beat on each toggle, because each gets a line of narration saying what it
+  // just did -- tapped back to back they were 1.8s apart and the second line
+  // arrived before the first could be read. 3.4s is about what those lines need
+  // at a readable pace; 4.6 was generous and it showed, as nine seconds of an
+  // open menu that is not itself the point.
+  await sleep(3400);
 
   const fyiBox = await menuCheckbox(page, /^Show FYI$/);
   await tapAt(cdp, fyiBox.x, fyiBox.y);
   tapped('show_fyi', fyiBox);
   mark('fyi_on');
-  await sleep(4600);
+  await sleep(3400);
 
   // CLOSE THE MENU, AND PROVE IT CLOSED.
   //
@@ -273,10 +280,12 @@ const toDevice = (x, y) => ({
   // watching nothing happen, on top of the drags themselves.
   const json = await find(page, /"signature"|"statement"|"crv"/);
   if (!json) throw new Error('no JSON in the published sheet to scroll');
-  for (let i = 0; i < 4; i++) {
-    await drag(cdp, Math.round(json.x), Math.round(json.y), 0, { dy: -90, holdMs: 120 });
-    await sleep(500);
-  }
+  // ONE flick to the bottom, not four crawls. Four drags of ninety pixels with
+  // half a second between them spent seconds on nothing but scrolling. The view
+  // is short and a fling carries past its end and settles there, so one long
+  // throw lands where four crawls did.
+  await drag(cdp, Math.round(json.x), Math.round(json.y), 0, { dy: -420, holdMs: 60 });
+  await sleep(800);
   mark('signature_shown');
   marks.jsonBox = { x: Math.round(json.x), y: Math.round(json.y),
                     w: Math.round(json.w), h: Math.round(json.h) };

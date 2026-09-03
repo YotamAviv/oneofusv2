@@ -50,38 +50,38 @@ else
   SOUND=""
 fi
 
-XFADE=0.6          # seconds of crossfade between takes
 TAIL=1.2           # seconds of music left running past the last frame
 
-# Total, allowing for what each crossfade eats.
+# STRAIGHT CUTS, no crossfade.
+#
+# This used to xfade 0.6s between every clip. The running order interleaves a
+# title card before each section, so EVERY join touches a title -- and a title
+# is only 1.0s long, so it spent more of its life dissolving than on screen.
+# Three things were legible at once at a boundary: the outgoing section's
+# closing card, the title, and the incoming section's first frame. A title is a
+# caption, not a transition; it cuts.
+#
+# The clips are all 1080x2220, but concat refuses inputs that disagree on frame
+# rate or aspect, and it fails deep inside ffmpeg when they do. Normalising each
+# input first is cheap and makes that impossible.
 TOTAL=0
 for c in "${CLIPS[@]}"; do
   D=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$c")
   TOTAL=$(python3 -c "print($TOTAL + $D)")
 done
-TOTAL=$(python3 -c "print(round($TOTAL - $XFADE * (${#CLIPS[@]} - 1), 3))")
+TOTAL=$(python3 -c "print(round($TOTAL, 3))")
 echo "${#CLIPS[@]} clips, $TOTAL s"
 for c in "${CLIPS[@]}"; do echo "  $c"; done
 
-# Crossfade the clips together. xfade wants each input's offset in the OUTPUT
-# timeline, which is where the running total minus the fades already spent goes.
 FILTER=""
 INPUTS=()
-PREV="[0:v]"
-ACC=0
+LABELS=""
 for i in "${!CLIPS[@]}"; do
   INPUTS+=(-i "${CLIPS[$i]}")
-  D=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "${CLIPS[$i]}")
-  if [ "$i" -eq 0 ]; then
-    ACC=$(python3 -c "print(round($D - $XFADE, 3))")
-    continue
-  fi
-  NEXT="[x$i]"
-  FILTER="${FILTER}${PREV}[$i:v]xfade=transition=fade:duration=$XFADE:offset=$ACC${NEXT};"
-  PREV="$NEXT"
-  ACC=$(python3 -c "print(round($ACC + $D - $XFADE, 3))")
+  FILTER="${FILTER}[$i:v]fps=25,format=yuv420p,setsar=1[c$i];"
+  LABELS="${LABELS}[c$i]"
 done
-FILTER="${FILTER}${PREV}format=yuv420p[v]"
+FILTER="${FILTER}${LABELS}concat=n=${#CLIPS[@]}:v=1:a=0[v]"
 
 AUDIO=()
 LENGTH=$TOTAL

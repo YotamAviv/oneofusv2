@@ -46,7 +46,20 @@ const dark = process.argv.includes('--dark');
 const peak = dark ? Math.min(...frames.map(f => f.y)) : Math.max(...frames.map(f => f.y));
 const base = frames.map(f => f.y).sort((a, b) => a - b)[Math.floor(frames.length / 2)];
 const thresh = base + (peak - base) * 0.75;
-const first = frames.find(f => dark ? f.y <= thresh : f.y >= thresh);
+const over = f => (dark ? f.y <= thresh : f.y >= thresh);
+
+// The flash is an EDGE, not a state. Every shoot script sleeps for seconds
+// after starting the recorder so the flash lands well inside the take, and a
+// take can legitimately OPEN on the wrong side of the threshold: invite begins
+// on a dim app screen at luma 82, against a black flash at 36 and a threshold
+// of 84. Taking that opening run as the flash reports offset 0 and shifts
+// every mark in the section by the length of the head -- it put invite's taps
+// and highlights 5.4s out of place, on a take that was otherwise perfect.
+// So skip any opening run and match only where a frame CROSSES.
+let first = null;
+for (let i = 1; i < frames.length; i++) {
+  if (over(frames[i]) && !over(frames[i - 1])) { first = frames[i]; break; }
+}
 if (!first || Math.abs(peak - base) < 20) {
   console.error(`no clear ${dark ? 'dark ' : ''}flash ` +
     `(${dark ? 'trough' : 'peak'} ${peak.toFixed(1)}, median ${base.toFixed(1)})`);

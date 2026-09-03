@@ -91,12 +91,6 @@ sections:
       # the band says it instead, at exactly the right instant.
       - {at: published, text: "Signed on the phone. Published to the network."}
     cards:
-      # Each word appears and stays, building the sentence. At `welcome` rather
-      # than t:0 because the scene is trimmed to that mark -- a card before it
-      # sits in the head that gets cut off.
-      - at: welcome
-        hold: 2.0
-        words: [Our Own., Decentralized., Identity Network.]
       # The punchline of the section, and a full screen rather than narration.
       - at: success_cleared
         after: 0.6
@@ -123,6 +117,10 @@ sections:
     # A cold start spends eight seconds reloading what the identity published;
     # the scene begins once that has settled.
     trim: main_screen
+    # The Share button is at the bottom of the app, under where the prompter
+    # normally sits -- and the band is opaque, so both the button and its tap
+    # indicator vanished behind it. Provisional: revisit when the band changes.
+    prompter_at: top
     # NOT A LIMITATION -- a thing people have to do. Two points, and the second
     # is the one that makes the network possible at all:
     #
@@ -231,6 +229,33 @@ sections:
         anchor: [250, 1457]
         spotlight: [60, 1410, 960, 195]
         y: 760
+    cards:
+      # Was its own section, another_one. It is the same act as a beat -- the
+      # video stops and a screen of text takes over -- and it belongs to the
+      # feed it is arguing about, so it closes this section instead of standing
+      # alone. Order is deliberate: show the network working FIRST, then say how
+      # it differs from every other forum app.
+      # after: 0.3, and it cannot be much more. The take sleeps 2.2s past
+      # `published` but the screen is static by then, so screenrecord emits
+      # almost no frames and the FILE ends about 0.4s after the mark however
+      # long the script waits. A splice point past the last frame is an error.
+      #
+      # It reads fine: the two beats above are at +0.2 and +0.3 and splices play
+      # in time order, so this lands after both -- beat, beat, card, and the
+      # section ends. The card covers the screen anyway, so what is under it at
+      # the splice point does not matter.
+      - at: published
+        after: 0.3
+        hold: 3.5
+        lines:
+          - "Do we really need another one of these?"
+          - "No. But this is different."
+          - "A proof of concept of the paradigm, leveraging our own open,
+             decentralized identity network."
+          - "Open: any service can leverage it, and contribute to it."
+    # The card is the last thing in the section.
+    until: published
+    until_after: 0.3
     defer:
       # Good material, too much for the intro.
       - PoV switch. The demo was wider than a phone; try sweeping side to side
@@ -238,26 +263,6 @@ sections:
         standard.
       - follow/block in a Nerdster context
       - block an identity (reprehensible)
-
-  # -------------------------------------------------------------------------
-  - id: another_one
-    title: "Do we really need another one of these?"
-    preconditions:
-      - Nothing. Rendered from this file; no device.
-    side_effects:
-      - None.
-    build: card
-    status: to_build
-    # Order is deliberate: show the network working FIRST, then -- once it looks
-    # like every other cookie-cutter forum app -- say how it differs.
-    cards:
-      - hold: 3.5
-        lines:
-          - "Do we really need another one of these?"
-          - "No. But this is different."
-          - "A proof of concept of the paradigm, leveraging our own open,
-             decentralized identity network."
-          - "Open: any service can leverage it, and contribute to it."
 
   # -------------------------------------------------------------------------
   - id: crypto_teaser
@@ -370,9 +375,10 @@ sections:
     # as well as authentic. It ends on being refused, which is the feature.
     #
     # The HabloTengo link only appears on a node that HAS a hablotengo.com
-    # delegate key, which is why the section goes to Hillel: he has two
-    # nerdster.org delegates and one hablotengo.com one. node_details.dart opens
-    # hablotengo.com/app?target=<identity> in a new tab.
+    # delegate key, which is why the section goes to Hillel. It does NOT open his
+    # key list to prove that -- the link itself is the proof, and it is in the
+    # header. node_details.dart opens hablotengo.com/app?target=<identity> in a
+    # new tab.
     #
     # NOT YET SHOT. Written from Yotam's outline, 2 Sep 2026. The HabloTengo half
     # -- signing in with the identity app but no delegate key, and the Access
@@ -383,8 +389,6 @@ sections:
       - {at: feed, after: 0.4, text: "Somebody I have never met, two hops away."}
       - {at: node_details,
          text: "I vouched for Tom. Tom vouched for Hillel.\nThe proof is a chain of signatures, there to check."}
-      - {at: delegates_shown,
-         text: "Two nerdster.org delegate keys -- and one for hablotengo.com,\na service with nothing to do with this one."}
       - {at: hablotengo_open,
          text: "The same identity, carried to another service."}
       - {at: denied,
@@ -395,7 +399,7 @@ sections:
       - at: hablotengo_link_shown
         after: 0.8
         hold: 2.6
-        text: "Handy dandy shortcut to another service."
+        text: "Handy dandy shortcut to HabloTengo, a contact sharing service."
         box: habloButtonBox
         pad: 26
         y: 1500
@@ -413,89 +417,3 @@ sections:
         take shows a signed-in app and never reaches Access Denied.
 
   # -------------------------------------------------------------------------
-  - id: people_not_accounts
-    title: "People, not accounts"
-    preconditions:
-      - Nothing. Rendered from this file; no device.
-    side_effects:
-      - None.
-    build: card
-    status: to_build
-    cards:
-      - hold: 3.5
-        lines:
-          - "I don't have a Nerdster account or a ONE-OF-US.NET account."
-          - "I gave the Nerdster a delegate key I claimed as mine. The Nerdster has
-             an account with me."
-          - "Other people vouched for my identity. If anything, I have an account
-             with them."
-          - "Our network already exists. This effort is just so we can use it
-             online."
-          - "Whether you drive Uber, comment on news, like movies or products --
-             you're human, a person, ONE OF US."
-
-  # -------------------------------------------------------------------------
-  - id: same_page
-    title: "Let's get on the same page"
-    preconditions:
-      - Nothing. Rendered from this file; no device.
-    side_effects:
-      - None.
-    build: card
-    status: to_build
-    cards:
-      - hold: 3.5
-        lines:
-          # LET in capitals, not **let**: card.js renders plain text and the
-          # asterisks came out on screen.
-          - "We build the identity network and LET them use it."
-          - "We can't let them build it. One silo will never agree to relying on
-             another's identities."
-
-  # -------------------------------------------------------------------------
-  - id: liberated
-    title: "The Internet liberated lies and pornography"
-    preconditions:
-      - Nothing. Rendered from this file; no device.
-    side_effects:
-      - None.
-    build: card
-    status: to_build
-    cards:
-      - hold: 3.5
-        lines:
-          - "The Internet liberated lies and pornography, and we got confused,
-             depressed, divided, and angry."
-          - "Crypto on the Internet can liberate authenticity and trust. Maybe
-             sanity, truth, and decency."
-
-  # -------------------------------------------------------------------------
-  - id: decentralized
-    title: "Decentralized"
-    preconditions:
-      - Nothing. Rendered from this file; no device.
-    side_effects:
-      - None.
-    build: card
-    status: to_build
-    cards:
-      - hold: 3.5
-        lines:
-          - "Must be, if it's yours and you don't own your own silo."
-    flash: Democracy 2.0
-
-  # -------------------------------------------------------------------------
-  - id: opt_in
-    title: "Opt-in"
-    preconditions:
-      - Nothing. Rendered from this file; no device.
-    side_effects:
-      - None.
-    build: card
-    status: to_build
-    cards:
-      - hold: 3.5
-        lines:
-          - "Just because you can use your authentic voice doesn't mean you have
-             to."
-    flash: First Amendment 2.0

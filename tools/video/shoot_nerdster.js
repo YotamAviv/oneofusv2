@@ -229,6 +229,11 @@ async function commentField(page) {
   console.log('  feed loaded and warm, filters clear');
 
   // --- record ---
+  // Chrome opens a tab per VIEW intent and nothing closed them; thirty had
+  // piled up, and enough of them throttle screenrecord. Swept before the
+  // camera, so a crashed take is cleaned up by the next one.
+  await require('./lib/device').device().closeChromeTabs();
+
   const rec = spawn('adb', ['-s', SERIAL, 'shell', 'screenrecord',
     '--time-limit', '120', '--bit-rate', '8000000', '/sdcard/nerdster.mp4']);
 

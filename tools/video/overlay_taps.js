@@ -17,17 +17,20 @@ const marks = JSON.parse(fs.readFileSync(src.replace(/\.mp4$/, '.marks.json'), '
 // Align the script clock to the footage using the sync flash. Without this the
 // indicators run ~2.5-4s early: screenrecord keeps capturing for seconds after
 // the process spawns, so a clock zeroed at spawn is ahead of the video.
-let OFFSET = 0;
-try {
-  // The take records which way its flash went; a white one is invisible on a
-  // take that is mostly white, so those flash black instead.
-  const kind = marks.syncFlash && marks.syncFlash.kind === 'dark' ? ['--dark'] : [];
-  OFFSET = JSON.parse(execFileSync('node',
-    [path.join(__dirname, 'find_flash.js'), src, ...kind], { encoding: 'utf8' })).offset;
-  console.log(`sync flash at ${OFFSET}s — shifting marks by that much`);
-} catch (e) {
-  console.error('WARNING: no sync flash found; taps will be mistimed');
-}
+//
+// This does NOT degrade gracefully. It used to warn and carry on with an offset
+// of 0, and the result is not a slightly-off section: every tap indicator,
+// every bubble and every highlight in it is wrong by the length of the head,
+// and the take still looks like a normal file. One shipped that way. If the
+// flash cannot be found the take cannot be cut, so stop and say so.
+//
+// The take records which way its flash went; a white one is invisible on a take
+// that is mostly white, so those flash black instead.
+const kind = marks.syncFlash && marks.syncFlash.kind === 'dark' ? ['--dark'] : [];
+const OFFSET = JSON.parse(execFileSync('node',
+  [path.join(__dirname, 'find_flash.js'), src, ...kind],
+  { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] })).offset;
+console.log(`sync flash at ${OFFSET}s — shifting marks by that much`);
 const DUR = 0.75, R = 140;   // tapfx frames are 280x280, centred
 
 // Show the finger arriving BEFORE contact. The animation is press-then-ripple,

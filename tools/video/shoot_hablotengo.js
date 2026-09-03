@@ -129,35 +129,17 @@ const toDevice = (x, y) => ({
   // it can only do that from a known state -- see setShowCrypto.
   await setShowCrypto(page, cdp, false);
 
-  // Who this is about. The HabloTengo link only exists on a node that has a
-  // hablotengo.com delegate key, so it cannot be just anybody -- it is Hillel,
-  // who has two nerdster.org delegates and one for hablotengo.com.
-  let who = null;
-  for (let i = 0; i < 16 && !who; i++) {
-    who = (await findAll(page, /@nerdster\.org$/, { role: 'button' }))
-      .map(n => n.text).find(t => SUBJECT.test(t));
-    if (!who) { await drag(cdp, 200, 600, 0, { dy: -500, holdMs: 0 }); await sleep(900); }
-  }
-  if (!who) {
-    throw new Error(`nobody matching ${SUBJECT} in the feed. This section needs an `
-      + 'identity with a hablotengo.com delegate key; without one the Nerdster '
-      + 'does not draw the HabloTengo link at all.');
-  }
-  const name = who.split('@')[0];
-  console.log(`  following ${who}`);
-  marks.subject = who;
-
-  // Back to the top: the app bar hides when the feed scrolls.
-  for (let i = 0; i < 14; i++) {
-    if (await find(page, /^Menu$/, { role: 'button' })) break;
-    await drag(cdp, 200, 300, 0, { dy: 600, holdMs: 0 });
-    await sleep(500);
-  }
-  if (!await find(page, /^Menu$/, { role: 'button' })) {
-    throw new Error('could not scroll back to the top: the app bar never reappeared');
-  }
+  // Nothing to scroll for. This used to hunt the feed for Hillel before
+  // recording and then scroll back to the top, both of which are dead now that
+  // the take narrows the feed with the PoV, context and tag filters instead --
+  // he is on screen once they are set, and nothing ever scrolled away.
 
   // --- record ---
+  // Chrome opens a tab per VIEW intent and nothing closed them; thirty had
+  // piled up, and enough of them throttle screenrecord. Swept before the
+  // camera, so a crashed take is cleaned up by the next one.
+  await d.closeChromeTabs();
+
   const rec = spawn('adb', ['-s', SERIAL, 'shell', 'screenrecord',
     '--time-limit', '180', '--bit-rate', '8000000', '/sdcard/hablotengo.mp4']);
   await sleep(4000);
@@ -174,20 +156,55 @@ const toDevice = (x, y) => ({
   await sleep(900);
 
   mark('feed');
-  await sleep(2600);
+  await sleep(1600);
 
   // --- somebody two hops away, and their node ---
-  // Scrolled to on camera. He was found before recording so the take knows who
-  // it is about, but the feed was then put back to the top, so he is off screen
-  // again by the time it starts.
-  for (let i = 0; i < 14; i++) {
-    const n = await find(page, new RegExp(`^${esc(who)}$`), { role: 'button' });
-    if (n && n.y > 150 && n.y < 560) break;
-    await drag(cdp, 200, 600, 0, { dy: -520, holdMs: 0 });
-    await sleep(420);
-  }
-  mark('scrolled_to_him');
+  // --- narrow the feed down to him, instead of scrolling to him ---
+  //
+  // Scrolling to him took far too long on screen. Two dropdowns get there
+  // directly: the point of view and the follow context. POV FIRST -- filtering
+  // by context from "Me" does not surface him.
+  //
+  // The first two are menus of role=menuitem; the tag list is a LIST of buttons,
+  // not a menu, which is why looking for menuitems in it found nothing and made
+  // it seem the control was not opening at all. It opens fine.
+  tapped('pov', await tapNamed(page, cdp, /^Point of View/, { role: 'button' }));
+  await sleep(1200);
+  tapped('pov_tom', await tapNamed(page, cdp, /^Tom$/, { role: 'menuitem' }));
+  await sleep(2200);
+  mark('pov_set');
+
+  // The context dropdown carries its own help text as its name, so match a
+  // distinctive piece of it rather than the whole paragraph.
+  tapped('context', await tapNamed(page, cdp, /Other follow contexts/, { role: 'button' }));
+  await sleep(1200);
+  tapped('context_family', await tapNamed(page, cdp, /^family$/, { role: 'menuitem' }));
+  await sleep(2200);
+  // And the tag. Named without the "#" -- the list says `ai`, not `#ai`.
+  tapped('tags', await tapNamed(page, cdp, /^Tags$/, { role: 'button' }));
   await sleep(1400);
+  tapped('tag_ai', await tapNamed(page, cdp, /^ai$/, { role: 'button' }));
+  await sleep(2400);
+  // The list stays open over the feed; put it away before carrying on.
+  E('shell', 'input', 'keyevent', '4');
+  await sleep(1000);
+  mark('filtered');
+  await sleep(1200);
+
+  // Who this is about, read off the filtered feed. The HabloTengo link only
+  // exists on a node that has a hablotengo.com delegate key, so it cannot be
+  // just anybody -- it is Hillel, who has one.
+  const who = (await findAll(page, /@nerdster\.org$/, { role: 'button' }))
+    .map(n => n.text).find(t => SUBJECT.test(t));
+  if (!who) {
+    throw new Error(`nobody matching ${SUBJECT} in the feed under PoV Tom, `
+      + 'context family, tag ai. Those filters are what this take uses instead '
+      + 'of scrolling, and without a hablotengo.com delegate key the Nerdster '
+      + 'draws no HabloTengo link at all.');
+  }
+  const name = who.split('@')[0];
+  marks.subject = who;
+  console.log(`  following ${who}`);
 
   tapped('moniker', await tapNamed(page, cdp, new RegExp(`^${esc(who)}$`), { role: 'button' }));
   await waitFor(page, new RegExp(`^${esc(name)}$`), { role: 'button' }, 20000);
@@ -199,15 +216,10 @@ const toDevice = (x, y) => ({
   mark('node_details');
   await sleep(4600);
 
-  // --- his keys: two for one service, one for another ---
-  tapped('delegate_tab', await tapNamed(page, cdp, /^delegate$/, { role: 'button' }));
-  await waitFor(page, /hablotengo\.com$/, {}, 15000);
-  mark('delegates_shown');
-  await sleep(4800);
-
   // --- the shortcut out to that other service ---
   // The link only exists on a node that HAS a hablotengo.com delegate, which is
-  // why this section is about Hillel and not about anyone nearer.
+  // why this section is about Hillel and not about anyone nearer. His key list
+  // is not opened: the link is in the header and says the same thing faster.
   const hablo = await findStill(page, /^HabloTengo$/, {});
   const v = marks.viewportToDevice;
   marks.habloButtonBox = {
@@ -264,9 +276,14 @@ const toDevice = (x, y) => ({
   // WITHOUT minting a delegate key, which is the state this section needs: an
   // identity HabloTengo can recognise and still refuse.
   await waitForApp('net.oneofus.app', 25000);
-  await d.waitForStillScreen(20000, 900);
+  // NOT waitForStillScreen. The scanner sits behind this dialog and it is a live
+  // camera preview, so the screen never settles and the wait ran its full twenty
+  // seconds every time -- twenty seconds of a dialog on screen doing nothing.
+  // The dialog draws in about a second; hold long enough to read the choice and
+  // then take it.
+  await sleep(2200);
   mark('identity_app');
-  await sleep(2600);
+  await sleep(2000);
 
   // "No, just identity" -- NOT "Yes, create delegate".
   //

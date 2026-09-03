@@ -46,6 +46,15 @@ const AT = {
   d.E('shell', 'am', 'force-stop', 'com.android.chrome');
   await sleep(1500);
 
+  // Chrome opens a tab per VIEW intent and nothing closed them; thirty had
+
+  // piled up, and enough of them throttle screenrecord. Swept before the
+
+  // camera, so a crashed take is cleaned up by the next one.
+
+  await d.closeChromeTabs();
+
+
   const rec = spawn('adb', ['-s', process.env.AVD || 'emulator-5554', 'shell', 'screenrecord',
     '--time-limit', '90', '--bit-rate', '8000000', '/sdcard/invite.mp4']);
   await sleep(4000);
@@ -75,7 +84,23 @@ const AT = {
   await sleep(1400);                    // "Includes App Link, key QR code and Text"
 
   tap('invitation', AT.invitation);
-  await sleep(3000);                    // the system share sheet, with the text
+  // WAIT FOR THE SYSTEM SHARE SHEET, don't sleep at it. This was sleep(3000)
+  // and the sheet took about seven, so `link` was marked while the app's own
+  // sheet was still up -- and the beat anchored on it froze there, spotlighting
+  // the QR card with the URL it is describing still four seconds away.
+  //
+  // The chooser is a separate app, so the foreground package changing is the
+  // signal. Which package it is does not matter and is not worth hardcoding.
+  const t0share = Date.now();
+  while (Date.now() - t0share < 25000) {
+    if (d.foregroundApp() !== APP) break;
+    await sleep(300);
+  }
+  if (d.foregroundApp() === APP) {
+    throw new Error('the system share sheet never opened; "Share Invitation Link" '
+      + 'may have missed');
+  }
+  await sleep(900);                     // let it finish sliding up
   mark('link');
   // Long. The link is the argument -- it is a URL with a public key in it, and
   // the viewer should have time to see that it is just that.
