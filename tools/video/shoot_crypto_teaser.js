@@ -84,24 +84,16 @@ const toDevice = (x, y) => ({
   const mark = k => { marks[k] = at(); console.log(`  ${k} @${marks[k]}s`); };
   const tapped = (what, n) => { marks.taps.push({ t: at(), ...toDevice(n.x, n.y), what }); mark(`tap_${what}`); };
 
-  // --- reset: undo what earlier takes published to nerdster.org ---
+  // NO RESET HERE ANY MORE. This used to truncate the delegate's nerdster.org
+  // statements with --all, so that a card it had already reacted to got its
+  // React button back. It did, and it also deleted the like, the dismiss and the
+  // snooze that `nerdster` had just made -- so the published statements this
+  // section goes out to look at held exactly one statement, with none of the
+  // history the video had just shown being made.
   //
-  // This take has to REACT to something, and a card you have already reacted to
-  // has no React button on it. Run it twice without this and the feed is all
-  // "Me@nerdster.org 👍" with nothing left to like, which surfaces as "no React
-  // button in the feed" several steps from the cause.
-  //
-  // nerdster.org only. The vouch and the delegate key live on one-of-us.net and
-  // are not touched, so this costs nothing but the ratings this take makes.
-  // Same command shoot_nerdster.sh runs, and named by who delegated the key
-  // rather than by the key itself, which is minted fresh on every sign-in.
-  {
-    const token = Object.values(require('./demo_identity.json').demoTokens)[0];
-    console.log('clearing what earlier takes published to nerdster.org');
-    execFileSync('node', ['truncate_statements.js', '--delegate-of', token,
-      '--domain', 'nerdster.org', '--project', 'nerdster', '--prod', '--all'],
-      { cwd: __dirname, env: { ...process.env, I_MEAN_IT: 'yes' }, stdio: 'inherit' });
-  }
+  // sections.py now restores the previous section's state before shooting, which
+  // rewinds this stream to the head `nerdster` left. That undoes what THIS take
+  // published last time and nothing else. Same idempotence, history kept.
 
   // --- stage ---
   E('shell', 'am', 'force-stop', 'com.android.chrome');

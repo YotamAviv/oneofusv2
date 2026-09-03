@@ -39,9 +39,35 @@ I_MEAN_IT=yes node truncate_statements.js \
 echo "== 2/4  connecting to Chrome on the device =="
 # Re-establish the forward each run: it goes stale whenever Chrome restarts, and
 # the failure surfaces later as an unhelpful "socket hang up".
-adb -s "$SERIAL" forward --remove-all >/dev/null 2>&1 || true
-adb -s "$SERIAL" forward tcp:9222 localabstract:chrome_devtools_remote >/dev/null
-until curl -s --max-time 3 http://localhost:9222/json/version >/dev/null; do sleep 1; done
+# BRING CHROME TO THE FRONT, then wait for its devtools socket.
+#
+# This used to wait for the socket forever, with no output, for as long as
+# anyone let it. Two things make it not appear: Chrome not running at all, and
+# Chrome running only as a background service -- `pidof com.android.chrome`
+# answers in both cases, so it is not the test. The socket is.
+#
+# Foregrounding revives it. NOT force-stop and restart: that drops the
+# Nerdster's sign-in, which lives in session storage, and the next three
+# sections need it.
+socket_up() { curl -s --max-time 3 http://localhost:9222/json/version >/dev/null; }
+forward() {
+  adb -s "$SERIAL" forward --remove-all >/dev/null 2>&1 || true
+  adb -s "$SERIAL" forward tcp:9222 localabstract:chrome_devtools_remote >/dev/null
+}
+forward
+if ! socket_up; then
+  echo "  no devtools socket; bringing Chrome to the front"
+  adb -s "$SERIAL" shell am start \
+    -n com.android.chrome/com.google.android.apps.chrome.Main >/dev/null 2>&1
+  sleep 6
+  forward
+fi
+for i in $(seq 1 30); do socket_up && break; sleep 1; done
+if ! socket_up; then
+  echo "Chrome's devtools socket never appeared. Chrome may be running only as a" >&2
+  echo "background service; open it on the device and try again." >&2
+  exit 1
+fi
 
 echo "== 3/4  recording the take =="
 TAKE=$(node shoot_nerdster.js | tail -2 | head -1 | tr -d ' ')

@@ -216,25 +216,40 @@ def newest_take(where, stem):
 # save below makes possible, but nothing yet consumes. Restoring is a deliberate
 # act for now: `--restore <section>`.
 def state_files(where):
-    return where / 'state.keys.json', where / 'state.statements.json'
+    return (where / 'state.keys.json',
+            where / 'state.statements.json',       # the identity, on one-of-us.net
+            where / 'state.nerdster.json')         # its delegate, on nerdster.org
 
 
 def save_state(section, where):
-    """Record the phone and the network as this section left them."""
+    """Record the phone and the network as this section left them.
+
+    TWO STREAMS, not one. The identity's own statements live on one-of-us.net;
+    the RATINGS -- the likes, the dismiss, the snooze that the video is actually
+    about -- are published by the DELEGATE, into nerdster.org, under a token
+    minted fresh at every sign-in. Snapshotting only the identity's stream
+    preserved none of the history the sections build up, which showed as
+    `crypto_teaser` opening the published statements and finding exactly one.
+    """
     sid = section['id']
-    keys, stmts = state_files(where)
+    keys, stmts, nerd = state_files(where)
     try:
         subprocess.run(['./app_state.sh', 'save', str(keys)], check=True, cwd=HERE)
     except (subprocess.CalledProcessError, OSError) as e:
         print(f'  (state: could not save the keyring -- {e})')
-    try:
-        token = demo_identity_token()
-        out = subprocess.run(['node', 'snapshot_statements.js', '--token', token,
-                              '--project', 'oneofus', '--prod'],
-                             check=True, cwd=HERE, capture_output=True, text=True)
-        stmts.write_text(out.stdout)
-    except (subprocess.CalledProcessError, OSError) as e:
-        print(f'  (state: could not snapshot the statements -- {e})')
+    token = demo_identity_token()
+    for path_, args in ((stmts, ['--token', token, '--project', 'oneofus']),
+                        (nerd, ['--delegate-of', token, '--domain', 'nerdster.org',
+                                '--project', 'nerdster'])):
+        try:
+            out = subprocess.run(['node', 'snapshot_statements.js', *args, '--prod'],
+                                 check=True, cwd=HERE, capture_output=True, text=True)
+            path_.write_text(out.stdout)
+        except (subprocess.CalledProcessError, OSError) as e:
+            # A delegate that does not exist yet is normal early in the running
+            # order; a broken snapshot of one that does is not, and says so.
+            print(f'  (state: no snapshot for {path_.name} -- '
+                  f'{getattr(e, "stderr", "") or e})'.strip())
     print(f'  state saved for {sid}')
 
 
@@ -255,18 +270,23 @@ def restore_state(sid):
         sys.exit(f'no saved state for {sid}. Only builds shot since this existed '
                  'have any -- shoot it, or pick another section.')
     where = builds[-1].parent
-    keys, stmts = state_files(where)
+    keys, stmts, nerd = state_files(where)
     print(f'  restoring from {where.relative_to(HERE)}')
     subprocess.run(['./app_state.sh', 'restore', str(keys)], check=True, cwd=HERE)
-    if stmts.exists():
-        head = json.loads(stmts.read_text())['streams']['statements']['head']
-        if head:
-            subprocess.run(['node', 'truncate_statements.js', '--token',
-                            demo_identity_token(), '--project', 'oneofus', '--prod',
-                            '--keep', head], check=True, cwd=HERE,
-                           env={**os.environ, 'I_MEAN_IT': 'yes'})
-        else:
-            print('  (the snapshot has an empty stream; nothing to rewind to)')
+    token = demo_identity_token()
+    for path_, args in (
+            (stmts, ['--token', token, '--project', 'oneofus']),
+            (nerd, ['--delegate-of', token, '--domain', 'nerdster.org',
+                    '--project', 'nerdster'])):
+        if not path_.exists():
+            continue
+        head = json.loads(path_.read_text())['streams']['statements']['head']
+        if not head:
+            print(f'  ({path_.name}: empty stream, nothing to rewind to)')
+            continue
+        subprocess.run(['node', 'truncate_statements.js', *args, '--prod',
+                        '--keep', head], check=True, cwd=HERE,
+                       env={**os.environ, 'I_MEAN_IT': 'yes'})
 
 
 def write_manifest(section, where, video, take=None):
@@ -361,9 +381,41 @@ def drop_if_empty(where):
         pass
 
 
-def build(section):
-    """Shoot a section, and clear up after it if it leaves nothing behind."""
+def previous_section(sid):
+    """The section before this one in its video's running order."""
+    videos, _ = load()
+    for doc in videos:
+        ids = [s['id'] for s in doc['sections']]
+        if sid in ids:
+            i = ids.index(sid)
+            return ids[i - 1] if i > 0 else None
+    return None
+
+
+def build(section, continue_from_previous=True):
+    """Shoot a section, and clear up after it if it leaves nothing behind.
+
+    THE SECTIONS RUN AS A SEQUENCE. Before shooting, the world is put back to
+    how the PREVIOUS section left it -- the phone's keyring and both statement
+    streams. That is what makes the video continuous: the ratings made in
+    `nerdster` are still there, unchanged, when `crypto_teaser` opens the
+    published statements and when `close_account` watches one disappear.
+
+    It also replaces the resets those takes used to do for themselves. Rewinding
+    to the previous section's head removes what THIS section published last time
+    -- so a card it already reacted to has its React button back -- while
+    leaving everything earlier sections published alone. `--all` did the first
+    job by doing the second one too.
+    """
     where = build_dir(section['id'])
+    if continue_from_previous:
+        prev = previous_section(section['id'])
+        if prev and list((HERE / 'out' / prev).glob('*/state.keys.json')):
+            print(f'  continuing from {prev}')
+            restore_state(prev)
+        elif prev:
+            print(f'  ({prev} has no saved state; starting from whatever is on '
+                  'the device)')
     try:
         _build(section, where)
     except BaseException:
@@ -664,6 +716,8 @@ def main():
     p.add_argument('--check', action='store_true')
     p.add_argument('--card', metavar='ID', help="render this section's card")
     p.add_argument('--build', metavar='ID', help='shoot and finish a section')
+    p.add_argument('--no-restore', action='store_true',
+                   help='do not continue from the previous section (shoot standalone)')
     p.add_argument('--restore', metavar='ID',
                    help='put the phone and the network back to how a section left them')
     p.add_argument('--recut', metavar='ID',
@@ -697,7 +751,7 @@ def main():
         s = sections.get(args.build)
         if s is None:
             sys.exit(f"no section '{args.build}'. Try --list.")
-        build(s)
+        build(s, continue_from_previous=not args.no_restore)
         return
 
     if args.card:

@@ -50,6 +50,43 @@ function assertDemoOwned(token) {
   return name;
 }
 
+/**
+ * The token of a public key: SHA1 of its pretty-printed canonical JSON.
+ * Same as truncate_statements.js -- a bare JWK holds none of the keys that
+ * jsonish.dart positions, so plain alphabetical is canonical for these.
+ */
+function keyToken(key) {
+  const ordered = {};
+  for (const k of Object.keys(key).sort()) ordered[k] = key[k];
+  return require('crypto').createHash('sha1')
+    .update(JSON.stringify(ordered, null, 2)).digest('hex');
+}
+
+/**
+ * The delegate keys an identity has published for a domain, newest first.
+ *
+ * Named this way because a delegate's token changes every time sign-in is
+ * reshot, so nothing can hardcode it -- and a snapshot has to name the stream
+ * it is snapshotting. The allowlist still holds: the IDENTITY must be
+ * demo-owned, and the delegates come from that identity's own signed
+ * statements, so this can only reach keys the demo identity delegated itself.
+ */
+async function delegatesOf(identityToken, domain) {
+  const url = `https://export.one-of-us.net/?spec=${identityToken}&includeId=true`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`export.one-of-us.net returned ${res.status}`);
+  const body = await res.json();
+  const statements = body[identityToken] || [];
+  const found = [];
+  for (const s of statements.sort((a, b) => String(b.time).localeCompare(String(a.time)))) {
+    if (!s.delegate) continue;
+    if (domain && s.with?.domain !== domain) continue;
+    const t = keyToken(s.delegate);
+    if (!found.includes(t)) found.push(t);
+  }
+  return found;
+}
+
 const PROJECTS = {
   nerdster: { prod: 'nerdster', emulatorPort: 8080 },
   oneofus: { prod: 'one-of-us-net', emulatorPort: 8081 },
@@ -65,12 +102,32 @@ const has = name => process.argv.includes('--' + name);
 async function main() {
   const which = arg('project', 'oneofus');
   const stream = arg('stream', 'statements');
-  const token = arg('token');
   const prod = has('prod');
-  if (!token) throw new Error('--token <issuer key token> is required');
+  const delegateOf = arg('delegate-of');
+  const domain = arg('domain');
   const proj = PROJECTS[which];
   if (!proj) throw new Error(`--project must be one of ${Object.keys(PROJECTS).join(', ')}`);
-  const owner = assertDemoOwned(token);
+
+  // --delegate-of, because the interesting stream is often not the identity's.
+  // The ratings a section makes -- likes, dismisses, snoozes -- are published by
+  // the DELEGATE, into the service's project, under a token that is minted fresh
+  // on every sign-in. Snapshotting only the identity's own stream misses all of
+  // it, which is how a take that meant to preserve the history preserved none
+  // of it.
+  let token, owner;
+  if (delegateOf) {
+    owner = assertDemoOwned(delegateOf);       // before any connection is opened
+    const found = await delegatesOf(delegateOf, domain);
+    if (!found.length) {
+      throw new Error(`demo identity '${owner}' has no delegate` +
+        `${domain ? ` for ${domain}` : ''} to snapshot`);
+    }
+    token = found[0];
+  } else {
+    token = arg('token');
+    if (!token) throw new Error('--token <issuer key token> or --delegate-of <identity token>');
+    owner = assertDemoOwned(token);
+  }
 
   if (prod) {
     delete process.env.FIRESTORE_EMULATOR_HOST;
@@ -96,6 +153,7 @@ async function main() {
     taken: new Date().toISOString(),
     identity: owner,
     token, project: which, prod: !!prod,
+    delegateOf: delegateOf || null, domain: domain || null,
     streams: {
       [stream]: {
         head: head ? head.token : null,
