@@ -28,7 +28,7 @@
       "at": "hablotengo_link_shown",
       "after": 0.8,
       "hold": 2.6,
-      "text": "Handy dandy shortcut to another service.",
+      "text": "Handy dandy shortcut to HabloTengo, a contact sharing service.",
       "box": "habloButtonBox",
       "pad": 26,
       "y": 1500

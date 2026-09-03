@@ -1,0 +1,85 @@
+{
+  "_comment": [
+    "Generated from video/ -- section 'close_account'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/video/sections.py --cues close_account"
+  ],
+  "prompter": [
+    {
+      "at": "people",
+      "text": "I can clear or edit my outstanding vouches here."
+    },
+    {
+      "at": "people_read",
+      "text": "I don't have a ONE-OF-US.NET account. No one does."
+    },
+    {
+      "at": "people_read_2",
+      "text": "If anything, folks have an account with those who've vouched for them."
+    },
+    {
+      "at": "services",
+      "text": "I can clear or revoke my outstanding delegate keys here."
+    },
+    {
+      "at": "nerdster_refreshed",
+      "text": "I didn't close my Nerdster account. I used my identity key to clear\nthe delegate statement associating that key with me."
+    },
+    {
+      "at": "tap_export",
+      "after": 1.2,
+      "text": "I own my keys, not them."
+    },
+    {
+      "at": "advanced",
+      "text": "Advanced: recover from lost or compromised keys, manage blocks."
+    }
+  ],
+  "beats": [
+    {
+      "at": "my_rating",
+      "after": 0.4,
+      "hold": 3.0,
+      "text": "My delegate key, known and associated with my identity.\nThat is why my own ratings are here.",
+      "box": "keyOkBox",
+      "pad": 26,
+      "y": 1300
+    },
+    {
+      "at": "before_refresh",
+      "after": 0.3,
+      "hold": 2.4,
+      "text": "Ask the network again.",
+      "box": "refreshBox",
+      "pad": 22,
+      "y": 1300
+    },
+    {
+      "at": "nerdster_refreshed",
+      "after": 1.4,
+      "hold": 3.2,
+      "text": "That key can no longer speak for me.\nNothing was deleted. A statement was withdrawn.",
+      "box": "keyIssueBox",
+      "pad": 26,
+      "y": 1400
+    }
+  ],
+  "cards": [
+    {
+      "at": "opening",
+      "hold": 2.6,
+      "lines": [
+        "Close account?",
+        "There is no account."
+      ]
+    }
+  ],
+  "flashes": [
+    {
+      "at": "people_read_2",
+      "after": 0.4,
+      "hold": 0.9,
+      "word": "Decentralized"
+    }
+  ]
+}

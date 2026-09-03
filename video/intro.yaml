@@ -117,10 +117,6 @@ sections:
     # A cold start spends eight seconds reloading what the identity published;
     # the scene begins once that has settled.
     trim: main_screen
-    # The Share button is at the bottom of the app, under where the prompter
-    # normally sits -- and the band is opaque, so both the button and its tap
-    # indicator vanished behind it. Provisional: revisit when the band changes.
-    prompter_at: top
     # NOT A LIMITATION -- a thing people have to do. Two points, and the second
     # is the one that makes the network possible at all:
     #
@@ -205,6 +201,9 @@ sections:
         a reaction and a comment.
     build: shoot_nerdster.sh
     status: built
+    # overlay_taps cuts the head to the sync flash, and that is where this
+    # section starts; there is nothing further to trim to.
+    trim: none
     # A gong, like Enter the Dragon. NO ASSET -- deferred 2026-09-01.
     prompter:
       - {t: 0.3, text: "My feed. I'm signed in with a delegate key."}
@@ -417,3 +416,116 @@ sections:
         take shows a signed-in app and never reaches Access Denied.
 
   # -------------------------------------------------------------------------
+  - id: close_account
+    title: "Close account?"
+    preconditions:
+      - An identity on the phone with a vouch for Tom outstanding (the PEOPLE tab
+        shows it) and a nerdster.org delegate key outstanding (SERVICES shows it).
+      - Signed in on the Nerdster in Chrome on the device, so the delegate key
+        being cleared has something to stop working in.
+    side_effects:
+      - Publishes one `clear` statement, and that is all it changes on the
+        network. UNDOABLE, because the streams are append-only hash chains --
+        snapshot_statements.js records the head before the take and
+        truncate_statements.js --keep rewinds to it afterwards. Proven.
+      - NOT undoable, locally -- deleting the local private key is a separate act
+        from clearing, and it is permanent. Rewinding the statements without it
+        leaves a half-restored state worth knowing about. The ratings signed by
+        that key come back and are visible, but nothing can sign in as that
+        delegate again, because the key is gone. Readable, not writable.
+        Snapshotting the phone's keyring is the missing piece, and is only
+        documented, not built.
+    build: shoot_close_account.js
+    status: to_build
+    # The opening card IS the start of the section, so the take is trimmed to it.
+    # A card anchored before the trim mark sits in the head that gets cut off.
+    trim: opening
+    # THE POINT OF THE SECTION. Every other service ends with "delete my account",
+    # and there is no account here to delete -- so the question has no answer, and
+    # that IS the answer. What can be undone is undone from the phone, by the
+    # identity key, without asking anyone's permission.
+    cards:
+      # Opens on the question, before any app is on screen.
+      - at: opening
+        hold: 2.6
+        lines:
+          - "Close account?"
+          - "There is no account."
+    prompter:
+      - {at: people,
+         text: "I can clear or edit my outstanding vouches here."}
+      - {at: people_read,
+         text: "I don't have a ONE-OF-US.NET account. No one does."}
+      - {at: people_read_2,
+         text: "If anything, folks have an account with those who've vouched for them."}
+      - {at: services,
+         text: "I can clear or revoke my outstanding delegate keys here."}
+      - {at: nerdster_refreshed,
+         text: "I didn't close my Nerdster account. I used my identity key to clear\nthe delegate statement associating that key with me."}
+      # AFTER the tap, not before it: the line lands on the keys being there,
+      # which is what it is about.
+      - {at: tap_export, after: 1.2,
+         text: "I own my keys, not them."}
+      - {at: advanced,
+         text: "Advanced: recover from lost or compromised keys, manage blocks."}
+    beats:
+      # BEFORE: the key is known and associated, which is why my own ratings are
+      # on screen at all. Measured by the take, like the pair below it.
+      - at: my_rating
+        after: 0.4
+        hold: 3.0
+        text: "My delegate key, known and associated with my identity.\nThat is why my own ratings are here."
+        box: keyOkBox
+        pad: 26
+        y: 1300
+      # The click itself. It is the moment the section turns on, and without a
+      # highlight it reads as the feed changing by itself.
+      - at: before_refresh
+        after: 0.3
+        hold: 2.4
+        text: "Ask the network again."
+        box: refreshBox
+        pad: 22
+        y: 1300
+      # The key at the top right of the Nerdster stops being usable the moment
+      # the delegate statement is cleared. MEASURED by the take -- the header
+      # moves with the window, and a rectangle typed for one take misses on the
+      # next. See crypto_teaser's signature beat.
+      - at: nerdster_refreshed
+        after: 1.4
+        hold: 3.2
+        text: "That key can no longer speak for me.\nNothing was deleted. A statement was withdrawn."
+        box: keyIssueBox
+        pad: 26
+        y: 1400
+    # NOT IMPLEMENTED. annotate.js has no `flashes` cue and sections.py does not
+    # copy this key into the cue file, so it is inert -- it is here so the intent
+    # survives, and so whoever builds it knows where it goes. A flash is a single
+    # word thrown up over the take for a beat, without stopping it the way a card
+    # does.
+    flashes:
+      - at: people_read_2
+        after: 0.4
+        hold: 0.9
+        word: "Decentralized"
+    todo:
+      - FINISH THE TAKE. The ONE-OF-US.NET half works end to end, clear included
+        (two dialogs -- "Clear Delegation", then "Remove Local Key?"). It stops at
+        the Nerdster's degrees-of-separation control, which is a slider in a
+        popup and does not take the keyboard -- it needs a measured drag.
+      - Wire the snapshot/rewind into the build, so this section can be shot as
+        often as the order changes instead of costing state each time.
+      - AFTER V1, from Yotam. Show the exported keys before clearing rather than
+        after; consider clearing the vouch for Tom as well; and the good one,
+        set the follow network to 1 degree so the feed is only my own ratings,
+        put a highlight around one of my likes, and refresh, so the like
+        disappears on camera. Nothing was deleted; a statement was withdrawn.
+        That last one needs a highlight that survives a refresh, which is a new
+        cue kind -- a box held over live footage rather than a frozen beat.
+      - DECIDE ABOUT EXPORT. Tapping EXPORT puts this identity's PRIVATE KEY JSON
+        on screen, and the video is public. Either keep the beat on the buttons
+        and never show the panel, or mask the panel in post. Do not publish a
+        take that shows the key.
+      - Implement `flashes` in annotate.js, or drop the cue above.
+      - The Nerdster network-distance filter (6 down to 1) is named by guess, and
+        semantics.js will say what is actually on screen when it misses.

@@ -52,21 +52,34 @@ const { page: cardPage } = require('./lib/card');
 const { TRIM_PAD, loadMarks, timeOf } = require('./lib/marks');
 
 const FONTS = path.join(__dirname, 'fonts');
-const SCROLL = 0.45;                // seconds a line takes to slide into place
-
 const [cueFile, inVideo] = process.argv.slice(2);
 if (!inVideo) { console.error('usage: annotate.js <cues.json> <in.mp4>'); process.exit(1); }
 const cues = JSON.parse(fs.readFileSync(cueFile, 'utf8'));
 
-const BAND_H = 300;                 // prompter band, along the bottom
-// ...or along the top, for a section that has to tap the app's own bottom bar.
-// The band is opaque by design, so whatever it covers is simply gone: the Share
-// button in `invite` sits at y=2061, under a band starting at 1920, and on
-// video the share sheet opened with nothing having been pressed.
-const BAND_AT = cues.prompter_at || 'bottom';
-if (!['top', 'bottom'].includes(BAND_AT)) {
-  throw new Error(`prompter_at: ${BAND_AT} -- expected 'top' or 'bottom'.`);
-}
+// THE PROMPTER IS A CAPTION, NOT A FIXTURE.
+//
+// It used to be a 300px band pinned to the bottom for the whole section: every
+// line rendered at once, the current one lit, the strip scrolling between them.
+// Being permanent and that tall, it sat on the bottom of the frame even with
+// nothing to say -- which is where an app puts its bottom bar. It hid the Share
+// button in `invite` (y=2061), two tapped controls in `vouch` (1930 and 1983),
+// and the "Trusted: Success" snackbar the vouch section is *about*.
+//
+// Now one line shows at a time, sized to itself -- about 145px for a single
+// line rather than 300 -- and it is on screen only while it is being said. The
+// bottom of the picture is unobstructed by default instead of by exception.
+const EDGE = cues.prompter_at || 'bottom';   // default; a line may override it
+const sideOf = l => {
+  const side = l.side || EDGE;
+  if (!['top', 'bottom'].includes(side)) {
+    throw new Error(`prompter side: ${side} -- expected 'top' or 'bottom'.`);
+  }
+  return side;
+};
+
+// How long a line stays up when it does not say. Roughly reading speed, with a
+// floor so a three-word line does not blink. `hold` on the line overrides it.
+const readingTime = text => Math.max(1.9, text.replace(/\s+/g, ' ').length / 13) + 0.5;
 
 // Resolve every cue's time once, up front, so the rest of this works in
 // seconds. A cue that names a mark is resolved against the take's own marks
@@ -118,6 +131,27 @@ const splices = [...beats.map(b => ({ ...b, kind: 'beat' })),
                  ...cards.map(c => ({ ...c, kind: 'card' }))].sort((a, b) => a.t - b.t);
 const lines = resolve(cues.prompter, 'prompter line');
 const zooms = resolve(cues.zooms, 'zoom');
+// A FLASH is one word thrown up over the take and taken away again, WITHOUT
+// stopping it. That is the whole difference from a card or a beat: those splice
+// a pause in and everything after them moves, so they are for when the viewer
+// should stop and read. A flash is for a word that belongs ON the action --
+// "Decentralized", over the moment the point is being made -- and the action
+// keeps running underneath it.
+const flashes = resolve(cues.flashes, 'flash').map(f => ({ ...f, hold: f.hold ?? 0.9 }));
+
+// When each line comes DOWN. Three things can end it, whichever comes first:
+//
+//   - its own reading time (or an explicit `hold`),
+//   - the next line, which replaces it,
+//   - a beat or a card, which is a full stop with its own words on it. The band
+//     used to draw over spliced stills too, and that is the reason the vouch
+//     snackbar could not be rescued by a beat. Now it can.
+lines.forEach((l, i) => {
+  const next = i + 1 < lines.length ? lines[i + 1].t : Infinity;
+  const splice = splices.find(b => b.t > l.t);
+  const own = l.t + (l.hold != null ? l.hold : readingTime(l.text));
+  l.end = Math.min(own, next, splice ? splice.t : Infinity);
+});
 console.log(marks ? `marks: ${path.basename(inVideo)} → ${Object.keys(marks).length} entries`
                   : `no marks file for ${path.basename(inVideo)} — cues must give "t"`);
 
@@ -135,10 +169,8 @@ const W = +probe[0], H = +probe[1], DUR = +probe[2];
 //
 // The mark being late is as likely as the take being short, and the two look
 // identical from here, so name both.
-refuseBuriedTaps();
-
 for (const [what, list] of [['prompter line', lines], ['zoom', zooms],
-                            ['beat or card', splices]]) {
+                            ['flash', flashes], ['beat or card', splices]]) {
   for (const c of list) {
     if (c.t < DUR) continue;
     throw new Error(
@@ -220,25 +252,51 @@ fs.mkdirSync(work, { recursive: true });
                 `(${box.tail})  "${b.text.replace(/\n/g, ' ').slice(0, 40)}"`);
   }
 
-  // --- the prompter strips: one per line, differing only in which is lit ---
-  const strip = await browser.newPage({ viewport: { width: W, height: 200 } });
+  // --- one caption per line, each carrying its own scrim and sized to itself ---
+  const strip = await browser.newPage({ viewport: { width: W, height: 400 } });
   const geom = [];
-  for (const [i] of lines.entries()) {
-    await strip.setContent(stripPage(i));
+  for (const [i, l] of lines.entries()) {
+    await strip.setContent(linePage(l));
     await strip.evaluate(() => document.fonts.ready);
-    const g = await strip.evaluate(() => {
-      const el = document.getElementById('strip');
-      const h = Math.ceil(el.getBoundingClientRect().height);
-      return {
-        h,
-        centres: [...el.children].map(c => Math.round(c.offsetTop + c.offsetHeight / 2)),
-      };
-    });
-    await strip.setViewportSize({ width: W, height: g.h });
+    const h = await strip.evaluate(() =>
+      Math.ceil(document.getElementById('band').getBoundingClientRect().height));
+    await strip.setViewportSize({ width: W, height: h });
+    // omitBackground keeps the alpha, which is the whole point: the scrim is a
+    // gradient baked into this image, feathered on the edge that meets the
+    // picture, so laying the caption down is a single overlay.
     await strip.screenshot({ path: path.join(work, `strip${i}.png`), omitBackground: true });
-    geom.push(g);
+    geom.push({ h, side: sideOf(l) });
+    // A line the viewer cannot possibly read. It happens when the next line, or
+    // a beat, arrives before this one has had its time -- the copy is written
+    // against the marks, and the marks come from the take. Half a second of
+    // four lines of text is not narration, it is a flicker.
+    const up = l.end - l.t, want = readingTime(l.text);
+    if (up < Math.min(want * 0.6, 2.5)) {
+      console.error(`  WARNING: "${l.text.replace(/\n/g, ' ').slice(0, 44)}" is up for ` +
+        `${up.toFixed(1)}s and needs about ${want.toFixed(1)}s to read.\n` +
+        `    Shorten it, move it earlier, or move what cuts it off.`);
+    }
+    console.log(`  line @${l.t}s-${l.end === Infinity ? 'end' : l.end.toFixed(1) + 's'} ` +
+                `${h}px ${geom[i].side}  "${l.text.replace(/\n/g, ' ').slice(0, 44)}"`);
+  }
+  // --- a frame sequence per flash: it SHATTERS, so it has to move ---
+  for (const [i, f] of flashes.entries()) {
+    if (!f.word) throw new Error(`flash at ${f.t}s has no \`word\`.`);
+    const dir = path.join(work, `flash${i}`);
+    fs.mkdirSync(dir, { recursive: true });
+    await strip.setViewportSize({ width: W, height: H });
+    const n = Math.max(2, Math.round(f.hold * FLASH_FPS));
+    for (let k = 0; k < n; k++) {
+      await strip.setContent(flashPage(f.word, k / (n - 1)));
+      if (k === 0) await strip.evaluate(() => document.fonts.ready);
+      await strip.screenshot({ path: path.join(dir, `f${String(k).padStart(3, '0')}.png`),
+                               omitBackground: true });
+    }
+    f.frames = n;
+    console.log(`  flash @${f.t}s  ${f.hold}s  ${n} frames  "${f.word}"`);
   }
   await browser.close();
+  warnBuriedTaps(geom);
 
   // What the finished timeline looks like, for whoever trims it.
   //
@@ -257,7 +315,9 @@ fs.mkdirSync(work, { recursive: true });
   spliceInPauses(paused);
   const zoomed = path.join(work, 'zoomed.mp4');
   punchIn(paused, zoomed);
-  layPrompter(zoomed, out, geom);
+  const prompted = flashes.length ? path.join(work, 'prompted.mp4') : out;
+  layPrompter(zoomed, prompted, geom);
+  if (flashes.length) layFlashes(prompted, out);
   console.log(`\n-> ${out}`);
 })();
 
@@ -295,23 +355,32 @@ function beatPage(framePath, b) {
   <script>${bubble.JS(W)}</script>`;
 }
 
-/// The prompter text, all of it, with line `lit` bright and the rest receded.
-/// One image per line: the strip scrolls, and the highlight moves with it.
-function stripPage(lit) {
-  const items = lines.map((l, i) => `<div class="l ${i === lit ? 'on' : ''}">` +
-    l.text.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</div>').join('');
+/// One caption: the line, on a scrim that fades out on the side facing the
+/// picture. Self-contained, so laying it down is a single overlay and its
+/// height is whatever the text needs rather than a fixed band.
+function linePage(l) {
+  const side = sideOf(l);
+  // The feather goes on the edge that MEETS THE PICTURE -- the top edge for a
+  // caption along the bottom. Near-opaque, and quickly: two earlier scrims were
+  // weak and gradual, and the app's own white captions read straight through
+  // them and tangled with the prompter line.
+  const grad = side === 'bottom'
+    ? 'to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,.97) 44px, rgba(0,0,0,.97) 100%'
+    : 'to top,    rgba(0,0,0,0) 0, rgba(0,0,0,.97) 44px, rgba(0,0,0,.97) 100%';
+  const pad = side === 'bottom' ? '58px 56px 44px' : '44px 56px 58px';
   return `<!doctype html><meta charset="utf-8"><style>
     ${bubble.fontFaces(FONTS)}
     html,body { margin:0; width:${W}px; background:transparent; }
-    #strip { width:${W}px; padding:${BAND_H / 2}px 0; box-sizing:border-box; }
-    .l {
+    #band {
+      width:${W}px; box-sizing:border-box; padding:${pad};
+      background: linear-gradient(${grad});
       font: 600 40px/1.3 'Inter', system-ui, sans-serif;
-      color: rgba(255,255,255,.30);
-      padding: 16px 56px; text-align:left;
+      color:#fff; text-align:left;
       text-shadow: 0 2px 10px rgba(0,0,0,.8);
     }
-    .l.on { color:#fff; }
-  </style><div id="strip">${items}</div>`;
+  </style><div id="band">${
+    l.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br>')
+  }</div>`;
 }
 
 /// Splice the frozen beats into the take. Everything downstream is on the
@@ -384,56 +453,32 @@ function punchIn(src, out) {
     { stdio: 'inherit' });
 }
 
-/// Lay the prompter over the bottom of the frame. The strip is one tall image
-/// per line and the crop window walks down it, so the text physically scrolls
-/// rather than cutting between captions.
+/// Lay each caption over the frame for exactly as long as it is being said.
+///
+/// One overlay per line, enabled between its start and its end, positioned at
+/// whichever edge that line asked for. No scrolling strip and no persistent
+/// band: between lines there is nothing over the picture at all.
 function layPrompter(src, out, geom) {
-  if (!lines.length) { fs.copyFileSync(src, out); return; }
+  if (!lines.length) { fs.renameSync(src, out); return; }
   const total = DUR + splices.reduce((s, b) => s + b.hold, 0);
-  const bandY = BAND_AT === 'top' ? 0 : H - BAND_H;
 
-  // A dark gradient behind the text, so it reads over a bright feed.
-  const scrim = path.join(work, 'scrim.png');
-  execFileSync('ffmpeg', ['-y', '-v', 'error', '-f', 'lavfi', '-i',
-    `color=c=black:s=${W}x${BAND_H},format=rgba,` +
-    // Nearly opaque, with a short feather at the very top where it meets the
-    // picture. Two earlier versions were too weak and too gradual: the app's own
-    // caption sits near the TOP of the band on the scanner screen, where a ramp
-    // spread over the band's height was still only half opaque, and white text
-    // read through and tangled with the prompter line. Reach full cover in forty
-    // pixels, not three hundred.
-    // The feather goes on the side that MEETS THE PICTURE: the top edge for a
-    // band along the bottom, the bottom edge for one along the top.
-    (BAND_AT === 'top' ? `geq=r=0:g=0:b=0:a='255*min(1,(${BAND_H}-Y)/40+0.12)'`
-                       : `geq=r=0:g=0:b=0:a='255*min(1,Y/40+0.12)'`),
-    '-frames:v', '1', scrim]);
-
-  const inputs = ['-loop', '1', '-t', String(total), '-i', scrim];
-  lines.forEach((_, i) => inputs.push('-loop', '1', '-t', String(total),
-    '-i', path.join(work, `strip${i}.png`)));
-
-  // The window walks down the strip by moving the strip UP behind a transparent
-  // band the size of the window. crop can't do this -- its expressions are
-  // evaluated once, at init -- but overlay's are evaluated per frame, and a
-  // canvas the size of the band clips whatever hangs off it.
-  const chain = [`[1:v]format=rgba[scrim]`,
-                 `[0:v][scrim]overlay=0:${bandY}[base]`,
-                 `color=c=black@0.0:s=${W}x${BAND_H}:d=${total}:r=25,format=rgba,` +
-                 `split=${lines.length}${lines.map((_, i) => `[bb${i}]`).join('')}`];
-  let prev = 'base';
+  const inputs = [];
+  const chain = ['[0:v]null[p0]'];
+  let prev = 'p0';
   lines.forEach((l, i) => {
-    const t = shift(l.t);
-    const next = i + 1 < lines.length ? shift(lines[i + 1].t) : total + 1;
-    const off = j => Math.max(0, Math.min(geom[i].h - BAND_H,
-      geom[i].centres[j] - BAND_H / 2));
-    const to = off(i), fromOff = i === 0 ? to : off(i - 1);
-    const y = `-(${fromOff}+(${to - fromOff})*min(1,max(0,(t-${t})/${SCROLL})))`;
-    chain.push(`[${i + 2}:v]format=rgba[s${i}]`);
-    chain.push(`[bb${i}][s${i}]overlay=x=0:y='${y}'[l${i}]`);
-    const outPad = i === lines.length - 1 ? '[v]' : `[o${i}]`;
-    chain.push(`[${prev}][l${i}]overlay=0:${bandY}:enable='between(t,${t},${next})'${outPad}`);
-    prev = `o${i}`;
+    inputs.push('-loop', '1', '-t', String(total), '-i', path.join(work, `strip${i}.png`));
+    // Through shift(), like every other cue: a splice before this line moves it
+    // later in the finished video.
+    const from = shift(l.t);
+    const to = l.end === Infinity ? total : shift(l.end);
+    const y = geom[i].side === 'top' ? 0 : H - geom[i].h;
+    const next = `p${i + 1}`;
+    chain.push(`[${i + 1}:v]format=rgba[c${i}]`);
+    chain.push(`[${prev}][c${i}]overlay=0:${y}:` +
+               `enable='between(t,${from.toFixed(3)},${to.toFixed(3)})'[${next}]`);
+    prev = next;
   });
+  chain.push(`[${prev}]format=yuv420p[v]`);
 
   execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', src, ...inputs,
     '-filter_complex', chain.join(';'), '-map', '[v]',
@@ -441,39 +486,115 @@ function layPrompter(src, out, geom) {
     { stdio: 'inherit' });
 }
 
+/// One frame of a flashed word that SHATTERS.
+///
+/// The word snaps together, holds for most of its length, and then every letter
+/// leaves on its own vector, spinning and fading. A static word appearing and
+/// disappearing read as a subtitle; the point of a flash is that it hits.
+///
+/// The vectors are DERIVED FROM THE LETTER'S INDEX, not random. Re-rendering
+/// the same cue has to give the same frames, or a rebuild quietly produces a
+/// different video from the one that was approved.
+const FLASH_FPS = 25;
+function flashPage(word, p) {
+  const IN = 0.16, OUT = 0.55;          // assemble by 16%, start leaving at 55%
+  const inP = Math.min(1, p / IN);
+  const ease = 1 - Math.pow(1 - inP, 3);
+  const out = p <= OUT ? 0 : (p - OUT) / (1 - OUT);
+  const spans = [...word].map((ch, i) => {
+    // A cheap deterministic hash of the index, spread over the circle.
+    const a = (Math.sin(i * 12.9898) * 43758.5453) % 1;
+    const b = (Math.sin(i * 78.233) * 12345.6789) % 1;
+    // UP AND OUT. The angle is biased to the upper half and the drift is
+    // negative, so the word blows apart rather than crumbling -- an earlier
+    // version added gravity and the letters fell down the screen, which reads
+    // as collapse and is the opposite of the point.
+    const ang = -Math.PI * 0.15 - a * Math.PI * 0.7;     // upward fan
+    const dist = (300 + Math.abs(b) * 460) * Math.pow(out, 1.6);
+    const dx = Math.cos(ang) * dist * 1.25 + (out ? 0 : (1 - ease) * (a * 160 - 80));
+    const dy = Math.sin(ang) * dist - 260 * Math.pow(out, 1.4)
+             + (out ? 0 : (1 - ease) * (b * 200 - 100));
+    const rot = out * (b * 200 - 100) + (out ? 0 : (1 - ease) * (a * 40 - 20));
+    const sc = out ? 1 + out * 0.45 : 0.72 + 0.28 * ease;
+    const op = out ? Math.max(0, 1 - out * 1.3) : ease;
+    return `<span style="display:inline-block;
+      transform:translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px) rotate(${rot.toFixed(1)}deg)
+        scale(${sc.toFixed(3)});opacity:${op.toFixed(3)}">${
+      ch === ' ' ? '&nbsp;' : ch.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span>`;
+  }).join('');
+  return `<!doctype html><meta charset="utf-8"><style>
+    ${bubble.fontFaces(FONTS)}
+    html,body { margin:0; width:${W}px; height:${H}px; overflow:hidden; background:transparent; }
+    #f {
+      position:absolute; left:0; right:0; top:38%;
+      font: 800 128px/1.05 'Inter', system-ui, sans-serif;
+      text-align:center; letter-spacing:-2px; white-space:nowrap;
+      /* Hot amber, not white: white washed out against a light app screen.
+         A gradient through the glyphs was tried first and came out INVISIBLE --
+         background-clip:text paints nothing that survives a screenshot taken
+         with omitBackground, and the flash silently rendered as empty frames. */
+      color:#FF9A12;
+      text-shadow: 0 0 2px rgba(120,40,0,.9), 0 4px 16px rgba(0,0,0,.55),
+                   0 0 40px rgba(255,140,20,.75);
+    }
+  </style><div id="f">${spans}</div>`;
+}
 
-/// Refuse to build a section whose taps the prompter band would bury.
+/// Lay the flashes over the finished frame, last, so nothing draws on top of
+/// them. Hard on and hard off: it is a flash.
+function layFlashes(src, out) {
+  const total = DUR + splices.reduce((s, b) => s + b.hold, 0);
+  const inputs = [];
+  const chain = ['[0:v]null[f0]'];
+  let prev = 'f0';
+  flashes.forEach((f, i) => {
+    inputs.push('-framerate', String(FLASH_FPS), '-itsoffset', shift(f.t).toFixed(3),
+                '-i', path.join(work, `flash${i}`, 'f%03d.png'));
+    const from = shift(f.t);
+    const to = Math.min(from + f.hold, total);
+    const next = `f${i + 1}`;
+    chain.push(`[${i + 1}:v]format=rgba[w${i}]`);
+    chain.push(`[${prev}][w${i}]overlay=0:0:` +
+               `enable='between(t,${from.toFixed(3)},${to.toFixed(3)})'[${next}]`);
+    prev = next;
+  });
+  chain.push(`[${prev}]format=yuv420p[v]`);
+  execFileSync('ffmpeg', ['-y', '-v', 'error', '-i', src, ...inputs,
+    '-filter_complex', chain.join(';'), '-map', '[v]',
+    '-c:v', 'libx264', '-crf', '20', '-preset', 'medium', '-pix_fmt', 'yuv420p', out],
+    { stdio: 'inherit' });
+}
+
+/// Warn where a caption is on screen, at the same moment, over a tap.
 ///
-/// overlay_taps runs before this -- it has to, since it also trims the head the
-/// marks are measured from -- so the band is drawn ON TOP of the indicators. A
-/// control under it is then tapped invisibly: `invite` taps Share at y=2061,
-/// the band covers everything below 1920, and on video the share sheet just
-/// appears with nothing having been pressed.
+/// The old band was permanent and 300px tall, so this could only ask "is this
+/// tap in the bottom 300px?" and it flagged everything down there whether a
+/// line was up or not. Now a caption has a start, an end, an edge and a height,
+/// so the question is the real one: was anything covering this button when it
+/// was pressed?
 ///
-/// Drawing the indicator back on top does not fix it, and was tried: the ring
-/// then floats over the band's own text, pointing at a button that is still
-/// hidden. The band has to move, so this says so and stops.
-function refuseBuriedTaps() {
+/// Loud, not fatal. A missed sync flash stops the build because it silently
+/// misplaces everything; this is a legibility call on output that is otherwise
+/// correct, and refusing would block rebuilding a section over it.
+function warnBuriedTaps(geom) {
   if (!lines.length) return;
-  const R = 140;                                 // tapfx frames are 280x280
-  const covered = BAND_AT === 'bottom'
-    ? t => t.y + R > H - BAND_H
-    : t => t.y - R < BAND_H;
-  const buried = (marks && marks.taps || []).filter(covered);
-  if (!buried.length) return;
-  const where = buried.map(t => `"${t.what}" at (${t.x},${t.y})`).join(', ');
-  // Loud, but not fatal. It WAS fatal, and that was wrong: `vouch` taps two
-  // controls under the band and has shipped that way, so refusing would block
-  // every rebuild of a section on a complaint about something else. The band is
-  // being redesigned, and this is a legibility call rather than a wrong output
-  // -- unlike a missed sync flash, which silently misplaces everything and does
-  // still stop the build.
-  console.error(
-    `\n  WARNING: the prompter band covers ${buried.length > 1 ? 'taps' : 'the tap on'} ` +
-    `${where}.\n` +
-    `  The band is ${BAND_H}px along the ${BAND_AT} of a ${H}px frame, and it is\n` +
-    `  opaque, so the control and its tap indicator are both behind it -- on video\n` +
-    `  the button reacts with nothing having been pressed.\n` +
-    `  \`prompter_at: ${BAND_AT === 'bottom' ? 'top' : 'bottom'}\` on the section moves ` +
-    `the band off it.\n`);
+  const hits = [];
+  for (const t of (marks && marks.taps) || []) {
+    const at = t.t - TRIM_PAD;                 // the tap, on the cue clock
+    lines.forEach((l, i) => {
+      if (at < l.t || at >= l.end) return;     // no caption up when it happened
+      const covered = geom[i].side === 'bottom' ? t.y > H - geom[i].h : t.y < geom[i].h;
+      if (covered) hits.push({ t, l, geom: geom[i] });
+    });
+  }
+  if (!hits.length) return;
+  console.error(`\n  WARNING: a caption covers ${hits.length > 1 ? 'taps' : 'the tap on'} ` +
+    hits.map(h => `"${h.t.what}" at (${h.t.x},${h.t.y})`).join(', ') + '.');
+  for (const h of hits) {
+    console.error(`    "${h.l.text.replace(/\n/g, ' ').slice(0, 40)}" is ${h.geom.h}px ` +
+      `along the ${h.geom.side} while that tap happens.`);
+  }
+  console.error('    On video the control reacts with nothing having been pressed.\n' +
+    "    Give that line `side: " + (geom[0].side === 'bottom' ? 'top' : 'bottom') +
+    "`, or shorten the line before it so this one has not started yet.\n");
 }

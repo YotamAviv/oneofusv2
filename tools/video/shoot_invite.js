@@ -47,13 +47,9 @@ const AT = {
   await sleep(1500);
 
   // Chrome opens a tab per VIEW intent and nothing closed them; thirty had
-
   // piled up, and enough of them throttle screenrecord. Swept before the
-
   // camera, so a crashed take is cleaned up by the next one.
-
   await d.closeChromeTabs();
-
 
   const rec = spawn('adb', ['-s', process.env.AVD || 'emulator-5554', 'shell', 'screenrecord',
     '--time-limit', '90', '--bit-rate', '8000000', '/sdcard/invite.mp4']);

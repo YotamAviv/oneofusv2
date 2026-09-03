@@ -31,7 +31,7 @@ CUES = HERE / 'cues'
 # What annotate.js reads, and nothing else. Cards are in here because a card at
 # a mark is spliced into the take exactly as a beat is -- only a card rendered
 # on its own, outside any take, goes through --card.
-CUE_KEYS = ('prompter', 'zooms', 'beats', 'cards')
+CUE_KEYS = ('prompter', 'zooms', 'beats', 'cards', 'flashes')
 
 # How long a section's title holds before its footage starts.
 TITLE_SECONDS = '1.0'
@@ -297,10 +297,13 @@ def recut(section):
     """
     sid = section['id']
     how = section['build']
-    if not how.endswith('.js'):
-        sys.exit(f"'{sid}' builds as {how}; --recut re-finishes a shot take, and "
-                 "only .js sections have one. Use --build.")
-    stem = how[len('shoot_'):-len('.js')] if how.startswith('shoot_') else how[:-3]
+    # A .sh section's post-production is overlay_taps then annotate -- a strict
+    # subset of finish() -- so it can be re-cut like any other, as long as it
+    # shot ONE take of its own. build_preamble.sh joins three takes and a card
+    # and has no `<id>.mp4` to re-cut; it says so below rather than here,
+    # because the take is what decides.
+    stem = (how[len('shoot_'):-len('.js')] if how.startswith('shoot_')
+            else how[:-3] if how.endswith('.js') else sid)
     takes = sorted((HERE / 'out' / sid).glob(f'*/{stem}.mp4'))
     if not takes:
         sys.exit(f"no take to re-cut in out/{sid}/ -- nothing matches {stem}.mp4. "
@@ -410,7 +413,18 @@ def finish(section, where, take):
     if trim is None:
         sys.exit(f"'{sid}' does not say what to trim to. Every take opens with a "
                  "sync flash and a launch; `trim: <mark>` says where the section "
-                 "actually starts.")
+                 "actually starts, and `trim: none` says it starts where "
+                 "overlay_taps left it.")
+    if trim == 'none':
+        # overlay_taps has already cut the head to the sync flash, and for some
+        # sections that IS the start. Said out loud rather than left blank, so
+        # the difference between "starts here" and "nobody decided" stays
+        # visible -- the .sh sections used to trim by saying nothing.
+        run(['ffmpeg', '-y', '-v', 'error', '-i', cur, '-c:v', 'libx264', '-crf', '19',
+             '-preset', 'medium', '-pix_fmt', 'yuv420p', out])
+        write_manifest(section, where, out, take)
+        print(f'\n  {out.relative_to(HERE)}')
+        return
     at = mark_seconds(cur, trim)
     print(f'  trim to {trim} at {at}s')
     cut = []

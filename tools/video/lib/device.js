@@ -291,8 +291,11 @@ function device(serial = process.env.AVD || 'emulator-5554') {
       // takes start on the native app and only reach Chrome later. It is also
       // the only forgiving branch here: anything else that goes wrong throws,
       // because a tab sweep that quietly does nothing is how they piled up.
-      const running = execFileSync('adb', ['-s', serial, 'shell', 'pidof',
-        'com.android.chrome'], { encoding: 'utf8' }).trim();
+      // `|| true` because pidof exits non-zero when the process is not running,
+      // which is exactly the case being tested for -- without it execFileSync
+      // throws and the take dies before the camera, on its cleanup step.
+      const running = execFileSync('adb', ['-s', serial, 'shell',
+        'pidof com.android.chrome || true'], { encoding: 'utf8' }).trim();
       if (!running) return 0;
       execFileSync('adb', ['-s', serial, 'forward', 'tcp:9222',
         'localabstract:chrome_devtools_remote'], { stdio: 'ignore' });
