@@ -119,7 +119,7 @@ void main() {
     await tester.pumpAndSettle();
 
     debugPrint("TEST: Entering comment.");
-    await tester.enterText(find.widgetWithText(TextField, 'E.g. "Colleague from work", "Met at conference"'), 'Test comment');
+    await tester.enterText(find.widgetWithText(TextField, 'E.g. "Colleague", "College roommate", "Neighbor"'), 'Test comment');
     await tester.pumpAndSettle();
 
     debugPrint("TEST: Tapping PUBLISH.");
@@ -139,7 +139,7 @@ void main() {
     await tester.pumpAndSettle();
 
     debugPrint("TEST: Entering updated comment.");
-    await tester.enterText(find.widgetWithText(TextField, 'E.g. "Colleague from work", "Met at conference"'), 'Updated comment');
+    await tester.enterText(find.widgetWithText(TextField, 'E.g. "Colleague", "College roommate", "Neighbor"'), 'Updated comment');
     await tester.pumpAndSettle();
 
     debugPrint("TEST: Tapping PUBLISH.");

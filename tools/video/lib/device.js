@@ -12,7 +12,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function device(serial = process.env.AVD || 'emulator-5554') {
   const E = (...a) => execFileSync('adb', ['-s', serial, ...a], { stdio: 'ignore' });
-  const Eout = (...a) => execFileSync('adb', ['-s', serial, ...a]).toString();
+  // maxBuffer, because the default is 1MB and `adb shell dumpsys input_method`
+  // has grown past it. Over the limit, spawnSync fails with ENOBUFS -- which
+  // reads like a system resource problem and is not one -- and the take dies
+  // mid-scene with no clue that the output was simply too big.
+  const Eout = (...a) => execFileSync('adb', ['-s', serial, ...a],
+    { maxBuffer: 64 * 1024 * 1024 }).toString();
 
   /// Wait until the screen stops changing. Grabs frames and compares them --
   /// the closest thing to a condition when there is nothing to query.
