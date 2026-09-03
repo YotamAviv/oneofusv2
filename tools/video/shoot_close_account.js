@@ -27,16 +27,23 @@
 // vanish from the feed. Worse, shoot_signin.sh's first step truncates the
 // existing delegate statements, so reshooting it is itself what orphans them.
 //
-// ONE THING THE REWIND DOES NOT BRING BACK. Deleting the local private key is a
-// separate act from clearing -- the "Remove Local Key?" dialog -- and it is
-// local and permanent.
+// THE LOCAL KEY IS THE OTHER HALF, and it is covered too now. Deleting the
+// private key is a separate act from clearing -- the "Remove Local Key?" dialog
+// -- and it is permanent, so it needs its own save and restore:
 //
-// The two halves come apart, and the resulting state is a confusing one to
-// debug if you do not expect it: rewind the statements without the key and the
-// delegation stands again, so the RATINGS SIGNED BY THAT KEY COME BACK AND ARE
-// VISIBLE -- but nothing can sign in as that delegate any more, because the
-// private key is gone. Readable, not writable. The phone will offer to claim a
-// new delegate instead, and that is a different key with a different token. The network statement comes back; the phone's copy
+//   ./app_state.sh save    <keys.json>     before the take
+//   ./app_state.sh restore <keys.json>     after it
+//
+// which drive keymeid://exportkey and keymeid://importkey, filming-only deep
+// links in the app. Verified: the delegate's token was identical before and
+// after a delete-and-restore, which is what matters -- a DIFFERENT delegate
+// orphans every rating the old one signed.
+//
+// Restore the phone first and the network last; the app reads the network on
+// its next launch. Skip the phone half and the state is a confusing one to
+// debug: the delegation stands, so the ratings come back and are visible, but
+// nothing can sign in as that delegate, because the key is gone. Readable, not
+// writable. The network statement comes back; the phone's copy
 // does not. The browser keeps its own copy, so the Nerdster still works. To make
 // this take truly repeatable the phone's keyring needs snapshotting too --
 // `adb backup` of the app, or a restore_demo_identity.sh that also re-claims the

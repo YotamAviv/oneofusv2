@@ -456,7 +456,15 @@ You can see who those are by looking for the confirmation check mark to the righ
       return;
     }
 
-    final isSignIn = (uri.scheme == 'keymeid' && (uri.host == 'signin' || (uri.host != 'vouch' && uri.host != 'block' && uri.host != 'clear' && uri.host != 'deletekey' && uri.host != 'importkey'))) ||
+    // FILMING ONLY: keymeid://exportkey — write the keyring to the same file
+    // importkey reads, for adb pull. The other half of importkey.
+    final isExportKey = Config.filmTools && uri.scheme == 'keymeid' && uri.host == 'exportkey';
+    if (isExportKey) {
+      await _handleExportKey();
+      return;
+    }
+
+    final isSignIn = (uri.scheme == 'keymeid' && (uri.host == 'signin' || (uri.host != 'vouch' && uri.host != 'block' && uri.host != 'clear' && uri.host != 'deletekey' && uri.host != 'importkey' && uri.host != 'exportkey'))) ||
         uri.path.contains('sign-in') || uri.path.contains('/signin');
     if (!_hasKey && !isSignIn) return;
 
@@ -577,6 +585,47 @@ You can see who those are by looking for the confirmation check mark to the righ
       if (mounted) setState(() {});
     } catch (e) {
       debugPrint('IMPORTKEY: $e');
+    }
+  }
+
+  /// FILMING ONLY. Writes the keyring to the app's own external files directory
+  /// so a take can be undone.
+  ///
+  ///   adb shell am start -a android.intent.action.VIEW -d "keymeid://exportkey"
+  ///   adb pull /sdcard/Android/data/net.oneofus.app/files/filmkey.json
+  ///
+  /// The exact counterpart of [_handleImportKey], down to the filename: what
+  /// this writes is what that reads, and it is the same JSON the IMPORT/EXPORT
+  /// screen produces and accepts ([Keys.getAllKeyJsons]).
+  ///
+  /// WHY. The `close_account` take clears a delegation, and clearing a
+  /// delegation whose private key this phone holds also deletes that key — a
+  /// separate act, and a permanent one. The published statement can be put back
+  /// (the statement streams are append-only, so rewinding the head undoes an
+  /// appended `clear`), but until now the key could not, so re-running the take
+  /// cost a reshoot of sign-in — which mints a DIFFERENT delegate, orphaning
+  /// every rating the old one signed. Exported first and imported after, the
+  /// same key comes back, with the same token, and those ratings are its own
+  /// again.
+  ///
+  /// Private keys go to a file, never into a URL, a log, or shell history. The
+  /// app's external files directory is adb-writable and adb-readable with no
+  /// storage permission, which is what makes this scriptable at all. Only
+  /// reachable when [Config.filmTools] is compiled in, so a shipped build has no
+  /// way to do this.
+  Future<void> _handleExportKey() async {
+    try {
+      final Directory? dir = await getExternalStorageDirectory();
+      if (dir == null) {
+        debugPrint('EXPORTKEY: no external storage dir');
+        return;
+      }
+      final Map<String, dynamic> all = await Keys().getAllKeyJsons();
+      final File f = File('${dir.path}/filmkey.json');
+      await f.writeAsString(const JsonEncoder.withIndent('  ').convert(all));
+      debugPrint('EXPORTKEY: wrote ${all.length} key(s) to ${f.path}');
+    } catch (e) {
+      debugPrint('EXPORTKEY: $e');
     }
   }
 

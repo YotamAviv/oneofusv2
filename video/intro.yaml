@@ -428,13 +428,14 @@ sections:
         network. UNDOABLE, because the streams are append-only hash chains --
         snapshot_statements.js records the head before the take and
         truncate_statements.js --keep rewinds to it afterwards. Proven.
-      - NOT undoable, locally -- deleting the local private key is a separate act
-        from clearing, and it is permanent. Rewinding the statements without it
-        leaves a half-restored state worth knowing about. The ratings signed by
-        that key come back and are visible, but nothing can sign in as that
-        delegate again, because the key is gone. Readable, not writable.
-        Snapshotting the phone's keyring is the missing piece, and is only
-        documented, not built.
+      - Deletes the delegate's private key from the phone, which is a separate
+        act from clearing and is permanent. Also undoable -- `app_state.sh save`
+        before and `restore` after, over the app's filming-only exportkey and
+        importkey deep links. Verified to bring back the SAME key, token and
+        all; a different delegate would orphan every rating the old one signed.
+      - Restore the phone first and the network last. Skipping the phone half
+        leaves the delegation standing and the ratings visible, but nothing able
+        to sign in as that delegate. Readable, not writable.
     build: shoot_close_account.js
     status: to_build
     # The opening card IS the start of the section, so the take is trimmed to it.
