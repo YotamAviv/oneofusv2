@@ -265,21 +265,6 @@ const toDevice = (x, y) => ({
   await waitFor(page, /^Published ✓$/, {}, 25000);
   mark('published_shown');
 
-  // The export link, measured, so a beat can point at it. It is the statement's
-  // address on the open network -- anyone can fetch it and check the signature,
-  // which is the whole claim this section is making.
-  const link = await find(page, /export\.nerdster\.org/);
-  if (link) {
-    const c = toDevice(link.x, link.y);
-    marks.exportLinkBox = { x: c.x, y: c.y,
-      w: Math.round(link.w * VIEW2DEV.scale), h: Math.round(link.h * VIEW2DEV.scale) };
-    mark('export_link_shown');
-    console.log(`  exportLinkBox ${JSON.stringify(marks.exportLinkBox)}`);
-  } else {
-    // Loud, not silent: the cue that names this box would otherwise fail later
-    // with "beat names box exportLinkBox, which this take did not measure".
-    console.error('  WARNING: no export.nerdster.org link in the Published sheet.');
-  }
   await sleep(4200);
 
   // --- the statement itself, and the signature on the end of it ---
@@ -306,6 +291,87 @@ const toDevice = (x, y) => ({
   marks.jsonBox = { x: Math.round(json.x), y: Math.round(json.y),
                     w: Math.round(json.w), h: Math.round(json.h) };
   await sleep(4600);
+
+  // --- out to the statement itself, on the open network -------------------
+  //
+  // findStill, NOT find. The sheet is still sliding up when the link first
+  // exists, and a box measured then is low -- the highlight landed on the JSON
+  // underneath the link instead of on it. Same lesson as hablotengo's "Access
+  // Denied" and the sign-in tap.
+  const link = await findStill(page, /export\.nerdster\.org/);
+  const lc = toDevice(link.x, link.y);
+  marks.exportLinkBox = { x: lc.x, y: lc.y,
+    w: Math.round(link.w * VIEW2DEV.scale), h: Math.round(link.h * VIEW2DEV.scale) };
+  mark('export_link_shown');
+  console.log(`  exportLinkBox ${JSON.stringify(marks.exportLinkBox)}`);
+  await sleep(4200);                       // the beat that says "let's go look"
+
+  // ctx is the browser context attached above; the new tab appears in it.
+  await tapAt(cdp, link.x, link.y);
+  marks.taps.push({ t: at(), ...lc, what: 'export_link' });
+  mark('tap_export_link');
+
+  let stmts = null;
+  for (let i = 0; i < 60 && !stmts; i++) {
+    stmts = ctx.pages().find(p => p.url().includes('export.nerdster.org'));
+    await sleep(250);
+  }
+  if (!stmts) throw new Error('the published-statements link did not open a tab');
+  await stmts.waitForLoadState('domcontentloaded').catch(() => {});
+  const jcdp = await ctx.newCDPSession(stmts);
+  mark('statements_tab');
+  await sleep(2200);
+
+  // Chrome renders raw JSON as one long line. Pretty-print is the difference
+  // between a wall of text and something a viewer can read a statement out of.
+  const cb = await stmts.evaluate(() => {
+    const c = document.querySelector('input[type=checkbox]');
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+  });
+  if (cb) {
+    await tapAt(jcdp, cb.x, cb.y);
+    marks.taps.push({ t: at(), ...toDevice(cb.x, cb.y), what: 'pretty_print' });
+  } else {
+    // Chrome's JSON viewer is not part of the page's DOM, so the checkbox
+    // cannot be found or tapped through CDP. It is always in the same place --
+    // the first row under the toolbar -- so tap the device there instead.
+    const pt = { x: 117, y: VIEW2DEV.offY + 15 };
+    E('shell', 'input', 'tap', String(pt.x), String(pt.y));
+    marks.taps.push({ t: at(), ...pt, what: 'pretty_print' });
+  }
+  mark('pretty_printed');
+  await sleep(2600);
+
+  // Pinch in on it. A page of JSON at phone size is unreadable, and this is the
+  // moment the video asks the viewer to actually read something -- so zoom the
+  // way a person would, rather than leaving it to a crop in post.
+  //
+  // TO THE TOP FIRST, and not too far in. Inherited from the older sequence,
+  // this pinched 2.6x at a fixed point and landed on blank page with the text
+  // running off both edges -- the statement was zoomed past rather than zoomed
+  // into. The document starts at the top, so start there, and 1.8x is the most
+  // that keeps a line of this JSON within the width.
+  // setPageScaleFactor, NOT synthesizePinchGesture. A synthesised pinch leaves
+  // the VISUAL viewport offset somewhere of its own choosing, and
+  // window.scrollTo does not move that -- twice it landed on blank page with
+  // the JSON running off both edges. This scales deterministically and starts
+  // at the top left, which is where the statement is.
+  await stmts.evaluate(() => window.scrollTo(0, 0));
+  await sleep(400);
+  await jcdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1.7 })
+    .catch(e => console.log('  page scale unavailable:', e.message));
+  await sleep(900);
+  mark('zoomed');
+  await sleep(5600);                       // narration, over something readable
+
+  // Back to the feed. Closing the tab rather than pressing BACK: BACK in Chrome
+  // is history, and this tab has none.
+  await stmts.close();
+  await page.bringToFront();
+  await sleep(1800);
+  mark('back_from_statements');
 
   tapped('published_okay', await tapNamed(page, cdp, /^Okay$/, { role: 'button' }));
   await sleep(2200);

@@ -337,6 +337,13 @@ sections:
       - {at: raw_shown, text: "The published statement, raw, un-interpreted."}
       - {at: signature_shown,
          text: "Cryptographically signed using your Nerdster delegate key."}
+      # Out on the open network, in a plain browser tab. Draft copy.
+      - {at: statements_tab,
+         text: "Fetched straight from the open network. Anyone can."}
+      - {at: pretty_printed,
+         text: "Pretty-printed. The same statement, readable."}
+      - {at: zoomed, after: 0.8,
+         text: "Signed by my delegate key.\nCheck it yourself; you do not have to trust me."}
       - {at: dismissed,
          text: "All three apps work this way: signed statements,\nmade with the keys you delegate for their use."}
       - {at: loading,
@@ -363,7 +370,9 @@ sections:
         text: "The statement's address on the open network.\nLet's go and look at it."
         box: exportLinkBox
         pad: 22
-        y: 1100
+        # Well clear of the link -- the bubble sat on top of the very thing it
+        # was pointing at.
+        y: 700
       - at: signature_shown
         after: 1.2
         hold: 2.0
