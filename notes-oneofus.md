@@ -2,9 +2,9 @@ These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
 ## Nice ones:
-flutter emulators --launch Pixel_7a_API_35
-flutter emulators --launch Pixel_7
-flutter emulators --launch Pixel_3a_API_35
+flutter emulators --launch Pixel_7a_API_35  -gpu host
+flutter emulators --launch Pixel_7 -gpu host
+flutter emulators --launch Pixel_3a_API_35 -gpu host
 
 git rev-list --count HEAD
 
