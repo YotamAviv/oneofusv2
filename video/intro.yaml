@@ -22,7 +22,7 @@ title: Our Own Open Decentralized Identity Network
 sections:
   # -------------------------------------------------------------------------
   - id: preamble
-    title: "Getting the app"
+    title: "Our. Own. Decentralized. Identity. Network."
     preconditions:
       - Chrome and the identity app installed; the app icon on the home screen.
     side_effects:
@@ -47,7 +47,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: vouch
-    title: "Our. Own. Decentralized. Identity. Network."
+    title: "Get started\nVouch for someone's identity and humanity"
     preconditions:
       - Nothing. It wipes the app and builds an identity from scratch, and the
         one deep link it uses (keymeid://vouch) is the ordinary one a real
@@ -58,9 +58,17 @@ sections:
         orphaned in production.
       - Every take after this one needs ./restore_demo_identity.sh first, and
         THAT needs a filmTools build (it gets the identity in over
-        keymeid://importkey).
+        keymeid://importkey). The `restore_demo_identity` flag below makes the
+        build do it, so the state this section SAVES is the identity the next
+        one needs rather than the throwaway it just filmed.
     build: shoot_vouch.js
     status: built
+    # The take ends holding a BRAND-NEW random identity -- that is the whole
+    # point of it, a phone with no keys on it. Which makes it the wrong thing to
+    # hand to the next section: saved as-is, every later take inherits the
+    # throwaway, publishes against it, and the demo identity's streams sit empty
+    # while everything looks like it worked.
+    restore_demo_identity: true
     # Where the section starts. Every take opens with a sync flash and a launch;
     # this is the first mark worth seeing, and the words card is spliced here.
     trim: welcome
@@ -82,8 +90,7 @@ sections:
     until_after: 0.6
     prompter:
       - {t: 0.3, text: "A phone with no keys on it."}
-      - {at: tap_create_key, text: "One tap and it has an identity."}
-      - {at: scanner, text: "Scan somebody you know."}
+      - {at: scanner, text: "Scan somebody's identity card."}
       # At the moment the statement is actually signed and published -- a mark
       # read out of the footage by find_snackbar.js, not guessed at.
       #
@@ -93,7 +100,7 @@ sections:
       # and neither can a zoom (it clamps to the frame edge, so the bar stays at
       # the bottom). Showing it would mean raising BAND_H for every section. So
       # the band says it instead, at exactly the right instant.
-      - {at: published, text: "Signed on the phone. Published to the network."}
+      # - {at: published, text: "Signed on the phone. Published to the network."}
     beats:
       # The snackbar itself, measured by the take (find_snackbar.js reports the
       # rectangle as well as the moment). This could not be shown at all while
@@ -102,7 +109,9 @@ sections:
       - at: published
         after: 0.5
         hold: 4.0
-        text: "The private crypto key on this phone signed Tom's public crypto key,\nwhere Tom's identity statements are hosted,\nand that I know this human as \"Tom\"."
+        # A line starting "- " is a bullet; see lib/bubble.js. The lead line stays
+        # centred, the bullets line up with each other.
+        text: "The private crypto key on this phone signed and published\n- a public key (identity)\n- where to find its statements (endpoint)\n- that it belongs to a human called \"Tom\""
         box: snackbarBox
         pad: 20
         y: 1400
@@ -115,6 +124,11 @@ sections:
           - That's it.
           - That's all we need to do to build our own,
           - decentralized, identity network.
+    flashes:
+      - at: published
+        after: 0.4
+        hold: 0.9
+        word: "Decentralized"
     todo:
       # Deferred, 2026-09-01. The composite scan covers the mechanics; this would
       # add the human moment -- two people, in a room, one act.
@@ -123,7 +137,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: invite
-    title: "You have to be trusted, too"
+    title: "You others to vouch for your identity"
     preconditions:
       - An identity on the phone (restore_demo_identity.sh after vouch).
     side_effects:
@@ -143,26 +157,36 @@ sections:
     # And the caution behind it: people shouldn't only accept invitations and
     # vouch. They should send them out too.
     prompter:
-      - {at: main_screen, text: "Nobody has vouched for me yet."}
-      - {at: tap_share, text: "If we can't meet, I send a link. It carries my public key."}
-      - {at: link, after: 3.4, text: "Send them. Don't just accept them."}
+      # - {at: main_screen, text: "Nobody has vouched for me yet."}
+      - {at: tap_share, text: "Share invitations electronically to vouch remotely."}
+      # - {at: link, after: 3.4, text: "Send them. Don't just accept them."}
     beats:
       # "Me" is the name on the card because nothing better exists yet: a moniker
       # comes from somebody else's vouch, and nobody has vouched.
       - at: main_screen
         after: 0.8
         hold: 3.4
-        text: "No one has vouched for me,\nso there is no better name to show."
+        text: "No one has vouched for me,\nI'm unknown, just 'Me', for now.."
         box: meBox
         pad: 24
         y: 1500
       - at: link
         after: 1.2
         hold: 3.4
-        text: "A URL with my public key in it.\nVouch for me from anywhere."
+        text: "This invitation link carries my public key."
         anchor: [544, 1267]
         spotlight: [40, 1010, 1000, 460]
         y: 500
+    cards:
+      # Closes the section and hands over to the next one. `done` is the take's
+      # last mark, and `until: done` ends the section on the card rather than on
+      # whatever the recorder caught afterwards -- end_seconds counts the card's
+      # own hold, so the cut lands on its last frame.
+      - at: done
+        hold: 2.0
+        lines:
+          - How can we use this identity network?
+    until: done
     actions:
       # Done, in shoot_invite.js. The take stops at the share sheet: the link is
       # the point and it is on screen there in full, and this identity's
@@ -203,25 +227,18 @@ sections:
     # it a key of its own, and the identity key never leaves the phone.
     trim: home
     prompter:
-      - {at: home, text: "The Nerdster. Somebody else's service --\nnothing to do with my identity app."}
-      - {at: tap_launch, text: "Open the web app."}
-      - {at: app_ready, text: "It needs to know who I am.\nI have no account here, and I am not making one."}
-      - {at: tap_signin, text: "Sign in with ONE-OF-US.NET instead."}
-      - {at: tap_yes, text: "My app makes the Nerdster a key of its own."}
-      - {at: back_to_browser, text: "That key is a delegate: it speaks for me here,\nand nowhere else."}
-      - {at: signed_in, text: "Signed in. My identity key never left the phone."}
-      - {at: dismiss, text: "No password. No email. Nothing to be breached."}
-    todo:
-      # Both need a take of this sequence to measure against, so they cannot be
-      # written until it has been shot once.
-      - A beat on "Identity present / Delegate present", once there are
-        coordinates to point at.
-      - Check the pace against a stopwatch. Eight lines is a lot for one take,
-        and the intro is the video with a budget.
+      - {at: home, text: "The Nerdster, a proof of concept of this decentralized identity paradigm, not connected to ONE-OF-US.NET."}
+      # - {at: tap_launch, text: "Open the web app."}
+      # - {at: app_ready, text: "It needs to know who I am.\nI have no account here, and I am not making one."}
+      # - {at: tap_signin, text: "Sign in with ONE-OF-US.NET instead."}
+      - {at: tap_yes, text: "Create and give the Nerdster a crypto key that will represent us there."}
+      # - {at: back_to_browser, text: "That key is a delegate: it speaks for me here,\nand nowhere else."}
+      - {at: signed_in, text: "I've signed in. I've identified myself using my public identity and handed over a delegate key to represent me on this service."}
+      # - {at: dismiss, text: "No password. No email. Nothing to be breached."}
 
   # -------------------------------------------------------------------------
   - id: nerdster
-    title: "Enter the Nerdster!"
+    title: "Common Nerdster Usage.."
     preconditions:
       - Signed in to the Nerdster with a delegate key (signin).
     side_effects:
@@ -235,24 +252,24 @@ sections:
     # A gong, like Enter the Dragon. NO ASSET -- deferred 2026-09-01.
     prompter:
       - {t: 0.3, text: "My feed. I'm signed in with a delegate key."}
-      - {at: tap_type_menu, text: "Filter it down to books."}
-      - {at: tap_sort_menu, text: "Order them by how much people are saying."}
-      - {at: swipe_snooze, after: -0.8, text: "Swipe right to snooze one. Not now, maybe later."}
-      - {at: swipe_dismiss, after: -0.7, text: "Swipe left and it's gone for good."}
-      - {at: tap_react, text: "React to a third one: a like, and something to say."}
-      - {at: tap_publish, text: "Publish. That's a signed statement, not a row in\nsomebody's database."}
+      - {at: tap_type_menu, text: "Filter to books."}
+      - {at: tap_sort_menu, text: "Order by number of reactions."}
+      - {at: swipe_snooze, after: -0.8, text: "Swipe right = Snooze, hide until new activity."}
+      - {at: swipe_dismiss, after: -0.7, text: "Swipe left = Dismiss, don't show again."}
+      - {at: tap_react, text: "React..."}
+      - {at: tap_publish, text: "Signed and published. Portable content along with proof that it's mine."}
     beats:
       - at: published
         after: 0.2
         hold: 2.8
-        text: "My like and my comment,\nsigned a second ago."
+        text: "My new like and comment."
         anchor: [409, 1266]
         spotlight: [60, 1215, 960, 195]
         y: 640
       - at: published
         after: 0.3
         hold: 2.8
-        text: "Tom read it too, and said so.\nHis key signed that."
+        text: "Tom reacted, too.\nI know him, vouched for his identity directly."
         anchor: [250, 1457]
         spotlight: [60, 1410, 960, 195]
         y: 760
@@ -274,9 +291,10 @@ sections:
       - at: published
         after: 0.3
         hold: 3.5
-        lines:
+        lines: # TODO: Not centered, maybe <pre>?
           - "Do we really need another one of these?"
-          - "No. But this is different."
+          - "No."
+          - "But this is different."
           - "A proof of concept of the paradigm, leveraging our own open,
              decentralized identity network."
           - "Open: any service can leverage it, and contribute to it."
@@ -293,7 +311,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: crypto_teaser
-    title: "Crypto"
+    title: "How Cryptography\nmakes this possible"
     preconditions:
       - Signed in to the Nerdster with a delegate key (signin).
     side_effects:
@@ -327,27 +345,27 @@ sections:
     prompter:
       - {at: feed, after: 0.4,
          text: "A quick look.. How the crypto is used."}
-      - {at: crypto_on, text: "Show Crypto: Every rating, follow and vouch now carries a shield --\nthe signed statement behind it, yours or anyone's.."}
+      - {at: crypto_on, text: "Expose the signed statements: reactions, vouches, follows, blocks, etc... Look for the shield icon"}
       - {at: fyi_on,
-         text: "Show FYI: Show each statement as it's signed and publisheed."}
+         text: "Show each statement as it's being drafted, signed, and published."}
       - {at: fyi_shown,
          text: "What's about to be signed and published.."}
       - {at: published_shown,
-         text: "Published. Intepreted and slightly more readable (keys to names)."}
-      - {at: raw_shown, text: "The published statement, raw, un-interpreted."}
+         text: "Interpreted view is slightly more readable (keys to names)."}
+      - {at: raw_shown, text: "Raw, un-interpreted view is machine verifiable."}
       - {at: signature_shown,
          text: "Cryptographically signed using your Nerdster delegate key."}
       # Out on the open network, in a plain browser tab. Draft copy.
       - {at: statements_tab,
-         text: "Fetched straight from the open network. Anyone can."}
+         text: "Fetched straight from the open network. Any service can, and they'll know who said what."}
       - {at: pretty_printed,
-         text: "Pretty-printed. The same statement, readable."}
+         text: "Pretty-print..."}
       - {at: zoomed, after: 0.8,
-         text: "Signed by my delegate key.\nCheck it yourself; you do not have to trust me."}
+         text: "Signed by my delegate key.\nYou (or anyone) can verify (See menu item); Trust cryptography, not the Nerdster."}
       - {at: dismissed,
-         text: "All three apps work this way: signed statements,\nmade with the keys you delegate for their use."}
+         text: "All three apps work this way: signed statements,\nsigned, published using keys you trust."}
       - {at: loading,
-         text: "Fetching statements, verifying signatures --\nthe only source of all content shown."}
+         text: "Fetching signed content --\nthe only source of all content shown."}
     beats:
       # HIGHLIGHTS. The video stops, everything dims but the spotlit rectangle,
       # and a bubble points at it -- the treatment the invite section uses.
@@ -434,21 +452,16 @@ sections:
     # selectors to need a pass on the device.
     trim: feed
     prompter:
-      - {at: feed, after: 0.4, text: "Somebody I have never met, two hops away."}
-      # The three filters, each on the moment it takes effect. Draft copy -- the
-      # marks are what matter here; the words are Yotam's to write.
       - {at: pov_set,
-         text: "Point of view -- whose network I am looking through."}
+         text: "See content from someone else's Point of View (PoV). Notice that names and content change"}
       - {at: tap_context_family, after: 1.4,
-         text: "Context -- which slice of it. Family, here."}
+         text: "Use Tom's family Context."}
       - {at: filtered,
-         text: "And a tag, to narrow it to one subject."}
+         text: "Narrow content down by tags (and related tags)."}
       - {at: node_details,
-         text: "I vouched for Tom. Tom vouched for Hillel.\nThe proof is a chain of signatures, there to check."}
+         text: "Let's call Hillel."}
       - {at: hablotengo_open,
-         text: "The same identity, carried to another service."}
-      - {at: denied,
-         text: "And refused. HabloTengo grounds itself in the same open network\nto keep things private, not only authentic."}
+         text: "Same identities, our identities, on another, unconnected service."}
     beats:
       # Both boxes are MEASURED by the take and named here, rather than typed --
       # see the note on crypto_teaser's signature beat for why.
@@ -462,13 +475,11 @@ sections:
       - at: denied
         after: 1.0
         hold: 3.2
-        text: "Refusing is the point.\nAuthentic does not mean public."
+        text: "Access Denied.\nHabloTengo leverages our open, decentralized network to keep things private, not just authentic."
         box: deniedBox
         pad: 30
         y: 1200
     todo:
-      - Shoot it. The HabloTengo sign-in and the Access Denied screen are guesses
-        from Yotam's outline until they have been seen on the device.
       - The reset must leave HabloTengo SIGNED OUT, or the second run of this
         take shows a signed-in app and never reaches Access Denied.
 
@@ -527,7 +538,7 @@ sections:
       # AFTER the tap, not before it: the line lands on the keys being there,
       # which is what it is about.
       - {at: tap_export, after: 1.2,
-         text: "I own my keys, not them."}
+         text: "My keys are mine, not theirs."}
       - {at: advanced,
          text: "Advanced: recover from lost or compromised keys, manage blocks."}
     beats:
@@ -545,7 +556,7 @@ sections:
       - at: before_refresh
         after: 0.3
         hold: 2.4
-        text: "Ask the network again."
+        text: "Refresh"
         box: refreshBox
         pad: 22
         y: 1300
@@ -556,7 +567,7 @@ sections:
       - at: nerdster_refreshed
         after: 1.4
         hold: 3.2
-        text: "That key can no longer speak for me.\nNothing was deleted. A statement was withdrawn."
+        text: "The delegate key I signed in with no longer represents me."
         box: keyIssueBox
         pad: 26
         y: 1400
@@ -591,3 +602,21 @@ sections:
       - Implement `flashes` in annotate.js, or drop the cue above.
       - The Nerdster network-distance filter (6 down to 1) is named by guess, and
         semantics.js will say what is actually on screen when it misses.
+
+  # -------------------------------------------------------------------------
+  - id: thanks
+    title: "Thank you for watching"
+    preconditions:
+      - None. It is a card; nothing is recorded and no device is involved.
+    side_effects:
+      - None.
+    build: card
+    status: built
+    # No one-second title card in front of a section that IS a card -- that
+    # would be two full screens of text in a row saying the same thing. The
+    # YouTube chapter still gets made; it just starts on the card itself.
+    title_card: false
+    cards:
+      - hold: 3.0
+        lines:
+          - Thank you for watching

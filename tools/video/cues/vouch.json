@@ -10,16 +10,8 @@
       "text": "A phone with no keys on it."
     },
     {
-      "at": "tap_create_key",
-      "text": "One tap and it has an identity."
-    },
-    {
       "at": "scanner",
-      "text": "Scan somebody you know."
-    },
-    {
-      "at": "published",
-      "text": "Signed on the phone. Published to the network."
+      "text": "Scan somebody's identity card."
     }
   ],
   "beats": [
@@ -27,7 +19,7 @@
       "at": "published",
       "after": 0.5,
       "hold": 4.0,
-      "text": "The private crypto key on this phone signed Tom's public crypto key,\nwhere Tom's identity statements are hosted,\nand that I know this human as \"Tom\".",
+      "text": "The private crypto key on this phone signed and published\n- a public key (identity)\n- where to find its statements (endpoint)\n- that it belongs to a human called \"Tom\"",
       "box": "snackbarBox",
       "pad": 20,
       "y": 1400
@@ -43,6 +35,14 @@
         "That's all we need to do to build our own,",
         "decentralized, identity network."
       ]
+    }
+  ],
+  "flashes": [
+    {
+      "at": "published",
+      "after": 0.4,
+      "hold": 0.9,
+      "word": "Decentralized"
     }
   ]
 }

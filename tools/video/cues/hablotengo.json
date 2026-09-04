@@ -6,34 +6,25 @@
   ],
   "prompter": [
     {
-      "at": "feed",
-      "after": 0.4,
-      "text": "Somebody I have never met, two hops away."
-    },
-    {
       "at": "pov_set",
-      "text": "Point of view -- whose network I am looking through."
+      "text": "See content from someone else's Point of View (PoV). Notice that names and content change"
     },
     {
       "at": "tap_context_family",
       "after": 1.4,
-      "text": "Context -- which slice of it. Family, here."
+      "text": "Use Tom's family Context."
     },
     {
       "at": "filtered",
-      "text": "And a tag, to narrow it to one subject."
+      "text": "Narrow content down by tags (and related tags)."
     },
     {
       "at": "node_details",
-      "text": "I vouched for Tom. Tom vouched for Hillel.\nThe proof is a chain of signatures, there to check."
+      "text": "Let's call Hillel."
     },
     {
       "at": "hablotengo_open",
-      "text": "The same identity, carried to another service."
-    },
-    {
-      "at": "denied",
-      "text": "And refused. HabloTengo grounds itself in the same open network\nto keep things private, not only authentic."
+      "text": "Same identities, our identities, on another, unconnected service."
     }
   ],
   "beats": [
@@ -50,7 +41,7 @@
       "at": "denied",
       "after": 1.0,
       "hold": 3.2,
-      "text": "Refusing is the point.\nAuthentic does not mean public.",
+      "text": "Access Denied.\nHabloTengo leverages our open, decentralized network to keep things private, not just authentic.",
       "box": "deniedBox",
       "pad": 30,
       "y": 1200

@@ -221,6 +221,21 @@ def state_files(where):
             where / 'state.nerdster.json')         # its delegate, on nerdster.org
 
 
+def restore_identity_if_asked(section):
+    """Put the demo identity back, before this section's state is saved.
+
+    `vouch` ends holding a brand-new random identity -- a phone with no keys on
+    it is what it films. Saved as-is, every later section continues from that
+    throwaway: sign-in publishes its delegate under it, the demo identity's
+    streams stay empty, and nothing looks wrong until you notice the video is
+    about somebody who does not exist.
+    """
+    if not section.get('restore_demo_identity'):
+        return
+    print('  putting the demo identity back before saving state')
+    run(['./restore_demo_identity.sh'])
+
+
 def save_state(section, where):
     """Record the phone and the network as this section left them.
 
@@ -284,9 +299,25 @@ def restore_state(sid):
         if not head:
             print(f'  ({path_.name}: empty stream, nothing to rewind to)')
             continue
-        subprocess.run(['node', 'truncate_statements.js', *args, '--prod',
-                        '--keep', head], check=True, cwd=HERE,
-                       env={**os.environ, 'I_MEAN_IT': 'yes'})
+        r = subprocess.run(['node', 'truncate_statements.js', *args, '--prod',
+                            '--keep', head], cwd=HERE, capture_output=True, text=True,
+                           env={**os.environ, 'I_MEAN_IT': 'yes'})
+        if r.returncode:
+            # A head that is not in the stream any more is a REAL state, not a
+            # failure to hide: something rewound past this snapshot, so the
+            # stream is already earlier than it. Rewinding only ever removes, so
+            # there is nothing to do -- and stopping the build over it would
+            # block a run for being further back than expected. Anything else is
+            # a genuine error and still stops.
+            if 'is not in this stream' in (r.stderr or '') + (r.stdout or ''):
+                print(f'  ({path_.name}: its head is gone -- something rewound '
+                      'past this snapshot, so the stream is already older than '
+                      'it. Nothing to rewind.)')
+            else:
+                sys.stderr.write(r.stderr or '')
+                raise subprocess.CalledProcessError(r.returncode, r.args)
+        else:
+            print((r.stdout or '').strip().splitlines()[-1] if r.stdout.strip() else '')
 
 
 def write_manifest(section, where, video, take=None):
@@ -408,6 +439,11 @@ def build(section, continue_from_previous=True):
     job by doing the second one too.
     """
     where = build_dir(section['id'])
+    # A card touches nothing -- no device, no network -- so there is no state for
+    # it to continue from, and trying cost a build: it restored, the rewind hit a
+    # head that had since been rewound away, and the card never got made.
+    if section.get('build') == 'card':
+        continue_from_previous = False
     if continue_from_previous:
         prev = previous_section(section['id'])
         if prev and list((HERE / 'out' / prev).glob('*/state.keys.json')):
@@ -515,6 +551,7 @@ def _build(section, where):
     # RIGHT AFTER THE CAMERA, not after post-production: this is the state the
     # world is in because of the take, and --recut must not overwrite it with
     # whatever the device happens to hold days later.
+    restore_identity_if_asked(section)
     save_state(section, where)
     finish(section, where, newest_take(where, stem))
 
@@ -665,7 +702,13 @@ def assemble(videos, name, extra, stale_ok=False):
     sections = {s['id']: s for d in videos for s in d['sections']}
     clips, at, bounds, ff = [], 0.0, [], [';FFMETADATA1']
     for sid, sstamp, man in chosen:
-        card = title_clip(sections[sid], work / f'title_{sid}.mp4')
+        # `title_card: false` for a section that IS a card. A closing "Thank you
+        # for watching" does not want a one-second card announcing it first --
+        # that is two full screens of text in a row saying the same thing. It
+        # still gets a chapter; the chapter just starts on the section itself.
+        wants_title = sections[sid].get('title_card', True)
+        card = (title_clip(sections[sid], work / f'title_{sid}.mp4')
+                if wants_title else None)
         # One line for the chapter, whatever the card does. A title may break
         # across lines on screen -- "HabloTengo!\nLet's talk" -- but a newline in
         # a chapter name splits the YouTube list in two and it stops parsing.
@@ -673,8 +716,8 @@ def assemble(videos, name, extra, stale_ok=False):
         held = float(subprocess.run(
             ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
              '-of', 'csv=p=0', str(card)],
-            check=True, capture_output=True, text=True).stdout.strip())
-        clips += [card, HERE / man['video']]
+            check=True, capture_output=True, text=True).stdout.strip()) if card else 0.0
+        clips += ([card] if card else []) + [HERE / man['video']]
         # The chapter starts at the TITLE, not after it.
         end = at + held + man['duration']
         bounds.append({'section': sid, 'title': chapter,

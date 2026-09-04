@@ -51,7 +51,15 @@ const CSS = `
     padding:24px 32px 26px; text-align:center; white-space:pre-wrap;
     filter: drop-shadow(0 10px 26px rgba(0,0,0,.5));
   }
-  #b .rule { height:3px; border-radius:2px; margin:0 auto 14px; width:64px; }`;
+  #b .rule { height:3px; border-radius:2px; margin:0 auto 14px; width:64px; }
+  /* A bulleted block inside a bubble. The bubble centres its text, which is
+     right for a sentence and wrong for a list -- centred bullets do not line up
+     with each other. So the list is a left-aligned inline-block: the BLOCK stays
+     centred in the bubble, the items inside it line up with one another, and a
+     wrapped item hangs under its own text rather than under the bullet. */
+  #b .list { text-align:left; display:inline-block; margin-top:10px; }
+  #b .li { text-indent:-1.05em; padding-left:1.05em; }
+  #b .li + .li { margin-top:4px; }`;
 
 const HTML = `<svg id="tail"></svg><div id="b"></div>`;
 
@@ -65,8 +73,34 @@ window.renderBubble = (cue, st) => {
   b.style.border = '2.5px solid ' + st.border;
   b.style.borderRadius = st.radius + 'px';
   b.style.maxWidth = st.maxWidth + 'px';
+  // A line beginning "- " is a bullet. Text with no bullets in it is left
+  // exactly as it was -- same pre-wrap, same centring -- so nothing that
+  // already reads well changes.
+  const esc = t => t.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const rows = cue.text.split('\\n');
+  const bulleted = rows.some(r => /^\\s*-\\s+/.test(r));
+  let body;
+  if (bulleted) {
+    b.style.whiteSpace = 'normal';
+    let out = '', items = [];
+    const flush = () => {
+      if (!items.length) return;
+      out += '<div class="list">' + items.join('') + '</div>';
+      items = [];
+    };
+    for (const row of rows) {
+      const m = row.match(/^\\s*-\\s+(.*)$/);
+      if (m) { items.push('<div class="li">\\u2022\\u2002' + esc(m[1]) + '</div>'); }
+      else { flush(); if (row.trim()) out += '<div>' + esc(row) + '</div>'; }
+    }
+    flush();
+    body = out;
+  } else {
+    b.style.whiteSpace = 'pre-wrap';
+    body = esc(cue.text);
+  }
   b.innerHTML = (st.accent ? '<div class="rule" style="background:' + st.accent + '"></div>' : '')
-              + cue.text.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+              + body;
 
   b.style.left = '0px'; b.style.top = '0px';
   const w = b.getBoundingClientRect().width, h = b.getBoundingClientRect().height;

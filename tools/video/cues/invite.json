@@ -6,17 +6,8 @@
   ],
   "prompter": [
     {
-      "at": "main_screen",
-      "text": "Nobody has vouched for me yet."
-    },
-    {
       "at": "tap_share",
-      "text": "If we can't meet, I send a link. It carries my public key."
-    },
-    {
-      "at": "link",
-      "after": 3.4,
-      "text": "Send them. Don't just accept them."
+      "text": "Share invitations electronically to vouch remotely."
     }
   ],
   "beats": [
@@ -24,7 +15,7 @@
       "at": "main_screen",
       "after": 0.8,
       "hold": 3.4,
-      "text": "No one has vouched for me,\nso there is no better name to show.",
+      "text": "No one has vouched for me,\nI'm unknown, just 'Me', for now..",
       "box": "meBox",
       "pad": 24,
       "y": 1500
@@ -33,7 +24,7 @@
       "at": "link",
       "after": 1.2,
       "hold": 3.4,
-      "text": "A URL with my public key in it.\nVouch for me from anywhere.",
+      "text": "This invitation link carries my public key.",
       "anchor": [
         544,
         1267
@@ -45,6 +36,15 @@
         460
       ],
       "y": 500
+    }
+  ],
+  "cards": [
+    {
+      "at": "done",
+      "hold": 2.0,
+      "lines": [
+        "How can we use this identity network?"
+      ]
     }
   ]
 }

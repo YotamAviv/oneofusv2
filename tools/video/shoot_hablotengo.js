@@ -83,6 +83,33 @@ const toDevice = (x, y) => ({
   y: Math.round(y * VIEW2DEV.scale + VIEW2DEV.offY),
 });
 
+/// Wait for a modal dialog to appear (`up`) or go away (`!up`).
+///
+/// Blind, which is all the native app allows: a dialog dims everything behind
+/// it, so the strip along the bottom of the screen reads flat grey (~109) with
+/// one up and near-white (~237) without.
+async function waitForDialog(up, timeout) {
+  const shot = path.join(OUT, '_scrim.png');
+  const dark = () => {
+    execFileSync('bash', ['-c',
+      `adb -s ${SERIAL} exec-out screencap -p > ${shot}`]);
+    const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', shot,
+      '-vf', 'crop=1000:120:40:2060,scale=1:1', '-pix_fmt', 'rgb24',
+      '-f', 'rawvideo', '-'], { maxBuffer: 1 << 20 });
+    return raw[0] < 180;
+  };
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    if (dark() === up) { fs.rmSync(shot, { force: true }); return true; }
+    await sleep(600);
+  }
+  fs.rmSync(shot, { force: true });
+  throw new Error(up
+    ? 'the "Create Delegate Key?" dialog never appeared in the identity app'
+    : 'the "Create Delegate Key?" dialog did not go away -- "No, just identity" '
+      + 'was not registered, so HabloTengo is still waiting for an answer');
+}
+
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const marks = { taps: [] };
@@ -276,14 +303,26 @@ const toDevice = (x, y) => ({
   // WITHOUT minting a delegate key, which is the state this section needs: an
   // identity HabloTengo can recognise and still refuse.
   await waitForApp('net.oneofus.app', 25000);
-  // NOT waitForStillScreen. The scanner sits behind this dialog and it is a live
-  // camera preview, so the screen never settles and the wait ran its full twenty
-  // seconds every time -- twenty seconds of a dialog on screen doing nothing.
-  // The dialog draws in about a second; hold long enough to read the choice and
-  // then take it.
-  await sleep(2200);
+  // WAIT FOR THE DIALOG, not for the app.
+  //
+  // NOT waitForStillScreen: the scanner sits behind this dialog and it is a live
+  // camera preview, so the screen never settles and that wait ran its full
+  // twenty seconds every time.
+  //
+  // And NOT a fixed sleep, which is what this was. waitForApp returns when the
+  // app is FOREGROUND, which is not when the dialog is drawn -- a cold start
+  // takes about eight seconds to get there. Warm, the old 4.2s was enough and
+  // this worked; cold, the tap landed on a splash screen, the choice was never
+  // made, and HabloTengo sat on "Waiting for identity app response" until the
+  // take gave up looking for "Access Denied" 45 seconds later. Force-stopping
+  // the app during a reset guarantees the cold case.
+  //
+  // A modal dims what is behind it, so the bottom strip reads flat grey with one
+  // up and near-white without -- the same probe shoot_vouch.js uses to know its
+  // publish landed.
+  await waitForDialog(true, 30000);
   mark('identity_app');
-  await sleep(2000);
+  await sleep(1800);                       // long enough to read the choice
 
   // "No, just identity" -- NOT "Yes, create delegate".
   //
@@ -296,7 +335,11 @@ const toDevice = (x, y) => ({
   E('shell', 'input', 'tap', String(JUST_IDENTITY[0]), String(JUST_IDENTITY[1]));
   marks.taps.push({ t: at(), x: JUST_IDENTITY[0], y: JUST_IDENTITY[1], what: 'just_identity' });
   mark('tap_just_identity');
-  await sleep(2400);
+  // AND CHECK THE CHOICE REGISTERED. If the dialog is still up, the tap missed
+  // and everything after this is a take of nothing -- HabloTengo waits for an
+  // answer that was never given.
+  await waitForDialog(false, 15000);
+  await sleep(1200);
 
   // Back to the browser, where HabloTengo decides what to do with an identity it
   // can verify and has no reason to trust.

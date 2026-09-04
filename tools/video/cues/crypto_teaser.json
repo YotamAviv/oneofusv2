@@ -12,11 +12,11 @@
     },
     {
       "at": "crypto_on",
-      "text": "Show Crypto: Every rating, follow and vouch now carries a shield --\nthe signed statement behind it, yours or anyone's.."
+      "text": "Expose the signed statements: reactions, vouches, follows, blocks, etc... Look for the shield icon"
     },
     {
       "at": "fyi_on",
-      "text": "Show FYI: Show each statement as it's signed and publisheed."
+      "text": "ShowShow each statement as it's being drafted, signed, and published."
     },
     {
       "at": "fyi_shown",
@@ -24,11 +24,11 @@
     },
     {
       "at": "published_shown",
-      "text": "Published. Intepreted and slightly more readable (keys to names)."
+      "text": "Intepreted view is slightly more readable (keys to names)."
     },
     {
       "at": "raw_shown",
-      "text": "The published statement, raw, un-interpreted."
+      "text": "Raw, un-interpreted view is machine verifiable."
     },
     {
       "at": "signature_shown",
@@ -36,24 +36,24 @@
     },
     {
       "at": "statements_tab",
-      "text": "Fetched straight from the open network. Anyone can."
+      "text": "Fetched straight from the open network. Any service can, and they'll know who said what."
     },
     {
       "at": "pretty_printed",
-      "text": "Pretty-printed. The same statement, readable."
+      "text": "Pretty-print..."
     },
     {
       "at": "zoomed",
       "after": 0.8,
-      "text": "Signed by my delegate key.\nCheck it yourself; you do not have to trust me."
+      "text": "Signed by my delegate key.\nYou (or anyone) can verify (See menum item); Trust cryptography, not the Nerdster."
     },
     {
       "at": "dismissed",
-      "text": "All three apps work this way: signed statements,\nmade with the keys you delegate for their use."
+      "text": "All three apps work this way: signed statements,\nsigned, published using keys you trust."
     },
     {
       "at": "loading",
-      "text": "Fetching statements, verifying signatures --\nthe only source of all content shown."
+      "text": "Fetching signed content --\nthe only source of all content shown."
     }
   ],
   "beats": [

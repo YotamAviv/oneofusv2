@@ -1,0 +1,15 @@
+{
+  "_comment": [
+    "Generated from video/ -- section 'thanks'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/video/sections.py --cues thanks"
+  ],
+  "cards": [
+    {
+      "hold": 3.0,
+      "lines": [
+        "Thank you for watching"
+      ]
+    }
+  ]
+}

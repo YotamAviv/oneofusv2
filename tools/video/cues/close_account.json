@@ -28,7 +28,7 @@
     {
       "at": "tap_export",
       "after": 1.2,
-      "text": "I own my keys, not them."
+      "text": "My keys are mine, not theirs."
     },
     {
       "at": "advanced",
@@ -49,7 +49,7 @@
       "at": "before_refresh",
       "after": 0.3,
       "hold": 2.4,
-      "text": "Ask the network again.",
+      "text": "Refresh",
       "box": "refreshBox",
       "pad": 22,
       "y": 1300
@@ -58,7 +58,7 @@
       "at": "nerdster_refreshed",
       "after": 1.4,
       "hold": 3.2,
-      "text": "That key can no longer speak for me.\nNothing was deleted. A statement was withdrawn.",
+      "text": "The delegate key I signed in with no longer represents me.",
       "box": "keyIssueBox",
       "pad": 26,
       "y": 1400

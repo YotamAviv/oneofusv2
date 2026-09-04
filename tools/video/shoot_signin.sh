@@ -61,9 +61,30 @@ sleep 5
 echo "== 3/5  clearing keys stored in the browser =="
 # Re-establish the forward each run: it goes stale whenever Chrome restarts, and
 # the failure surfaces later as an unhelpful "socket hang up".
-adb -s "$SERIAL" forward --remove-all >/dev/null 2>&1 || true
-adb -s "$SERIAL" forward tcp:9222 localabstract:chrome_devtools_remote >/dev/null
-until curl -s --max-time 3 http://localhost:9222/json/version >/dev/null; do sleep 1; done
+#
+# AND WAIT FOR THE SOCKET, bringing Chrome forward if it is not serving. Step 2
+# leaves the identity app in front, and Chrome then often lingers as a
+# background service only -- running, so `pidof` says yes, but with no devtools
+# socket. reset_browser.js then waits on it with no output for as long as
+# anyone lets it. Same fix, same reason, as shoot_nerdster.sh.
+socket_up() { curl -s --max-time 3 http://localhost:9222/json/version >/dev/null; }
+forward() {
+  adb -s "$SERIAL" forward --remove-all >/dev/null 2>&1 || true
+  adb -s "$SERIAL" forward tcp:9222 localabstract:chrome_devtools_remote >/dev/null
+}
+forward
+if ! socket_up; then
+  echo "  no devtools socket; bringing Chrome to the front"
+  adb -s "$SERIAL" shell am start \
+    -n com.android.chrome/com.google.android.apps.chrome.Main >/dev/null 2>&1
+  sleep 6
+  forward
+fi
+for i in $(seq 1 30); do socket_up && break; sleep 1; done
+if ! socket_up; then
+  echo "Chrome's devtools socket never appeared; open Chrome on the device." >&2
+  exit 1
+fi
 node reset_browser.js | tail -1
 
 echo "== 4/5  recording the take =="

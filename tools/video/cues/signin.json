@@ -7,35 +7,15 @@
   "prompter": [
     {
       "at": "home",
-      "text": "The Nerdster. Somebody else's service --\nnothing to do with my identity app."
-    },
-    {
-      "at": "tap_launch",
-      "text": "Open the web app."
-    },
-    {
-      "at": "app_ready",
-      "text": "It needs to know who I am.\nI have no account here, and I am not making one."
-    },
-    {
-      "at": "tap_signin",
-      "text": "Sign in with ONE-OF-US.NET instead."
+      "text": "The Nerdster, a proof of concept of this decentralized identity paradigm, not conntected to ONE-OF-US.NET."
     },
     {
       "at": "tap_yes",
-      "text": "My app makes the Nerdster a key of its own."
-    },
-    {
-      "at": "back_to_browser",
-      "text": "That key is a delegate: it speaks for me here,\nand nowhere else."
+      "text": "Create and give the Nerdster a crypto key that will represent us there."
     },
     {
       "at": "signed_in",
-      "text": "Signed in. My identity key never left the phone."
-    },
-    {
-      "at": "dismiss",
-      "text": "No password. No email. Nothing to be breached."
+      "text": "I've signed in. I've identified myself using my public identity and handed over a delegate key to represent me on this service."
     }
   ]
 }

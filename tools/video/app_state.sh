@@ -93,7 +93,14 @@ case "$MODE" in
     wake
     deeplink "keymeid://importkey"
     adb -s "$SERIAL" shell rm -f "$REMOTE"
-    echo "restored keyring from $FILE"
+    # STOP THE APP AFTERWARDS. importKeys replaces the keyring under a running
+    # app, which then carries on with whatever it read at launch -- including its
+    # view of the statement chain, which a restore has usually just rewound.
+    # Leaving it running is how sign-in came to create a delegate key locally and
+    # publish no delegate statement for it: the app was writing against a head
+    # that no longer existed. The next launch reads both fresh.
+    adb -s "$SERIAL" shell am force-stop "$APP"
+    echo "restored keyring from $FILE (app stopped; it reads this on next launch)"
     ;;
   *)
     echo "usage: ./app_state.sh save|restore <keys.json>" >&2

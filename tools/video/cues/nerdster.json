@@ -11,29 +11,29 @@
     },
     {
       "at": "tap_type_menu",
-      "text": "Filter it down to books."
+      "text": "Filter to books."
     },
     {
       "at": "tap_sort_menu",
-      "text": "Order them by how much people are saying."
+      "text": "Order by number of reactions."
     },
     {
       "at": "swipe_snooze",
       "after": -0.8,
-      "text": "Swipe right to snooze one. Not now, maybe later."
+      "text": "Swipe right = Snooze, hide until new activity."
     },
     {
       "at": "swipe_dismiss",
       "after": -0.7,
-      "text": "Swipe left and it's gone for good."
+      "text": "Swipe left = Dimiss, don't show again."
     },
     {
       "at": "tap_react",
-      "text": "React to a third one: a like, and something to say."
+      "text": "React..."
     },
     {
       "at": "tap_publish",
-      "text": "Publish. That's a signed statement, not a row in\nsomebody's database."
+      "text": "Signed and published. Portable content along with proof that it's mine."
     }
   ],
   "beats": [
@@ -41,7 +41,7 @@
       "at": "published",
       "after": 0.2,
       "hold": 2.8,
-      "text": "My like and my comment,\nsigned a second ago.",
+      "text": "My new like and comment.",
       "anchor": [
         409,
         1266
@@ -58,7 +58,7 @@
       "at": "published",
       "after": 0.3,
       "hold": 2.8,
-      "text": "Tom read it too, and said so.\nHis key signed that.",
+      "text": "Tom reacted, too.\nI know him, vouched for his identity directly.",
       "anchor": [
         250,
         1457
@@ -79,7 +79,8 @@
       "hold": 3.5,
       "lines": [
         "Do we really need another one of these?",
-        "No. But this is different.",
+        "No.",
+        "But this is different.",
         "A proof of concept of the paradigm, leveraging our own open, decentralized identity network.",
         "Open: any service can leverage it, and contribute to it."
       ]

@@ -21,8 +21,14 @@ function page(lines, { W, H, fontsDir }) {
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     font-family:'Inter', system-ui, sans-serif; text-align:center;
   }
-  h1 { font-size:92px; line-height:1.12; font-weight:600; color:#f4f7fb; margin:0 0 34px; }
-  p  { font-size:60px; line-height:1.3;  font-weight:600; color:rgba(244,247,251,.62); margin:0 0 18px; }
+  /* pre-wrap so a \n in a title or a card line BREAKS THE LINE. Without it the
+     newline is just whitespace to HTML, collapses to a space, and the text
+     wraps on width instead -- silently, which is worse than not supporting it:
+     "HabloTengo!\nLet's talk" came out as "HabloTengo! Let's / talk". */
+  h1 { font-size:92px; line-height:1.12; font-weight:600; color:#f4f7fb; margin:0 0 34px;
+       white-space:pre-wrap; }
+  p  { font-size:60px; line-height:1.3;  font-weight:600; color:rgba(244,247,251,.62); margin:0 0 18px;
+       white-space:pre-wrap; }
   #rule { width:120px; height:5px; border-radius:3px; background:rgba(120,190,255,.85); margin-top:52px; }
 </style>
 <div id="c">
