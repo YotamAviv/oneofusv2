@@ -162,6 +162,35 @@ then verifies by tapping where the icon should now be and checking the app comes
 The drawer is alphabetical, so its source coordinate moves if the set of installed apps
 changes; the script says so when the verification fails.
 
+### After running the test suite, rebuild the rig
+
+`bin/run_all_tests.sh` **destroys the filming setup**, and nothing about the failure afterwards
+says so. Its integration stage runs `flutter test integration_test/ -d <emulator>`, which
+rebuilds and installs the apk — so the emulator is left holding a plain debug build with
+
+- **no filming deep links.** `keymeid://exportkey`, `importkey` and `deletekey` are compiled
+  out unless `--dart-define=filmTools=true`, so `app_state.sh`, `restore_demo_identity.sh` and
+  sign-in's reset all stop working.
+- **no demo identity.** The tests create their own and wipe the keyring.
+- **app-link verification reset**, and possibly no app icon on the home screen.
+
+So, in this order:
+
+```bash
+flutter build apk --debug --target-platform android-x64 --dart-define=filmTools=true
+adb install -r build/app/outputs/flutter-apk/app-debug.apk
+./tools/video/restore_demo_identity.sh    # the identity, over keymeid://importkey
+./tools/video/place_app_icon.sh           # idempotent; does nothing if already there
+```
+
+`shoot_signin.sh` re-approves the app link itself on every run (§4), so that one needs no
+step here.
+
+The suite also needs `Config._fireChoice` set to `FireChoice.emulator` — it aborts on
+`ensureNotProd` otherwise, and that abort masks any later failure. **Set it back to `prod`
+before filming**, or every take publishes into the emulator instead of production and the
+video is of a network nobody else can see.
+
 Screen is **1080×2220**. For a 1080×1920 timeline: `crop=1080:1920:0:150` (drops the status
 bar and the gesture bar, keeps scale identical to the web footage so both halves look like
 the same phone).
