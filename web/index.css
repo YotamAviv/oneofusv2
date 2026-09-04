@@ -320,9 +320,9 @@ a.man-link:hover {
 .video-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  border: 2px solid #6b4f3b;
+  gap: 16px;
+  padding: 26px 24px;
+  border: 3px solid #6b4f3b;
   border-radius: 10px;
   background: #fff;
   text-decoration: none;
@@ -340,17 +340,26 @@ a.man-link:hover {
 
 .video-link-icon {
   flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
+}
+
+/* Title and meta stack INSIDE the box, so the box is the whole thing rather
+   than a button with a caption loose underneath it. */
+.video-link-text {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
 }
 
 .video-link-title {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.35rem;
+  line-height: 1.2;
 }
 
 .video-link-meta {
-  margin: 6px 2px 0;
+  margin: 0;
   font-size: 0.9rem;
   color: #6b5a4a;
 }
