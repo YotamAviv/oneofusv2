@@ -46,7 +46,7 @@ would drift within a week.
 | `beats` | the video **stops** — pause bars, everything dimmed but one spotlit thing, and a bubble pointing at it |
 | `cards` | the video **stops** and a screen of text takes over. Same act as a beat, different still. `lines:` renders the first large and the rest smaller; `words:` makes them arrive one at a time and stay. A section whose card *is* the section (no take) has exactly one, and `--card` renders it. |
 | `zooms` | a punch-in, for the moments made of small text |
-| `flash` | a buzzword, bright, then gone. **Not built yet.** |
+| `flashes` | a buzzword thrown over the action, bright, shattered, gone — **without** stopping the take. A flash may carry a `tail:`, the sentence that says what the word meant: swept on left to right as the letters leave, held for `tail_hold` seconds (3.5 by default) so it can actually be read. One cue, not two — the tail is glued to the word and moves with it. |
 
 **Card and prompter text is plain text.** `card.js` renders it as-is, so `**bold**`
 puts asterisks on the screen. Capitals are the only emphasis available.

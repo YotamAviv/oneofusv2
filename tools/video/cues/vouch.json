@@ -18,8 +18,8 @@
     {
       "at": "published",
       "after": 0.5,
-      "hold": 4.0,
-      "text": "The private crypto key on this phone signed and published\n- a public key (identity)\n- where to find its statements (endpoint)\n- that it belongs to a human called \"Tom\"",
+      "hold": 8.0,
+      "text": "The private crypto key on this phone signed and published\n- A public key (identity)\n- Where to find its statements (endpoint)\n- Who is it (\"Tom\")",
       "box": "snackbarBox",
       "pad": 20,
       "y": 1400
@@ -32,8 +32,7 @@
       "hold": 3.5,
       "lines": [
         "That's it.",
-        "That's all we need to do to build our own,",
-        "decentralized, identity network."
+        "That's all we need to do to build our own, decentralized, identity network."
       ]
     }
   ],
@@ -42,7 +41,9 @@
       "at": "published",
       "after": 0.4,
       "hold": 0.9,
-      "word": "Decentralized"
+      "word": "Decentralized",
+      "tail": "No owner but us. Yours from your point of view; anyone's from theirs.",
+      "tail_hold": 3.5
     }
   ]
 }

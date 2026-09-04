@@ -108,10 +108,10 @@ sections:
       # under it. Now that a caption comes and goes, it can be pointed at.
       - at: published
         after: 0.5
-        hold: 4.0
+        hold: 8.0
         # A line starting "- " is a bullet; see lib/bubble.js. The lead line stays
         # centred, the bullets line up with each other.
-        text: "The private crypto key on this phone signed and published\n- a public key (identity)\n- where to find its statements (endpoint)\n- that it belongs to a human called \"Tom\""
+        text: "The private crypto key on this phone signed and published\n- A public key (identity)\n- Where to find its statements (endpoint)\n- Who is it (\"Tom\")"
         box: snackbarBox
         pad: 20
         y: 1400
@@ -122,13 +122,20 @@ sections:
         hold: 3.5
         lines:
           - That's it.
-          - That's all we need to do to build our own,
-          - decentralized, identity network.
+          - That's all we need to do to build our own, decentralized, identity network.
     flashes:
+      # The word hits and blows apart, and then says what it meant. Nobody reads
+      # a flash -- it is there for four-fifths of a second -- so the claim it is
+      # making has to be made in something that stays. `tail:` is that: swept on
+      # as the letters leave, held long enough to read, gone before the closing
+      # card. It lands during the beat's freeze, in the empty chrome above the
+      # bubble.
       - at: published
         after: 0.4
         hold: 0.9
         word: "Decentralized"
+        tail: "No owner but us. Yours from your point of view; anyone's from theirs."
+        tail_hold: 3.5
     todo:
       # Deferred, 2026-09-01. The composite scan covers the mechanics; this would
       # add the human moment -- two people, in a room, one act.

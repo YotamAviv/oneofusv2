@@ -137,7 +137,15 @@ const zooms = resolve(cues.zooms, 'zoom');
 // should stop and read. A flash is for a word that belongs ON the action --
 // "Decentralized", over the moment the point is being made -- and the action
 // keeps running underneath it.
-const flashes = resolve(cues.flashes, 'flash').map(f => ({ ...f, hold: f.hold ?? 0.9 }));
+//
+// A flash may carry a `tail:` -- a sentence that arrives as the letters blow
+// apart and STAYS, for `tail_hold` seconds. The word is the hit and cannot be
+// read; the tail is the thing that can. It is one cue, not two, because the two
+// are glued: the tail starts exactly where the word ends, and moving the flash
+// has to move it.
+const flashes = resolve(cues.flashes, 'flash').map(f => ({
+  ...f, hold: f.hold ?? 0.9, tailHold: f.tail_hold ?? 3.5,
+}));
 
 // When each line comes DOWN. Three things can end it, whichever comes first:
 //
@@ -294,6 +302,31 @@ fs.mkdirSync(work, { recursive: true });
     }
     f.frames = n;
     console.log(`  flash @${f.t}s  ${f.hold}s  ${n} frames  "${f.word}"`);
+    if (!f.tail) continue;
+
+    // The tail. Only the frames that MOVE are rendered -- the sweep on and the
+    // fade off -- and the settled frame is copied for the seconds in between,
+    // which is the whole point of a line that stays: nothing is happening in
+    // the middle of it. Three seconds of hold costs no renders at all.
+    const tdir = path.join(work, `tail${i}`);
+    fs.mkdirSync(tdir, { recursive: true });
+    const tn = Math.max(2, Math.round(f.tailHold * FLASH_FPS));
+    const fadeAt = tn - Math.round(TAIL_FADE * FLASH_FPS);
+    const name = k => path.join(tdir, `f${String(k).padStart(3, '0')}.png`);
+    let settled = null;
+    for (let k = 0; k < tn; k++) {
+      const sweep = Math.min(1, k / (TAIL_SWEEP * FLASH_FPS));
+      const alpha = k < fadeAt ? 1 : Math.max(0, (tn - 1 - k) / (tn - 1 - fadeAt));
+      if (sweep === 1 && alpha === 1) {
+        if (settled) { fs.copyFileSync(settled, name(k)); continue; }
+        settled = name(k);
+      }
+      await strip.setContent(tailPage(f.tail, sweep, alpha));
+      await strip.screenshot({ path: name(k), omitBackground: true });
+    }
+    f.tailFrames = tn;
+    console.log(`  tail  @+${f.hold}s  ${f.tailHold}s  ${tn} frames  ` +
+                `"${f.tail.replace(/\n/g, ' ').slice(0, 44)}"`);
   }
   await browser.close();
   warnBuriedTaps(geom);
@@ -540,22 +573,94 @@ function flashPage(word, p) {
   </style><div id="f">${spans}</div>`;
 }
 
+/// One frame of the sentence that follows a flashed word.
+///
+/// The opposite act from the flash above it, and it should look like one. The
+/// word hits and shatters; this is SWEPT ON, left to right, and then holds
+/// still to be read. An amber rule draws under it as it arrives -- the flash's
+/// colour, on a line that is otherwise white, which is what ties the two
+/// together without a second shouting headline.
+///
+/// It sits at 34%, just above where the word was, because the word is gone by
+/// the time this arrives and the space it left is the space to use. On the
+/// vouch section that is empty app chrome above the beat's bubble. Remeasure
+/// if a section puts something there.
+const TAIL_SWEEP = 0.72;   // seconds to sweep on
+const TAIL_FADE = 0.35;    // seconds to fade off at the end
+function tailPage(text, sweep, alpha) {
+  // Eased, so it arrives fast and settles rather than crossing at a constant
+  // rate -- a linear wipe reads as a machine printing.
+  const e = 1 - Math.pow(1 - sweep, 3);
+  const pct = (e * 100).toFixed(1);
+  return `<!doctype html><meta charset="utf-8"><style>
+    ${bubble.fontFaces(FONTS)}
+    html,body { margin:0; width:${W}px; height:${H}px; overflow:hidden; background:transparent; }
+    #t {
+      position:absolute; left:90px; right:90px; top:34%; text-align:center;
+      font: 800 62px/1.32 'Inter', system-ui, sans-serif; letter-spacing:-1px;
+      color:#fff; opacity:${alpha.toFixed(3)};
+      text-shadow: 0 2px 10px rgba(0,0,0,.85), 0 0 30px rgba(0,0,0,.6);
+    }
+    /* The reveal is a MASK, not a growing box: the text is laid out once, at its
+       final width, and uncovered. A box that widens reflows the words, and the
+       line rewraps under itself as it arrives. */
+    #t .mask {
+      -webkit-mask-image: linear-gradient(90deg, #000 var(--p),
+                                          rgba(0,0,0,.06) calc(var(--p) + 9%));
+      -webkit-mask-size: 100% 100%;
+    }
+    #t .rule {
+      height:5px; border-radius:3px; margin:20px auto 0; background:#FF9A12;
+      box-shadow:0 0 24px rgba(255,154,18,.8);
+    }
+  </style><div id="t">
+    <span class="mask" style="--p:${pct}%">${
+      text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span>
+    <div class="rule" style="width:${(e * 62).toFixed(1)}%"></div>
+  </div>`;
+}
+
 /// Lay the flashes over the finished frame, last, so nothing draws on top of
 /// them. Hard on and hard off: it is a flash.
 function layFlashes(src, out) {
   const total = DUR + splices.reduce((s, b) => s + b.hold, 0);
+
+  // Both the word and its tail, in the order they appear, as one list of things
+  // to overlay. A flash's span is measured on the FINISHED timeline and does not
+  // re-enter shift(): the word runs for its own `hold` from the moment it
+  // starts, whatever is spliced in underneath it, and the tail starts where the
+  // word ends. Passing the tail's start back through shift() puts it on the far
+  // side of any pause the flash overlaps -- on the vouch section that is a four
+  // second beat, and the sentence arrived four seconds after the word it follows.
+  const layers = [];
+  flashes.forEach((f, i) => {
+    const at = shift(f.t);
+    // A word cut short by the end of the take is a word; a SENTENCE cut short is
+    // copy that goes missing from a build reporting success, which is the
+    // failure this file exists to make loud. So the word still clamps and the
+    // tail refuses. Beats and cards move everything after them, so this is not
+    // something the yaml can be read to check.
+    layers.push({ dir: `flash${i}`, from: at, to: Math.min(at + f.hold, total) });
+    if (!f.tail) return;
+    const from = at + f.hold, to = from + f.tailHold;
+    if (to > total + 0.001) throw new Error(
+      `The tail of flash "${f.word}" runs to ${to.toFixed(2)}s, past the end of ` +
+      `the finished take (${total.toFixed(2)}s).\n` +
+      '  Shorten `tail_hold`, move the flash earlier, or give the section more\n' +
+      '  to run on. It would be drawn until the take stopped and no further.');
+    layers.push({ dir: `tail${i}`, from, to });
+  });
+
   const inputs = [];
   const chain = ['[0:v]null[f0]'];
   let prev = 'f0';
-  flashes.forEach((f, i) => {
-    inputs.push('-framerate', String(FLASH_FPS), '-itsoffset', shift(f.t).toFixed(3),
-                '-i', path.join(work, `flash${i}`, 'f%03d.png'));
-    const from = shift(f.t);
-    const to = Math.min(from + f.hold, total);
+  layers.forEach((l, i) => {
+    inputs.push('-framerate', String(FLASH_FPS), '-itsoffset', l.from.toFixed(3),
+                '-i', path.join(work, l.dir, 'f%03d.png'));
     const next = `f${i + 1}`;
     chain.push(`[${i + 1}:v]format=rgba[w${i}]`);
     chain.push(`[${prev}][w${i}]overlay=0:0:` +
-               `enable='between(t,${from.toFixed(3)},${to.toFixed(3)})'[${next}]`);
+               `enable='between(t,${l.from.toFixed(3)},${l.to.toFixed(3)})'[${next}]`);
     prev = next;
   });
   chain.push(`[${prev}]format=yuv420p[v]`);
