@@ -210,6 +210,26 @@ const toDevice = (x, y) => ({
   }
   await sleep(1400);
 
+  // --- narrow to #surf first ------------------------------------------------
+  //
+  // WHY FILTER AT ALL. The sections now run as a sequence, so the feed arrives
+  // carrying what `nerdster` already did to it -- and the topmost card was the
+  // book this identity had just liked and commented on. Reacting there is
+  // reacting to your own reaction: confusing, and not a thing anyone should be
+  // shown doing. #surf is a corner of the feed these takes have not touched, so
+  // the first card in it is somebody else's, with nothing of ours on it.
+  //
+  // Named without the "#" -- the list says `surf`, not `#surf`.
+  tapped('tags', await tapNamed(page, cdp, /^Tags$/, { role: 'button' }));
+  await sleep(1400);
+  tapped('tag_surf', await tapNamed(page, cdp, /^surf$/, { role: 'button' }));
+  await sleep(2400);
+  // The list stays open over the feed; put it away before carrying on.
+  E('shell', 'input', 'keyevent', '4');
+  await sleep(1000);
+  mark('filtered');
+  await sleep(1600);
+
   // --- like something, so there is a statement to publish ---
   // The topmost React on screen. shoot_nerdster.js is fussier about which card
   // it lands on because it swipes cards away first; nothing has moved here, so
