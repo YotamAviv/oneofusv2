@@ -56,6 +56,16 @@ const AT = {
   // camera, so a crashed take is cleaned up by the next one.
   await d.closeChromeTabs();
 
+  // Warm the identity app BEFORE the camera. A cold start reloads everything
+
+  // the identity has published and takes about nine seconds; paid here it
+
+  // costs nothing, paid on camera it is dead air -- and it is what made
+
+  // hablotengo tap a dialog that had not been drawn yet.
+  await d.warmUp(APP);
+
+
   const rec = spawn('adb', ['-s', process.env.AVD || 'emulator-5554', 'shell', 'screenrecord',
     '--time-limit', '90', '--bit-rate', '8000000', '/sdcard/invite.mp4']);
   await sleep(4000);

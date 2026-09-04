@@ -76,15 +76,67 @@ const SCAN_HOLD = +(process.env.SCAN_HOLD || 2900);
 /// behind it, so the strip along the bottom reads flat grey (~109) with one up
 /// and near-white (~237) without. No semantics, no guessing at pixels of the
 /// dialog itself.
-function dialogStillUp() {
-  const shot = path.join(OUT, '_scrim.png');
+function grab() {
+  const shot = path.join(OUT, '_probe.png');
   execFileSync('bash', ['-c',
     `adb -s ${process.env.AVD || 'emulator-5554'} exec-out screencap -p > ${shot}`]);
+  return shot;
+}
+
+/// Is a modal dialog still on screen?
+///
+/// FROM THE TOP OF THE SCREEN, not the bottom. A dialog dims everything behind
+/// it, and the first version sampled the bottom strip -- which the soft keyboard
+/// covers when it docks. A light keyboard read as "no dialog", so a take whose
+/// PUBLISH tap had landed on the keyboard reported a successful publish and
+/// carried on. The strip under the status bar is app chrome; nothing overlays it.
+function dialogStillUp() {
+  const shot = grab();
   const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', shot,
-    '-vf', 'crop=1000:120:40:2060,scale=1:1', '-pix_fmt', 'rgb24',
+    '-vf', 'crop=1000:120:40:170,scale=1:1', '-pix_fmt', 'rgb24',
     '-f', 'rawvideo', '-'], { maxBuffer: 1 << 20 });
   fs.rmSync(shot, { force: true });
   return raw[0] < 180;
+}
+
+/// Where PUBLISH actually is, and proof that it is enabled.
+///
+/// NOT a fixed coordinate. A docked keyboard pushes the dialog up, and the
+/// coordinate that is right without one lands on a key -- which is how a take
+/// once typed `j` into the moniker instead of publishing. Gboard on this
+/// emulator docks about as often as it floats, so neither position can be
+/// assumed.
+///
+/// The button is the only large filled TEAL area on screen at this moment:
+/// enabled it is solid teal, disabled it is grey, and CANCEL is thin text. So
+/// finding it also proves the moniker landed -- PUBLISH stays disabled until it
+/// does.
+function findPublish() {
+  const shot = grab();
+  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', shot,
+    '-vf', 'crop=1080:1400:0:820', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'],
+    { maxBuffer: 1 << 26 });
+  fs.rmSync(shot, { force: true });
+  const W = 1080, H = 1400, Y0 = 820;
+  let minX = 1e9, minY = 1e9, maxX = -1, maxY = -1, n = 0;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 3;
+      const r = raw[i], g = raw[i + 1], b = raw[i + 2];
+      if (g - r > 55 && g > 90 && Math.abs(g - b) < 45) {
+        n++;
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+  }
+  // A filled button is thousands of pixels; teal TEXT is hundreds.
+  if (n < 2500) {
+    throw new Error(`no enabled PUBLISH button on screen (${n} teal pixels). `
+      + 'It stays disabled until the moniker lands, so the typing probably did '
+      + 'not reach the field.');
+  }
+  return { x: Math.round((minX + maxX) / 2), y: Math.round(Y0 + (minY + maxY) / 2) };
 }
 
 (async () => {
@@ -208,8 +260,11 @@ function dialogStillUp() {
     try {
       const off = JSON.parse(execFileSync('node',
         [path.join(__dirname, 'find_flash.js'), take], { encoding: 'utf8' })).offset;
+      // --after the PUBLISH tap, in video time. Without it the scan can settle on
+      // the first teal thing in the take, which is not this.
       const sb = JSON.parse(execFileSync('node',
-        [path.join(__dirname, 'find_snackbar.js'), take], { encoding: 'utf8' }));
+        [path.join(__dirname, 'find_snackbar.js'), take,
+         '--after', String((marks.tap_publish ?? 0) + off)], { encoding: 'utf8' }));
       marks.published = +(sb.appeared - off).toFixed(2);
       if (sb.cleared !== null) marks.success_cleared = +(sb.cleared - off).toFixed(2);
       // WHERE the bar is, so a beat can point at it. Measured off this take
@@ -272,7 +327,10 @@ function dialogStillUp() {
   // "No Trusted People" afterwards. That is what the missing snackbar was.
   await sleep(1800);                   // a beat on the name, then commit to it
 
-  tap('publish', AT.publish);
+  // MEASURED, not AT.publish -- see findPublish.
+  const pub = findPublish();
+  console.log(`  PUBLISH at ${pub.x},${pub.y}`);
+  tap('publish', [pub.x, pub.y]);
 
   // AND CHECK IT TOOK. The scrim behind the dialog is a flat grey; with the
   // dialog gone the same strip is the app's near-white background. Sampling it

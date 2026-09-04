@@ -7,10 +7,11 @@
   "prompter": [
     {
       "at": "home",
-      "text": "The Nerdster, a proof of concept of this decentralized identity paradigm, not conntected to ONE-OF-US.NET."
+      "text": "The Nerdster, a proof of concept of this decentralized identity paradigm, not connected to ONE-OF-US.NET."
     },
     {
       "at": "tap_yes",
+      "after": -0.8,
       "text": "Create and give the Nerdster a crypto key that will represent us there."
     },
     {

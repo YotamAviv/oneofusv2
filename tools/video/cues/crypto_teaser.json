@@ -16,7 +16,7 @@
     },
     {
       "at": "fyi_on",
-      "text": "ShowShow each statement as it's being drafted, signed, and published."
+      "text": "Show each statement as it's being drafted, signed, and published."
     },
     {
       "at": "fyi_shown",
@@ -24,7 +24,7 @@
     },
     {
       "at": "published_shown",
-      "text": "Intepreted view is slightly more readable (keys to names)."
+      "text": "Interpreted view is slightly more readable (keys to names)."
     },
     {
       "at": "raw_shown",
@@ -45,7 +45,7 @@
     {
       "at": "zoomed",
       "after": 0.8,
-      "text": "Signed by my delegate key.\nYou (or anyone) can verify (See menum item); Trust cryptography, not the Nerdster."
+      "text": "Signed by my delegate key.\nYou (or anyone) can verify (See menu item); Trust cryptography, not the Nerdster."
     },
     {
       "at": "dismissed",
@@ -59,7 +59,7 @@
   "beats": [
     {
       "at": "fyi_shown",
-      "after": 1.6,
+      "after": 3.8,
       "hold": 2.0,
       "text": "FYI, just to highlight how this paradigm works.",
       "anchor": [
@@ -85,7 +85,7 @@
     },
     {
       "at": "signature_shown",
-      "after": 1.2,
+      "after": 3.6,
       "hold": 2.0,
       "text": "Key and signature makes the statement portable,\nUsable by any service.",
       "box": "signatureBox",
@@ -94,7 +94,7 @@
     },
     {
       "at": "loading",
-      "after": 0.5,
+      "after": 2.0,
       "hold": 3.0,
       "text": "Fetching statements, verifying signatures ..",
       "anchor": [

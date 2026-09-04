@@ -56,7 +56,7 @@
     },
     {
       "at": "nerdster_refreshed",
-      "after": 1.4,
+      "after": 4.5,
       "hold": 3.2,
       "text": "The delegate key I signed in with no longer represents me.",
       "box": "keyIssueBox",

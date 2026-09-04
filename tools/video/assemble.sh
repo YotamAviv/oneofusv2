@@ -89,7 +89,18 @@ if [ -n "$SOUND" ]; then
   # Only run past the last frame when there is music to carry it.
   LENGTH=$(python3 -c "print(round($TOTAL + $TAIL, 3))")
   FADEOUT=$(python3 -c "print(round($LENGTH - 1.6, 3))")
-  AUDIO=(-i "$SOUND"
+  MUSIC=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$SOUND")
+  echo "  music $(python3 -c "print(round($MUSIC,1))")s over $(python3 -c "print(round($LENGTH,1))")s" \
+       "-- looping $(python3 -c "import math;print(math.ceil($LENGTH/$MUSIC))")x"
+  # -stream_loop -1 REPEATS THE TRACK. The video outgrew the music -- two
+  # minutes of it under six of video -- and without this it simply stopped a
+  # third of the way in, which reads as something having gone wrong. `-t
+  # $LENGTH` below is what stops it, so an endless loop is safe here.
+  #
+  # It is a hard cut at the loop point, not a crossfade. Worth listening for:
+  # if the seam is audible, the fix is a track that loops cleanly rather than
+  # more ffmpeg.
+  AUDIO=(-stream_loop -1 -i "$SOUND"
          -map "${#CLIPS[@]}:a"
          -af "afade=t=in:st=0:d=0.8,afade=t=out:st=$FADEOUT:d=1.6"
          -c:a aac -b:a 192k -ar 48000 -ac 2)

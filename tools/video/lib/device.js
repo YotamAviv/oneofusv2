@@ -121,6 +121,41 @@ function device(serial = process.env.AVD || 'emulator-5554') {
     return m ? m[1] : '';
   };
 
+  /// Get an app fully loaded BEFORE the camera rolls, then put it in the
+  /// background warm.
+  ///
+  /// A cold start of the identity app takes about nine seconds -- it reloads
+  /// everything the identity has published -- and every take that opens it
+  /// mid-scene paid that on camera. Worse than slow: hablotengo tapped a dialog
+  /// on a timer that assumed a warm start, hit a splash screen instead, and
+  /// recorded a minute of a service waiting for an answer nobody gave.
+  ///
+  /// Backgrounded at the end, not force-stopped: the process stays alive, so the
+  /// take's own launch resumes in about a second.
+  ///
+  /// AND IT PUTS BACK WHATEVER WAS IN FRONT. The first version always finished
+  /// with HOME, which left the LAUNCHER on screen -- and the takes stage
+  /// themselves deliberately before the camera ("browser and app both up, so no
+  /// launcher flash mid-take"). Warming up quietly undid that staging and the
+  /// take then began somewhere it did not expect.
+  const warmUp = async (pkg, settleMs = 9000) => {
+    const before = foregroundApp();
+    E('shell', 'monkey', '-p', pkg, '-c', 'android.intent.category.LAUNCHER', '1');
+    const t0 = Date.now();
+    while (Date.now() - t0 < 25000 && foregroundApp() !== pkg) await sleep(250);
+    if (foregroundApp() !== pkg) throw new Error(`${pkg} would not start to warm up`);
+    await sleep(settleMs);
+    if (before && before !== pkg && !/nexuslauncher|launcher/i.test(before)) {
+      E('shell', 'monkey', '-p', before, '-c', 'android.intent.category.LAUNCHER', '1');
+      await sleep(1500);
+      console.log(`  warmed up ${pkg}, put ${before} back in front`);
+    } else {
+      E('shell', 'input', 'keyevent', '3');          // HOME, leaving it warm
+      await sleep(900);
+      console.log(`  warmed up ${pkg}`);
+    }
+  };
+
   const waitForApp = async (pkg, timeout = 20000) => {
     const t0 = Date.now();
     while (Date.now() - t0 < timeout) {
@@ -232,7 +267,7 @@ function device(serial = process.env.AVD || 'emulator-5554') {
     E, Eout, sleep, waitForStillScreen, waitForRegionMotion, regionRgb,
     waitForRegionColour, foregroundApp, waitForApp, forwardDevtools,
     stopRecording,
-    brightness, waitForBright, waitForDark,
+    brightness, waitForBright, waitForDark, warmUp,
     tap: (x, y) => E('shell', 'input', 'tap', String(Math.round(x)), String(Math.round(y))),
     type: text => E('shell', 'input', 'text', text.replace(/ /g, '%s')),
     /// One character at a time, so it reads as typing rather than a paste.

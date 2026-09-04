@@ -340,7 +340,7 @@ def write_manifest(section, where, video, take=None):
              '-of', 'csv=p=0', str(video)],
             check=True, capture_output=True, text=True).stdout.strip()),
         'build': section['build'],
-        'cues': cue_digest(sid),
+        'cues': cue_digest(section),
         'take': str(take.relative_to(HERE)) if take else None,
     }
     path = where / f'{sid}.section.json'
@@ -348,13 +348,22 @@ def write_manifest(section, where, video, take=None):
     return m
 
 
-def cue_digest(sid):
+def cue_digest(section):
     """A fingerprint of the copy a section was built from, or None if it has no
-    cues. Compared later to spot a section older than the words it should say."""
-    f = CUES / f'{sid}.json'
-    if not f.exists():
+    cues. Compared later to spot a section older than the words it should say.
+
+    OF THE STORYBOARD, not of cues/<id>.json. Hashing the generated file made
+    STALE blind to the thing it exists to catch: edit video/*.yaml, shoot
+    without running --cues, and the take is annotated with the OLD words while
+    --assemble reports everything in order. That is exactly how a nerdster take
+    came back saying what the storyboard used to say. The yaml is the copy; the
+    cue file is a build artefact of it."""
+    cues = cue_file(section)
+    if cues is None:
         return None
-    return hashlib.sha256(f.read_bytes()).hexdigest()[:16]
+    body = {k: v for k, v in cues.items() if k != '_comment'}
+    return hashlib.sha256(
+        json.dumps(body, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
 
 
 def end_seconds(annotated, at, after, head):
@@ -672,7 +681,7 @@ def assemble(videos, name, extra, stale_ok=False):
             missing.append(sid)
             continue
         stamp, man = got
-        if man.get('cues') != cue_digest(sid):
+        if man.get('cues') != cue_digest(sec):
             stale.append(f"{sid} (built {man['built']} from older copy)")
         chosen.append((sid, stamp, man))
 

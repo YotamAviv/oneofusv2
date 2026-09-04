@@ -332,7 +332,9 @@ const toDevice = (x, y) => ({
   await stmts.waitForLoadState('domcontentloaded').catch(() => {});
   const jcdp = await ctx.newCDPSession(stmts);
   mark('statements_tab');
-  await sleep(2200);
+  // Long enough to read the line anchored here. At 2.2s the next line replaced
+  // it a third of the way through.
+  await sleep(5200);
 
   // Chrome renders raw JSON as one long line. Pretty-print is the difference
   // between a wall of text and something a viewer can read a statement out of.
@@ -404,7 +406,9 @@ const toDevice = (x, y) => ({
   mark('loading');
   marks.refreshBox = { x: Math.round(refresh.x), y: Math.round(refresh.y),
                        w: Math.round(refresh.w), h: Math.round(refresh.h) };
-  await sleep(5200);
+  // Long enough for the closing line AND the beat that follows it. At 5.2s the
+  // beat landed past the end of the take.
+  await sleep(9000);
   mark('done');
 
   // Stop it on the DEVICE and wait for the file to settle. Killing the local

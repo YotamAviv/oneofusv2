@@ -121,6 +121,8 @@ const toDevice = (x, y) => VIEW2DEV
   // camera, so a crashed take is cleaned up by the next one.
   await require('./lib/device').device().closeChromeTabs();
 
+
+
   const rec = spawn('adb', ['-s', SERIAL, 'shell', 'screenrecord',
     '--time-limit', '90', '--bit-rate', '8000000', '/sdcard/signin.mp4']);
 

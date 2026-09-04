@@ -24,7 +24,14 @@
 const { execFileSync } = require('child_process');
 
 const src = process.argv[2];
-if (!src) { console.error('usage: find_snackbar.js <take.mp4>'); process.exit(1); }
+if (!src) { console.error('usage: find_snackbar.js <take.mp4> [--after <seconds>]'); process.exit(1); }
+// --after, because the FIRST teal bar in a take is not necessarily the one being
+// looked for. Widening the search to the whole lower half (so a docked keyboard
+// cannot hide the bar) also brought the app's own teal into range, and the scan
+// settled on something at 13s -- sixteen seconds before the statement was even
+// published. The take knows when it tapped PUBLISH; it should say so.
+const afterArg = process.argv.indexOf('--after');
+const AFTER = afterArg >= 0 ? parseFloat(process.argv[afterArg + 1]) : 0;
 
 // THE BOTTOM-MOST STRIP. Getting this wrong is subtle rather than obvious: a
 // band 115px higher catches only the snackbar's top edge and averages the rest
@@ -33,20 +40,46 @@ if (!src) { console.error('usage: find_snackbar.js <take.mp4>'); process.exit(1)
 // on screen, plainly visible to a person, and the scan reports nothing.
 //
 // Sampled at 10fps: the snackbar is up for seconds, so this cannot miss it.
-const CROP = 'crop=1000:120:40:2060';
+// THE WHOLE LOWER HALF, scanned row by row -- not a fixed band at the bottom.
+//
+// The bar is normally the bottom-most strip, and this used to crop exactly
+// there. But Flutter puts a SnackBar ABOVE the soft keyboard, and Gboard on this
+// emulator docks about as often as it floats. Docked, the bar is some 900px
+// higher than the band, the band shows keyboard, and the scan reports nothing at
+// all -- for a take where the bar was plainly on screen.
+const TOP = 1100, HEIGHT = 1120;
+const CROP = `crop=1000:${HEIGHT}:40:${TOP}`;
+const ROWS = 140;                    // the crop, averaged into this many rows
 const FPS = 10;
 const GREEN_OVER_RED = 25;
 
 const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', src,
-  '-vf', `fps=${FPS},${CROP},scale=1:1`, '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'],
-  { maxBuffer: 1 << 28 });
+  '-vf', `fps=${FPS},${CROP},scale=1:${ROWS}`, '-pix_fmt', 'rgb24',
+  '-f', 'rawvideo', '-'], { maxBuffer: 1 << 28 });
 
+// One column of ROWS pixels per frame: each is a row average, so a bar anywhere
+// in the region shows up as a run of teal rows however high it sits.
+// A BAR, not a teal pixel. Scanning the whole lower half means the app's own
+// teal -- its logo, its buttons -- is in range, and a single teal row matched
+// the welcome screen four seconds into every take. The snackbar is ~100px of
+// SATURATED teal across the full width, so it is a RUN of strongly teal rows;
+// nothing else in this app is.
+const STRONG = 60;                   // the real bar gives ~133
+const MIN_RUN = 8;                   // rows, each ~8px here
 let appeared = null, cleared = null;
-for (let i = 0; i * 3 + 2 < raw.length; i++) {
-  const r = raw[i * 3], g = raw[i * 3 + 1];
-  const teal = g - r > GREEN_OVER_RED;
-  if (teal && appeared === null) appeared = i / FPS;
-  if (!teal && appeared !== null && cleared === null && i / FPS > appeared) cleared = i / FPS;
+const frames = Math.floor(raw.length / (3 * ROWS));
+for (let f = 0; f < frames; f++) {
+  let run = 0, best = 0;
+  for (let y = 0; y < ROWS; y++) {
+    const i = (f * ROWS + y) * 3;
+    run = raw[i + 1] - raw[i] > STRONG ? run + 1 : 0;
+    if (run > best) best = run;
+  }
+  const bar = best >= MIN_RUN;
+  const t = f / FPS;
+  if (t < AFTER) continue;
+  if (bar && appeared === null) appeared = t;
+  if (!bar && appeared !== null && cleared === null && t > appeared) cleared = t;
 }
 if (appeared === null) {
   console.error(`no snackbar in ${src}: nothing in the bottom strip went green.`);
@@ -63,15 +96,15 @@ if (appeared === null) {
 // the bar spans it.
 const at = (appeared + 0.4).toFixed(2);
 const col = execFileSync('ffmpeg', ['-v', 'error', '-ss', at, '-i', src,
-  '-frames:v', '1', '-vf', 'crop=1000:400:40:1820,scale=1:400',
+  '-frames:v', '1', '-vf', `crop=1000:${HEIGHT}:40:${TOP},scale=1:${HEIGHT}`,
   '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'], { maxBuffer: 1 << 24 });
 let top = null, bottom = null;
-for (let y = 0; y < 400; y++) {
+for (let y = 0; y < HEIGHT; y++) {
   const r = col[y * 3], g = col[y * 3 + 1];
-  if (g - r > GREEN_OVER_RED) { if (top === null) top = y; bottom = y; }
+  if (g - r > STRONG) { if (top === null) top = y; bottom = y; }
 }
 const box = top === null ? null : {
-  x: 540, y: Math.round(1820 + (top + bottom) / 2),
+  x: 540, y: Math.round(TOP + (top + bottom) / 2),
   w: 1000, h: Math.max(1, bottom - top + 1),
 };
 

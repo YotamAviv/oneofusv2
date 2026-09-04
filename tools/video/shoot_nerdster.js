@@ -251,7 +251,11 @@ async function commentField(page) {
   await sleep(400);
   await page.evaluate(() => document.getElementById('__syncflash')?.remove());
   marks.syncFlash = { heldMs: 400 };
-  await sleep(900);
+  // A beat on the feed before touching anything. The first tap used to come one
+  // second in, which left the opening line -- the one that says whose feed this
+  // is and how it is signed in -- a fraction of a second before the next line
+  // replaced it.
+  await sleep(3600);
 
   // --- filter to books ---
   await choose('Type', 'book', 'type');

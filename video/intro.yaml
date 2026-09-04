@@ -137,7 +137,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: invite
-    title: "You others to vouch for your identity"
+    title: "Invite others to vouch for you"
     preconditions:
       - An identity on the phone (restore_demo_identity.sh after vouch).
     side_effects:
@@ -158,7 +158,7 @@ sections:
     # vouch. They should send them out too.
     prompter:
       # - {at: main_screen, text: "Nobody has vouched for me yet."}
-      - {at: tap_share, text: "Share invitations electronically to vouch remotely."}
+      - {at: tap_share, after: -0.8, text: "Share invitations electronically to vouch remotely."}
       # - {at: link, after: 3.4, text: "Send them. Don't just accept them."}
     beats:
       # "Me" is the name on the card because nothing better exists yet: a moniker
@@ -197,7 +197,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: signin
-    title: "Enter the Nerdster"
+    title: "Enter the Nerdster\n(a proof of concept, but it is usable)"
     preconditions:
       - An identity on the phone that somebody has vouched for.
       - The Nerdster deployed at nerdster.org.
@@ -231,7 +231,7 @@ sections:
       # - {at: tap_launch, text: "Open the web app."}
       # - {at: app_ready, text: "It needs to know who I am.\nI have no account here, and I am not making one."}
       # - {at: tap_signin, text: "Sign in with ONE-OF-US.NET instead."}
-      - {at: tap_yes, text: "Create and give the Nerdster a crypto key that will represent us there."}
+      - {at: tap_yes, after: -0.8, text: "Create and give the Nerdster a crypto key that will represent us there."}
       # - {at: back_to_browser, text: "That key is a delegate: it speaks for me here,\nand nowhere else."}
       - {at: signed_in, text: "I've signed in. I've identified myself using my public identity and handed over a delegate key to represent me on this service."}
       # - {at: dismiss, text: "No password. No email. Nothing to be breached."}
@@ -253,21 +253,25 @@ sections:
     prompter:
       - {t: 0.3, text: "My feed. I'm signed in with a delegate key."}
       - {at: tap_type_menu, text: "Filter to books."}
-      - {at: tap_sort_menu, text: "Order by number of reactions."}
+      - {at: tap_sort_menu, after: -0.8, text: "Order by number of reactions."}
       - {at: swipe_snooze, after: -0.8, text: "Swipe right = Snooze, hide until new activity."}
       - {at: swipe_dismiss, after: -0.7, text: "Swipe left = Dismiss, don't show again."}
-      - {at: tap_react, text: "React..."}
-      - {at: tap_publish, text: "Signed and published. Portable content along with proof that it's mine."}
+      - {at: tap_react, after: -0.8, text: "React..."}
+      - {at: tap_publish, after: -0.8, text: "Signed and published. Portable content along with proof that it's mine."}
     beats:
+      # +2.8 rather than +0.2. Everything used to land the instant the statement
+      # published -- both beats, the card, and the end of the section -- which
+      # left the line at tap_publish 1.3s against six seconds of reading. Now the
+      # feed is shown carrying the new statement for a beat first.
       - at: published
-        after: 0.2
+        after: 2.8
         hold: 2.8
         text: "My new like and comment."
         anchor: [409, 1266]
         spotlight: [60, 1215, 960, 195]
         y: 640
       - at: published
-        after: 0.3
+        after: 2.9
         hold: 2.8
         text: "Tom reacted, too.\nI know him, vouched for his identity directly."
         anchor: [250, 1457]
@@ -289,7 +293,7 @@ sections:
       # section ends. The card covers the screen anyway, so what is under it at
       # the splice point does not matter.
       - at: published
-        after: 0.3
+        after: 2.9
         hold: 3.5
         lines: # TODO: Not centered, maybe <pre>?
           - "Do we really need another one of these?"
@@ -300,7 +304,7 @@ sections:
           - "Open: any service can leverage it, and contribute to it."
     # The card is the last thing in the section.
     until: published
-    until_after: 0.3
+    until_after: 2.9
     defer:
       # Good material, too much for the intro.
       - PoV switch. The demo was wider than a phone; try sweeping side to side
@@ -375,7 +379,8 @@ sections:
       # the take's own viewportToDevice (scale 2.755, offY 216), because beats
       # are in device pixels. Re-measure if the sheet's layout moves.
       - at: fyi_shown
-        after: 1.6
+        # After the line at this mark, not on top of it.
+        after: 3.8
         hold: 2.0
         text: "FYI, just to highlight how this paradigm works."
         anchor: [540, 1224]
@@ -392,7 +397,9 @@ sections:
         # was pointing at.
         y: 700
       - at: signature_shown
-        after: 1.2
+        # Late enough for the line at this mark to be read first. The beat is
+        # the elaboration; it should not interrupt the sentence it elaborates.
+        after: 3.6
         hold: 2.0
         text: "Key and signature makes the statement portable,\nUsable by any service."
         # MEASURED, not typed. The take finds the red `signature` line in its own
@@ -409,14 +416,21 @@ sections:
       # The loading bar is on screen for a moment and gone. Stopping on it is the
       # only way anyone reads it, which is what a beat is for.
       - at: loading
-        after: 0.5
+        # As above. This beat and the line at `loading` say nearly the same
+        # thing; the line should at least be readable before the beat repeats it.
+        # 2.0 rather than more: the screen is static after the refresh, and
+        # screenrecord is variable-rate, so the take ends sooner than its sleeps
+        # suggest -- 3.2 landed past the last frame.
+        after: 2.0
         hold: 3.0
         text: "Fetching statements, verifying signatures .."
         anchor: [540, 300]
         spotlight: [0, 250, 1080, 90]
         y: 560
     until: loading
-    until_after: 1.0
+    # Long enough to read the line anchored at this mark. At 1.0 the section
+    # ended almost as the words appeared.
+    until_after: 4.5
     todo:
       # The card's second line names a video that does not exist. Before this
       # ships, either that video does or the line changes.
@@ -565,7 +579,9 @@ sections:
       # moves with the window, and a rectangle typed for one take misses on the
       # next. See crypto_teaser's signature beat.
       - at: nerdster_refreshed
-        after: 1.4
+        # As above: the line here is the longest in the section, and this beat
+        # was landing on top of it after 1.4s.
+        after: 4.5
         hold: 3.2
         text: "The delegate key I signed in with no longer represents me."
         box: keyIssueBox
