@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/aviv/src/github/nerdster/lib/ui/dialogs/**)",
+      "Read(//home/aviv/src/github/nerdster/packages/nerdster_common/lib/**)",
+      "Read(//home/aviv/src/github/nerdster/packages/oneofus_common/lib/ui/**)",
+      "Bash(I_MEAN_IT=yes node truncate_statements.js *)"
+    ],
+    "additionalDirectories": [
+      "/home/aviv/src/github/nerdster/packages/nerdster_common/lib",
+      "/home/aviv/src/github/nerdster/lib/ui/dialogs"
+    ]
+  }
+}

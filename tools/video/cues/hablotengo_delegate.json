@@ -1,0 +1,96 @@
+{
+  "_comment": [
+    "Generated from video/ -- section 'hablotengo_delegate'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/video/sections.py --cues hablotengo_delegate"
+  ],
+  "prompter": [
+    {
+      "at": "hablotengo_link_shown",
+      "after": -0.6,
+      "text": "Hillel has a HabloTengo key. Follow it."
+    },
+    {
+      "at": "signin_open",
+      "text": "Sign in -- and this time, take a delegate key."
+    },
+    {
+      "at": "identity_app",
+      "after": 0.4,
+      "text": "The identity app asks. \"Yes, create delegate.\""
+    },
+    {
+      "at": "denied",
+      "after": 0.4,
+      "text": "Still refused. The key gives me a voice, not an audience."
+    },
+    {
+      "at": "editing",
+      "text": "My own card, though, I can write."
+    },
+    {
+      "at": "strict_set",
+      "after": -0.4,
+      "text": "Per field, not per account: this number is strict."
+    }
+  ],
+  "beats": [
+    {
+      "at": "delegate_arrived",
+      "after": 1.0,
+      "hold": 4.5,
+      "text": "Both keys arrived.\n- Identity: who I am, vouched for by people\n- Delegate: this service's key, and only this service's",
+      "box": "delegateColumnBox",
+      "pad": 22,
+      "y": 1250
+    },
+    {
+      "at": "denied",
+      "after": 1.2,
+      "hold": 4.0,
+      "text": "Recognised, and refused.\nHillel's rules decide, not the service's.",
+      "box": "deniedBox",
+      "pad": 20,
+      "y": 1100
+    },
+    {
+      "at": "my_card",
+      "after": 1.4,
+      "hold": 4.0,
+      "text": "This button only exists because I took the key.\nNo key, no writing.",
+      "box": "editButtonBox",
+      "pad": 18,
+      "y": 900
+    },
+    {
+      "at": "strict_set",
+      "after": 0.8,
+      "hold": 4.5,
+      "text": "Permissive, standard, strict --\nset on THIS field, not on an account.",
+      "box": "visibilityBarBox",
+      "pad": 18,
+      "y": 1150
+    }
+  ],
+  "cards": [
+    {
+      "at": "saved",
+      "after": 1.2,
+      "hold": 3.5,
+      "lines": [
+        "Signed with a key I own,",
+        "on a service that never sees my identity key."
+      ]
+    }
+  ],
+  "flashes": [
+    {
+      "at": "saved",
+      "after": 0.3,
+      "hold": 0.9,
+      "word": "Mine",
+      "tail": "A key per service. Revoke one and the rest are untouched.",
+      "tail_hold": 3.2
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:oneofus_common/jsonish.dart';
+import 'package:oneofus_common/channel_factory.dart';
+import 'package:oneofus_common/trust_statement.dart';
 import 'package:oneofus_common/ui/json_display.dart'; // From package
 import 'core/config.dart';
 import 'core/version_gate.dart';
@@ -8,10 +9,41 @@ import 'features/update_required_screen.dart';
 import 'ui/app_shell.dart';
 import 'ui/app_typography.dart'; // import typography
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+Future<void> oneofusWriteErrorFunc(Object e, StackTrace stack) async {
+  final BuildContext? context = navigatorKey.currentContext;
+  if (context == null) return;
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext dialogContext) => AlertDialog(
+      title: const Text('Write Failed'),
+      content: const Text(
+        'A background write to the network failed.\n\n'
+        'The app is in an inconsistent state and must reload.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () async {
+            Navigator.of(dialogContext).pop();
+            // Our local history is wrong, so anything derived from it is too.
+            Jsonish.wipeCache();
+            TrustStatement.clearCache();
+            await AppShellState.maybeInstance?.loadAllData();
+          },
+          child: const Text('RELOAD'),
+        ),
+      ],
+    ),
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Config.initFirebase();
   Config.initChannelFactory();
+  channelFactory.onWriteError = oneofusWriteErrorFunc;
 
   // Configure Global JsonDisplay Defaults
   JsonDisplay.defaultTextStyle = AppTypography.mono;
@@ -58,6 +90,7 @@ class App extends StatelessWidget {
             ),
             useMaterial3: true,
           ),
+          navigatorKey: navigatorKey,
           home: blocked
               ? const UpdateRequiredScreen()
               : AppShell(

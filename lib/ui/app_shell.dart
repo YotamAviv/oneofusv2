@@ -60,6 +60,10 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   static AppShellState? _instance;
   static AppShellState get instance => _instance!;
 
+  /// For callers outside the widget tree that must cope with there being no
+  /// shell yet -- see oneofusWriteErrorFunc in main.dart.
+  static AppShellState? get maybeInstance => _instance;
+
   final PageController _pageController = PageController();
   final GlobalKey<IdentityCardSurfaceState> _cardKey = GlobalKey();
   final Keys _keys = Keys();
@@ -80,7 +84,50 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
   late AnimationController _refreshRotationController;
   int _devClickCount = 0;
   late final FirebaseFirestore _firestore;
+
+  // Cloud libraries are shared between Nerdster and this app, but their requirements are 
+  // different.
+  // Nerdster: must be responsive, must be prepared for rapid fire writes such as dismiss, dismiss,
+  // dismiss.
+  // This app is not expecting anything rapid fire. 
+  // The Nerdster does load data from lots of folks, and it's fine to keep writing to our own 
+  // stream without refreshing in between.
+  // This app's data is also just more important, critical.
+  // For these reasons, we've been leaning to slow and careful in this app.
+  // While we don't fully require that any write only succeed if all data we have (including our
+  // vouches' data) be current, we do refresh all data after every write.
+  // While the libraries support it, we don't want to use optimistic concurrency.
+  // The backend enforces consistency on our own stream, and that's the final thing we rely on.
+  // DEFER: The code isn't clean regarding this policy and should be cleaned up.
+  // Options:
+  // - UI level blocking spinner whenever we're loading data.
+  // - UI level each "PUBLISH" button or similar is not enabled until the refresh is complete.
+  // This is not clean as we're conceding that the user based his action before seeing refreshed
+  // data.
+  // Challenges:
+  // - keymeid:// for sign in might trigger a write, and we can't and probably don't want to block
+  // signing in. The video recordings are the only likely place where this might happen in
+  // rapid-fire.
+  // 
+  // 
+  // REP INVARIANT:
+  // 1) When the app is responsive, [_source]'s cache holds the statements we
+  //    believe are in the cloud. Everything we sign chains onto them.
+  // 2) Nothing publishes while we're rebuilding that belief: [_loadAllData]
+  //    clears the cache before refilling it, so writers await [_whenDataReady].
+  //    Publishing during another publish IS allowed -- the channel serializes
+  //    pushes per issuer and each injects its own statement, so the next chains
+  //    onto it.
+  //
+  // On a failed write the channel clears its caches, so (1) is false until we
+  // re-read: ChannelFactory.onWriteError is registered in main.dart and reloads.
+  //
+  // (Unrelated to the delegate-key rep invariant checked in [_loadAllData].)
   StatementChannel<TrustStatement> get _source => channelFactory.getChannel<TrustStatement>(kNativeUrl, 'statements');
+
+  /// The refresh in flight, or null when none is running.
+  Future<void>? _dataReady;
+
   String? _loadedIdentityToken;
 
   // Data State
@@ -174,7 +221,33 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   bool _isRefreshing = false;
 
-  Future<void> loadAllData() async {
+  /// Refresh everything, publishing the attempt as [_dataReady] while it runs.
+  ///
+  /// A wrapper, not a flag inside the body: the future has to exist before the
+  /// body's first `await`, or the gap this closes is still open. Concurrent
+  /// callers join the running refresh rather than starting a second one.
+  Future<void> loadAllData() {
+    final Future<void>? running = _dataReady;
+    if (running != null) return running;
+    final Future<void> run = _loadAllData().whenComplete(() {
+      if (identical(_dataReady, _dataReadyToken)) _dataReady = null;
+    });
+    _dataReadyToken = run;
+    _dataReady = run;
+    return run;
+  }
+
+  /// So a finishing refresh only clears itself.
+  Future<void>? _dataReadyToken;
+
+  /// Wait for any refresh in flight, per rep invariant (2). Does NOT start one:
+  /// if none is running the cache is already good.
+  Future<void> _whenDataReady() async {
+    final Future<void>? running = _dataReady;
+    if (running != null) await running;
+  }
+
+  Future<void> _loadAllData() async {
     final String? myToken = _keys.identityToken;
     if (myToken == null) return;
 
@@ -364,6 +437,11 @@ You can see who those are by looking for the confirmation check mark to the righ
       }
       // 2. Wait a brief moment for the UI to settle/render/focus
       await Future.delayed(const Duration(milliseconds: 500));
+
+      // A sign-in arrives as a deep link, so it can land mid-refresh
+      // DEFER: Revisit after addressing comments near the rep-invariant doc.
+      await _whenDataReady();
+      if (!mounted) return;
 
       final success = await SignInService.signIn(
         data,
@@ -983,6 +1061,8 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     bool isClearing,
     String token,
   ) async {
+    await _whenDataReady();   // rep invariant (2)
+
     final identity = _keys.identity!; // Checked in caller
     final signer = await OouSigner.make(identity);
 

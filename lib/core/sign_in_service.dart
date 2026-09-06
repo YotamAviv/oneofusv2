@@ -35,7 +35,7 @@ class SignInService {
   /// Returns `false` if the sign-in failed or was cancelled by the user.
   static Future<bool> signIn(String scanned, BuildContext context, {
     FirebaseFirestore? firestore,
-    List<TrustStatement>? myStatements,
+    required List<TrustStatement> myStatements,
     required StatementChannel<TrustStatement> channel,
     VoidCallback? onSending,
     Future<bool> Function(TrustStatement)? onBeforePublish,
@@ -87,9 +87,8 @@ class SignInService {
       if (delegateKeyPair == null) {
         final bool? proceed = await _showCreateDelegateDialog(context, domain);
         if (proceed == true) {
-          // If we have cached statements, check if a delegate already exists for this domain
-          if (myStatements != null && context.mounted) {
-            final existing = myStatements.where((s) => 
+          if (context.mounted) {
+            final existing = myStatements.where((s) =>
               s.verb == TrustVerb.delegate && s.domain == domain
             ).firstOrNull;
 
