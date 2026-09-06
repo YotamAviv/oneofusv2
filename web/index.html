@@ -712,9 +712,24 @@ A network of the people, by the people, for the people.
           <h3>Why?</h3>
           <ul>
             <li>Because you believe.</li>
+            <li>We build it and *let* them use it.</li>
             <li>
-              In case you do, grow the network. We build it and *let* them use
-              it.
+              Get on the same page, people, not accounts<button
+                type="button"
+                class="asterisk"
+                popovertarget="asterisk-accounts"
+                aria-label="Footnote"
+              >
+                *
+              </button>
+              <span popover id="asterisk-accounts" class="asterisk-note">
+                I don't have a ONE-OF-US.NET account. People vouched for my
+                identity; if anything, I have an account with them.
+                <br />
+                No Nerdster account either. I gave the Nerdster a delegate key
+                (same could be done by Reddit, Uber, Craigslist, etc.). If
+                anything, it has an account with me.
+              </span>
             </li>
           </ul>
           <h3>Why would they let us?</h3>
@@ -784,6 +799,20 @@ A network of the people, by the people, for the people.
             iframe.style.height = e.data.height + "px";
           }
         }
+      });
+
+      document.querySelectorAll("button.asterisk").forEach(function (btn) {
+        const note = document.getElementById(btn.getAttribute("popovertarget"));
+        if (!note || !window.matchMedia("(hover: hover)").matches) return;
+        btn.addEventListener("mouseenter", function () {
+          note.showPopover();
+        });
+        btn.addEventListener("mouseleave", function () {
+          if (!note.matches(":hover")) note.hidePopover();
+        });
+        note.addEventListener("mouseleave", function () {
+          note.hidePopover();
+        });
       });
     </script>
   </body>

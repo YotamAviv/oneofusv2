@@ -413,3 +413,35 @@ a.man-link:hover {
   font-weight: 700;
   color: #2196F3;
 }
+
+.asterisk {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0 0 0 1px;
+  font-family: inherit;
+  font-size: 0.7em;
+  line-height: 1;
+  vertical-align: super;
+  color: #6b4f3b;
+  cursor: pointer;
+}
+
+.asterisk:hover {
+  color: #2196f3;
+}
+
+.asterisk-note {
+  width: min(24rem, 88vw);
+  box-sizing: border-box;
+  margin: auto;
+  padding: 0.625rem 0.875rem;
+  background: #fffef9;
+  border: 3px solid #6b4f3b;
+  border-radius: 0.375rem;
+  box-shadow: 0 6px 18px rgba(91, 64, 46, 0.25);
+  font-family: "Comic Neue", Bangers, "Comic Sans MS", cursive, "Inter";
+  font-size: 1.05rem;
+  line-height: 1.25;
+  color: #2b2118;
+}
