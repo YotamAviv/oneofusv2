@@ -1,0 +1,14 @@
+{
+  "_comment": [
+    "Generated from video/ -- section 'advanced'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/video/sections.py --cues advanced"
+  ],
+  "prompter": [
+    {
+      "at": "advanced",
+      "after": 0.6,
+      "text": "Advanced: recover from lost or compromised keys, manage blocks."
+    }
+  ]
+}

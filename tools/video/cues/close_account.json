@@ -11,7 +11,7 @@
     },
     {
       "at": "people_read",
-      "text": "I don't have a ONE-OF-US.NET account. No one does."
+      "text": "I don't have a ONE-OF-US.NET account."
     },
     {
       "at": "people_read_2",
@@ -23,16 +23,12 @@
     },
     {
       "at": "nerdster_refreshed",
-      "text": "I didn't close my Nerdster account. I used my identity key to clear\nthe delegate statement associating that key with me."
+      "text": "I didn't close my Nerdster account. I used my identity key to clear the delegate statement associating that key with me."
     },
     {
       "at": "tap_export",
       "after": 1.2,
       "text": "My keys are mine, not theirs."
-    },
-    {
-      "at": "advanced",
-      "text": "Advanced: recover from lost or compromised keys, manage blocks."
     }
   ],
   "beats": [
@@ -57,8 +53,8 @@
     {
       "at": "nerdster_refreshed",
       "after": 4.5,
-      "hold": 3.2,
-      "text": "The delegate key I signed in with no longer represents me.",
+      "hold": 5.0,
+      "text": "The delegate key I signed in with no longer represents me. This is what can allow us to use the 100s of services we enjoy without giving them our private identity key - delegation signed by your on your device, disposable key give to them know to represent you - until it doesn't",
       "box": "keyIssueBox",
       "pad": 26,
       "y": 1400
@@ -70,7 +66,17 @@
       "hold": 2.6,
       "lines": [
         "Close account?",
-        "There is no account."
+        "There is no account.",
+        "Delegates I own and control instead."
+      ]
+    },
+    {
+      "at": "back_to_browser",
+      "after": 0.3,
+      "hold": 3.4,
+      "lines": [
+        "Now let's return to the Nerdster",
+        "which is still up and hasn't been refreshed."
       ]
     }
   ],

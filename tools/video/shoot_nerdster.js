@@ -37,7 +37,7 @@ const { buildDir } = require('./lib/build_dir');
 const OUT = buildDir('nerdster');
 // Which book ends up on top depends on the feed, so the copy stays about
 // reading rather than about a particular book. COMMENT= overrides it.
-const COMMENT = process.env.COMMENT || 'Read it twice. #recommended';
+const COMMENT = process.env.COMMENT || 'Read it twice. #tech';
 const E = (...a) => execFileSync('adb', ['-s', SERIAL, ...a], { stdio: 'ignore' });
 const Eout = (...a) => execFileSync('adb', ['-s', SERIAL, ...a]).toString();
 

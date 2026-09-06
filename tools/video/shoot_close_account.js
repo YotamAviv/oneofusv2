@@ -358,8 +358,30 @@ const toDevice = (x, y) => ({
   // reloaded page fetches the statements again and already knows the delegate
   // is cleared. What has to survive the trip to the identity app is the view as
   // it was BEFORE the clear.
+  // WHERE THE TRANSITION CARD GOES, and it has to be the frame the switch
+  // happens on. A card splices at its mark: everything before it is what the
+  // viewer sees leading in, everything after is what it cuts to. Anchored on
+  // `cleared` the card came a second and a half early and the video cut back to
+  // the phone after it; taken when waitForApp returns it was still ~1.2s early,
+  // because dumpsys reports Chrome foreground before its window is drawn; taken
+  // a fixed sleep later it was late, and the Nerdster showed for two seconds
+  // before the card announced it. The switch itself is not a fixed length, so
+  // WATCH FOR IT rather than sleeping: hash the screen, ask for Chrome, and mark
+  // the first frame that differs from the app's.
+  const screenHash = () => execFileSync('bash',
+    ['-c', `adb -s ${process.env.AVD || 'emulator-5554'} exec-out screencap -p | md5sum | cut -d' ' -f1`],
+    { encoding: 'utf8' }).trim();
+  const appScreen = screenHash();
   d.E('shell', 'am', 'start', '-n',
       'com.android.chrome/com.google.android.apps.chrome.Main');
+  const tSwitch = Date.now();
+  while (Date.now() - tSwitch < 20000) {
+    if (screenHash() !== appScreen) break;
+  }
+  if (screenHash() === appScreen) {
+    throw new Error('the screen never changed after asking for Chrome');
+  }
+  mark('back_to_browser');
   await d.waitForApp('com.android.chrome');
   await sleep(2000);
   // Still the same page, still loaded? If Android evicted Chrome while the
@@ -418,20 +440,6 @@ const toDevice = (x, y) => ({
   await sleep(4200);
 
   await browser.close();
-
-  // --- back to the app: the advanced stuff ---------------------------------
-  d.launch(APP);
-  await d.waitForApp(APP);
-  await sleep(3000);
-  // The app was left on SERVICES, where the clear happened, so ADVANCED is TWO
-  // tabs on: SERVICES -> IMPORT/EXPORT -> ADVANCED.
-  await swipeTab('past_export');
-  await sleep(1400);
-  // Below the EXPORT/COPY/PASTE/IMPORT buttons, on the footer text, which is the
-  // only part of that tab that neither scrolls nor is a control -- a swipe
-  // starting inside the keys panel is swallowed by it.
-  await swipeTab('advanced', 2060);
-  await sleep(5000);
   mark('done');
 
   } finally {

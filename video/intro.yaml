@@ -534,6 +534,12 @@ sections:
     # The opening card IS the start of the section, so the take is trimmed to it.
     # A card anchored before the trim mark sits in the head that gets cut off.
     trim: opening
+    # END ON THE BEAT, not on the take running out. The last thing said is the
+    # bubble about the delegate key; what followed it was nine seconds of an
+    # empty feed. until_after has to clear the beat's own anchor (4.5s) so the
+    # splice counts as part of the section.
+    until: nerdster_refreshed
+    until_after: 4.6
     # THE POINT OF THE SECTION. Every other service ends with "delete my account",
     # and there is no account here to delete -- so the question has no answer, and
     # that IS the answer. What can be undone is undone from the phone, by the
@@ -545,23 +551,31 @@ sections:
         lines:
           - "Close account?"
           - "There is no account."
+          - "Delegates I own and control instead."
+      # BETWEEN THE TWO HALVES. The clear has just been published from the phone;
+      # what follows only means anything because the Nerdster has been sitting
+      # there loaded since before it, so the card says so before the cut.
+      - at: back_to_browser
+        after: 0.3
+        hold: 3.4
+        lines:
+          - "Now let's return to the Nerdster"
+          - "which is still up and hasn't been refreshed."
     prompter:
       - {at: people,
          text: "I can clear or edit my outstanding vouches here."}
       - {at: people_read,
-         text: "I don't have a ONE-OF-US.NET account. No one does."}
+         text: "I don't have a ONE-OF-US.NET account."}
       - {at: people_read_2,
          text: "If anything, folks have an account with those who've vouched for them."}
       - {at: services,
          text: "I can clear or revoke my outstanding delegate keys here."}
       - {at: nerdster_refreshed,
-         text: "I didn't close my Nerdster account. I used my identity key to clear\nthe delegate statement associating that key with me."}
+         text: "I didn't close my Nerdster account. I used my identity key to clear the delegate statement associating that key with me."}
       # AFTER the tap, not before it: the line lands on the keys being there,
       # which is what it is about.
       - {at: tap_export, after: 1.2,
          text: "My keys are mine, not theirs."}
-      - {at: advanced,
-         text: "Advanced: recover from lost or compromised keys, manage blocks."}
     beats:
       # BEFORE: the key is known and associated, which is why my own ratings are
       # on screen at all. Measured by the take, like the pair below it.
@@ -589,8 +603,8 @@ sections:
         # As above: the line here is the longest in the section, and this beat
         # was landing on top of it after 1.4s.
         after: 4.5
-        hold: 3.2
-        text: "The delegate key I signed in with no longer represents me."
+        hold: 5.0
+        text: "The delegate key I signed in with no longer represents me. This is what can allow us to use the 100s of services we enjoy without giving them our private identity key - delegation signed by your on your device, disposable key give to them know to represent you - until it doesn't"
         box: keyIssueBox
         pad: 26
         y: 1400
@@ -625,6 +639,28 @@ sections:
       - Implement `flashes` in annotate.js, or drop the cue above.
       - The Nerdster network-distance filter (6 down to 1) is named by guess, and
         semantics.js will say what is actually on screen when it misses.
+
+  # -------------------------------------------------------------------------
+  - id: advanced
+    title: "Advanced"
+    preconditions:
+      - An identity on the phone. Nothing else -- the screen is read, not used.
+    side_effects:
+      - None. It opens a tab and holds on it; nothing is published or deleted.
+    build: shoot_advanced.js
+    status: to_build
+    # SPLIT OUT OF close_account, which used to carry on into this screen after
+    # the clear. It is not about closing anything -- it is the other end of the
+    # story, what to do when a key is lost rather than withdrawn -- and it read
+    # as an appendix to a section that had already made its point.
+    #
+    # OPENS ON THE HOME SCREEN, not on ADVANCED. Arriving at the screen with no
+    # route to it read as a jump cut; the take now holds on the card for a beat
+    # and reaches ADVANCED through the menu, so the viewer sees where it lives.
+    trim: main_screen
+    prompter:
+      - {at: advanced, after: 0.6,
+         text: "Advanced: recover from lost or compromised keys, manage blocks."}
 
   # -------------------------------------------------------------------------
   - id: thanks
