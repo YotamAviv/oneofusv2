@@ -6,7 +6,7 @@
 //
 // Writes out/advanced/<stamp>/advanced.mp4 + .marks.json.
 //
-// SPLIT OUT OF close_account, which used to carry on into this screen once the
+// SPLIT OUT OF delegates, which used to carry on into this screen once the
 // clear had been published. Nothing here is about closing anything, and it read
 // as an appendix to a section that had already made its point.
 //

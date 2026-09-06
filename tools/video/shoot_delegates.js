@@ -3,9 +3,9 @@
 // account. What can be undone is undone here, from the phone, by the identity
 // key, without asking anyone's permission.
 //
-//   node shoot_close_account.js
+//   node shoot_delegates.js
 //
-// Writes out/close_account/<stamp>/close_account.mp4 + .marks.json.
+// Writes out/delegates/<stamp>/delegates.mp4 + .marks.json.
 //
 // DESTRUCTIVE, but UNDOABLE. Everything this take changes on the network is one
 // appended statement -- these streams are append-only hash chains, so a take
@@ -86,7 +86,7 @@ const { execFileSync } = require('child_process');
 
 const APP = 'net.oneofus.app';
 const { buildDir } = require('./lib/build_dir');
-const OUT = buildDir('close_account');
+const OUT = buildDir('delegates');
 const d = device();
 
 // APP-BLIND: coordinates on a 1080x2220 screen, measured off screenshots of
@@ -209,7 +209,7 @@ const toDevice = (x, y) => ({
 
 
   const rec = spawn('adb', ['-s', process.env.AVD || 'emulator-5554', 'shell', 'screenrecord',
-    '--time-limit', '180', '--bit-rate', '8000000', '/sdcard/close_account.mp4']);
+    '--time-limit', '180', '--bit-rate', '8000000', '/sdcard/delegates.mp4']);
   await sleep(4000);
 
   // KEEP THE FOOTAGE WHEN THE TAKE FAILS. This section clears the delegate key
@@ -225,16 +225,16 @@ const toDevice = (x, y) => ({
     // Stop it on the DEVICE and let the file settle. Killing the local adb
     // first severs the shell before screenrecord can write its moov atom, and
     // what comes back is then not a video at all.
-    try { await require('./lib/device').device().stopRecording('/sdcard/close_account.mp4'); }
+    try { await require('./lib/device').device().stopRecording('/sdcard/delegates.mp4'); }
     catch (e) { console.error('  (stopRecording failed:', e.message.split('\n')[0], ')'); }
     try { rec.kill(); } catch { /* already gone */ }
     try {
-      d.E('pull', '/sdcard/close_account.mp4', path.join(OUT, 'close_account.mp4'));
-      d.E('shell', 'rm', '-f', '/sdcard/close_account.mp4');
+      d.E('pull', '/sdcard/delegates.mp4', path.join(OUT, 'delegates.mp4'));
+      d.E('shell', 'rm', '-f', '/sdcard/delegates.mp4');
     } catch (e) { console.error('  (pull failed:', e.message.split('\n')[0], ')'); }
-    fs.writeFileSync(path.join(OUT, 'close_account.marks.json'),
+    fs.writeFileSync(path.join(OUT, 'delegates.marks.json'),
                      JSON.stringify(marks, null, 2));
-    console.log(`  take saved: ${path.relative(__dirname, path.join(OUT, 'close_account.mp4'))}`);
+    console.log(`  take saved: ${path.relative(__dirname, path.join(OUT, 'delegates.mp4'))}`);
   };
   try {
 
@@ -445,7 +445,7 @@ const toDevice = (x, y) => ({
   } finally {
     await pullTake();
   }
-  const name = 'close_account';
+  const name = 'delegates';
   console.log(`\n${path.relative(__dirname, path.join(OUT, `${name}.mp4`))}\n` +
     `${path.relative(__dirname, path.join(OUT, `${name}.marks.json`))}  ` +
     `(${marks.taps.length} taps, ${marks.swipes.length} swipes)`);

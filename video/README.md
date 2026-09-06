@@ -83,3 +83,14 @@ layout moves. They cannot be written before there is a take to measure.
 with a note saying why. Everything else a section can carry — `actions`,
 `announce`, `defer`, `todo` — is also for people, and for whoever builds the
 section next.
+
+## What YouTube is told
+
+A video file can carry a `youtube:` block beside its `title:` — a `title:` and a
+`description:` for the upload. `--assemble` appends the chapter list to that
+description and writes the pair as `<video>.youtube.json`, which
+`tools/video/youtube.py upload` sends as-is.
+
+It lives here for the same reason the copy does: the description is retyped on
+every upload, and the chapter times change on every reshoot. A description
+kept anywhere but next to the sections describes last week's cut.

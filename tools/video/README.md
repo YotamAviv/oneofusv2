@@ -400,7 +400,26 @@ out/vouch/20260902-101500/
 out/intro_20260902-103000.mp4              a joined video
 out/intro_20260902-103000.sections.json    where each section starts in it
 out/intro_20260902-103000.chapters         the same, as chapter metadata
+out/intro_20260902-103000.youtube.txt      the chapter list, as YouTube wants it
+out/intro_20260902-103000.youtube.json     title + description + those chapters
 ```
+
+## Publishing
+
+`--assemble` writes `<video>.youtube.json`: the `youtube:` block from the
+storyboard with this cut's chapter times appended to the description. That file
+is the upload.
+
+```bash
+python3 tools/video/youtube.py auth                     once, in a browser
+python3 tools/video/youtube.py upload out/intro_<stamp>.mp4
+python3 tools/video/youtube.py privacy <oldId> unlisted
+```
+
+It needs an OAuth client from Google Cloud in `~/.config/oneofus/`; the script's
+own docstring says where to get one. **A video uploaded by an API project that
+has not passed Google's audit is locked private** — the last step, making it
+public, is a click in YouTube Studio and cannot be done from here.
 
 Three rules, and they are worth keeping:
 

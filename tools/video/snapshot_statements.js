@@ -6,7 +6,7 @@
  *   node truncate_statements.js --token <T> --project oneofus --prod \
  *     --keep $(jq -r '.streams["statements"].head' before.json)
  *
- * THE POINT. `close_account` publishes a `clear` statement and that is the whole
+ * THE POINT. `delegates` publishes a `clear` statement and that is the whole
  * of its side effect -- these streams are append-only hash chains, so a take
  * cannot modify or remove anything, it can only add. Undoing it is therefore
  * exact: rewind the stream to the statement that was its head beforehand and

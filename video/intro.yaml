@@ -19,15 +19,29 @@
 
 title: Our Own Open Decentralized Identity Network
 
+# WHAT YOUTUBE IS TOLD. Typed here, not into the upload form: the description
+# has to be re-entered on every upload, and the chapter list under it is
+# generated from the sections, so hand-editing it drifts from the cut within one
+# reshoot. `--assemble` writes <video>.youtube.json from this plus the chapter
+# lines, and tools/video/youtube.py uploads with it.
+youtube:
+  title: ONE-OF-US.NET Intro
+  description: |
+    Building and using our own open, decentralized identity network
+
+    https://one-of-us.net/
+    https://nerdster.org/
+    https://hablotengo.com/
+
 sections:
   # -------------------------------------------------------------------------
-  - id: preamble
-    title: "Our. Own. Decentralized. Identity. Network."
+  - id: get_the_app
+    title: "Get the App"
     preconditions:
       - Chrome and the identity app installed; the app icon on the home screen.
     side_effects:
       - None. The Play badge tap is drawn, never dispatched.
-    build: build_preamble.sh    # its own shape: three takes and a card, joined
+    build: build_get_the_app.sh    # its own shape: three takes and a card, joined
     status: built
     # Three short takes and a card, joined. People can navigate to a web page and
     # install an app without being shown how, so this does not type an address or
@@ -203,8 +217,8 @@ sections:
       - Show the link. Do NOT actually email or text it.
 
   # -------------------------------------------------------------------------
-  - id: signin
-    title: "Enter the Nerdster\n(a proof of concept, but it is usable)"
+  - id: sign_in_to_services
+    title: "Sign in to Services"
     preconditions:
       - An identity on the phone that somebody has vouched for.
       - The Nerdster deployed at nerdster.org.
@@ -216,7 +230,7 @@ sections:
         a NEW one and publishes its delegate statement.
       - Leaves the browser SIGNED IN -- which is what nerdster, crypto_teaser
         and hablotengo all need.
-    build: shoot_signin.sh
+    build: shoot_sign_in_to_services.sh
     status: to_build
     # THE SECTION THAT WAS MISSING. shoot_signin.js has existed and worked since
     # 2026-08-28 -- capture_manual §1 calls it the take that "removed every
@@ -505,15 +519,15 @@ sections:
         take shows a signed-in app and never reaches Access Denied.
 
   # -------------------------------------------------------------------------
-  - id: close_account
-    title: "Close account?"
+  - id: delegates
+    title: "Delegates"
     preconditions:
       - An identity on the phone with a vouch for Tom outstanding (the PEOPLE tab
         shows it) and a nerdster.org delegate key outstanding (SERVICES shows it).
       - Signed in on the Nerdster in Chrome on the device, so the delegate key
         being cleared has something to stop working in.
       - Ratings in the feed signed by THAT delegate key, or there is nothing to
-        watch disappear. Shoot signin then nerdster first, in that order.
+        watch disappear. Shoot sign_in_to_services then nerdster first, in that order.
       - A filmTools build of the identity app, for app_state.sh. Its restore
         rides on keymeid://exportkey and keymeid://importkey.
     side_effects:
@@ -529,7 +543,7 @@ sections:
       - Restore the phone first and the network last. Skipping the phone half
         leaves the delegation standing and the ratings visible, but nothing able
         to sign in as that delegate. Readable, not writable.
-    build: shoot_close_account.js
+    build: shoot_delegates.js
     status: to_build
     # The opening card IS the start of the section, so the take is trimmed to it.
     # A card anchored before the trim mark sits in the head that gets cut off.
@@ -649,7 +663,7 @@ sections:
       - None. It opens a tab and holds on it; nothing is published or deleted.
     build: shoot_advanced.js
     status: to_build
-    # SPLIT OUT OF close_account, which used to carry on into this screen after
+    # SPLIT OUT OF delegates, which used to carry on into this screen after
     # the clear. It is not about closing anything -- it is the other end of the
     # story, what to do when a key is lost rather than withdrawn -- and it read
     # as an appendix to a section that had already made its point.

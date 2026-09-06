@@ -2,13 +2,13 @@
 # The preamble, on its own: the page, a finger on the Play badge, the card, the
 # home screen, a finger on the app.
 #
-#   ./build_preamble.sh
+#   ./build_get_the_app.sh
 #
-# Writes out/preamble/<stamp>/preamble.mp4, about six seconds. It wipes nothing and
+# Writes out/get_the_app/<stamp>/get_the_app.mp4, about six seconds. It wipes nothing and
 # publishes nothing, so it can be re-recorded as often as the words change --
 # which is why it is its own scene and its own script. build_scene1.sh calls it.
 #
-# The card's words come from video/storyboard.yaml, section 'preamble'.
+# The card's words come from video/storyboard.yaml, section 'get_the_app'.
 #
 # Each take opens with a sync flash and overlay_taps.js trims to it, but what is
 # left is the flash page still sliding away -- so each piece starts at the first
@@ -19,10 +19,10 @@ cd "$(dirname "$0")"
 
 # One stamped directory holds all three takes, the card and the joined result.
 # sections.py sets BUILD_DIR; run by hand, this names its own the same way.
-BUILD_DIR="${BUILD_DIR:-out/preamble/$(date +%Y%m%d-%H%M%S)}"
+BUILD_DIR="${BUILD_DIR:-out/get_the_app/$(date +%Y%m%d-%H%M%S)}"
 export BUILD_DIR
 mkdir -p "$BUILD_DIR"
-OUT="${1:-$BUILD_DIR/preamble.mp4}"
+OUT="${1:-$BUILD_DIR/get_the_app.mp4}"
 
 at() { node -e "
   const { loadMarks, TRIM_PAD } = require('./lib/marks');
@@ -38,7 +38,7 @@ node overlay_taps.js "$BROWSER" >/dev/null 2>&1
 BROWSER_T="${BROWSER%.mp4}_taps.mp4"
 
 echo "== 2/4  the card =="
-python3 sections.py --card preamble >/dev/null
+python3 sections.py --card get_the_app >/dev/null
 
 echo "== 3/4  the home screen, and a finger on the app =="
 node shoot_home.js >/dev/null
@@ -48,7 +48,7 @@ HOME_T="${HOME%.mp4}_taps.mp4"
 
 echo "== 4/4  joining =="
 ffmpeg -y -v error -ss "$(at "$BROWSER_T" page 0.7)" -i "$BROWSER_T" \
-  -i "$BUILD_DIR/card_preamble.mp4" \
+  -i "$BUILD_DIR/card_get_the_app.mp4" \
   -ss "$(at "$HOME_T" home_screen 0.5)" -i "$HOME_T" \
   -filter_complex "[0:v]fps=25,setsar=1[a];[1:v]fps=25,setsar=1[b];[2:v]fps=25,setsar=1[c];\
 [a][b][c]concat=n=3:v=1:a=0,format=yuv420p[v]" \

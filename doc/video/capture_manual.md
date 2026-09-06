@@ -137,7 +137,7 @@ web build boots but never paints: Chrome shows white, forever.
 It is a nasty one to recognise because nothing looks broken. The page loads, Firebase
 initialises, there are no JS errors and no failed requests, and the semantics tree has ~50
 nodes -- so a shoot script driving it by name works fine while the camera records nothing but
-white. It took down `nerdster`, `crypto_teaser`, `hablotengo` and `close_account` at once, and
+white. It took down `nerdster`, `crypto_teaser`, `hablotengo` and `delegates` at once, and
 it looks like a bad deploy: check the site from a desktop browser before believing that.
 
 `document.querySelectorAll('canvas').length === 0` is NOT the test -- Flutter renders inside a

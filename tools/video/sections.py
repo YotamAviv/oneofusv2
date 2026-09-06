@@ -190,7 +190,7 @@ def newest_take(where, stem):
 #
 # The video is meant to play as one continuous story: the likes made in
 # `nerdster` should still be there, unchanged, when `crypto_teaser` and
-# `close_account` film them. Two things carry that state, and both are now
+# `delegates` film them. Two things carry that state, and both are now
 # saveable and restorable:
 #
 #   the phone  -- the keyring, over the app's filming-only export/import deep
@@ -439,7 +439,7 @@ def build(section, continue_from_previous=True):
     how the PREVIOUS section left it -- the phone's keyring and both statement
     streams. That is what makes the video continuous: the ratings made in
     `nerdster` are still there, unchanged, when `crypto_teaser` opens the
-    published statements and when `close_account` watches one disappear.
+    published statements and when `delegates` watches one disappear.
 
     It also replaces the resets those takes used to do for themselves. Rewinding
     to the previous section's head removes what THIS section published last time
@@ -743,8 +743,23 @@ def assemble(videos, name, extra, stale_ok=False):
         t = int(t)
         return f'{t // 3600}:{t // 60 % 60:02d}:{t % 60:02d}' if t >= 3600 \
                else f'{t // 60}:{t % 60:02d}'
-    out.with_suffix('.youtube.txt').write_text(
-        chr(10).join(f"{hhmmss(b['start'])} {b['title']}" for b in bounds) + chr(10))
+    chapters = chr(10).join(f"{hhmmss(b['start'])} {b['title']}" for b in bounds)
+    out.with_suffix('.youtube.txt').write_text(chapters + chr(10))
+
+    # THE WHOLE UPLOAD, as one file. The title and the standing description come
+    # from the storyboard's `youtube:` block; the chapters come from this cut.
+    # Retyping either into YouTube's form is how a description ends up describing
+    # a video that no longer exists -- and the chapter times change on every
+    # reshoot, so they cannot live anywhere but here.
+    yt = doc.get('youtube')
+    if yt:
+        for k in ('title', 'description'):
+            if k not in yt:
+                sys.exit(f"{doc['file'].name}: youtube: has no {k}:")
+        out.with_suffix('.youtube.json').write_text(json.dumps({
+            'title': yt['title'],
+            'description': yt['description'].rstrip() + chr(10) * 2 + chapters,
+        }, indent=2, ensure_ascii=False) + chr(10))
 
     run(['./assemble.sh', out, extra or 'soundtrack.mp3'] + clips)
     run(['ffmpeg', '-y', '-v', 'error', '-i', out, '-i', meta,
@@ -758,6 +773,11 @@ def assemble(videos, name, extra, stale_ok=False):
     for b in bounds:
         print(f"    {b['start']:7.2f}  {b['section']:22} {b['title']}")
     print(f"\n  chapters for YouTube: {out.with_suffix('.youtube.txt').relative_to(HERE)}")
+    if out.with_suffix('.youtube.json').exists():
+        print(f"  title and description: "
+              f"{out.with_suffix('.youtube.json').relative_to(HERE)}\n"
+              f"  upload it:  python3 tools/video/youtube.py upload "
+              f"{out.relative_to(HERE.parent.parent)}")
 
 
 def main():

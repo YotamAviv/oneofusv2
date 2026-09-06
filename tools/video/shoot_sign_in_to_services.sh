@@ -4,7 +4,7 @@
 # Steps 1-3 DELETE existing sign-in state so the app will prompt "Create Delegate
 # Key?" again; step 4 records; step 5 annotates and trims.
 #
-#   ./shoot_signin.sh
+#   ./shoot_sign_in_to_services.sh
 #
 # It was called shoot.sh, from when it was the only one. The name said nothing
 # about which take it shot, and every other take names itself.
@@ -14,7 +14,7 @@
 # anywhere else, because reshooting costs the delegate key and a round of
 # publishing -- run just that step against a take that already exists:
 #
-#   node annotate.js cues/signin.json out/signin/<stamp>/signin_taps.mp4
+#   node annotate.js cues/sign_in_to_services.json out/sign_in_to_services/<stamp>/signin_taps.mp4
 #
 # Prerequisites (see README.md): an Android emulator running, Chrome on it, a
 # filmTools build of the identity app installed, and one-of-us.net approved as a
@@ -24,7 +24,7 @@ cd "$(dirname "$0")"
 
 # One stamped directory holds the take, its intermediates and the finished
 # section. sections.py sets BUILD_DIR; run by hand, this names its own.
-BUILD_DIR="${BUILD_DIR:-out/signin/$(date +%Y%m%d-%H%M%S)}"
+BUILD_DIR="${BUILD_DIR:-out/sign_in_to_services/$(date +%Y%m%d-%H%M%S)}"
 export BUILD_DIR
 mkdir -p "$BUILD_DIR"
 
@@ -92,7 +92,7 @@ TAKE=$(node shoot_signin.js | tail -2 | head -1 | tr -d ' ')
 TAPS=$(node overlay_taps.js "$TAKE" | tail -1 | cut -d' ' -f1)
 
 echo "== 5/5  prompter =="
-ANNOTATED=$(node annotate.js cues/signin.json "$TAPS" | tail -1 | cut -d' ' -f2)
+ANNOTATED=$(node annotate.js cues/sign_in_to_services.json "$TAPS" | tail -1 | cut -d' ' -f2)
 
 # Trimmed to `home`: the take opens on a launch and a sync flash that are staging
 # rather than content, and the section starts when the home page is on screen.

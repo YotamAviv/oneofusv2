@@ -1,8 +1,8 @@
 {
   "_comment": [
-    "Generated from video/ -- section 'preamble'.",
+    "Generated from video/ -- section 'get_the_app'.",
     "Edit the copy THERE, not here, and run:",
-    "  python3 tools/video/sections.py --cues preamble"
+    "  python3 tools/video/sections.py --cues get_the_app"
   ],
   "cards": [
     {

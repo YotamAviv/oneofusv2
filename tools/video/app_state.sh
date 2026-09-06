@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Save and restore the phone's keyring, so a destructive take can be run again.
 #
-#   ./app_state.sh save    out/close_account.keys.json
-#   ./app_state.sh restore out/close_account.keys.json
+#   ./app_state.sh save    out/delegates.keys.json
+#   ./app_state.sh restore out/delegates.keys.json
 #
-# THE OTHER HALF OF THE REWIND. `close_account` changes two things:
+# THE OTHER HALF OF THE REWIND. `delegates` changes two things:
 #
 #   the network -- one appended `clear` statement. snapshot_statements.js records
 #     the head before and truncate_statements.js --keep rewinds to it after.

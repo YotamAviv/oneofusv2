@@ -1,8 +1,8 @@
 {
   "_comment": [
-    "Generated from video/ -- section 'signin'.",
+    "Generated from video/ -- section 'sign_in_to_services'.",
     "Edit the copy THERE, not here, and run:",
-    "  python3 tools/video/sections.py --cues signin"
+    "  python3 tools/video/sections.py --cues sign_in_to_services"
   ],
   "prompter": [
     {
