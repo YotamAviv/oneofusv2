@@ -49,11 +49,6 @@
 // `adb backup` of the app, or a restore_demo_identity.sh that also re-claims the
 // delegate. NOT DONE; see video/intro.yaml.
 //
-// NOT YET SHOT END TO END. The ONE-OF-US.NET half works, including the clear.
-// The Nerdster half stops at the degrees-of-separation slider: it is a real
-// slider in a popup and it does not take the keyboard, so it needs a measured
-// drag along its track. That is the next thing.
-//
 // IDEAS FOR AFTER V1 (Yotam, 2026-09-02), kept here rather than lost:
 //
 //   - ORDER. Show the exported keys BEFORE clearing the delegate, and consider

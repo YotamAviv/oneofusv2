@@ -61,7 +61,7 @@
       "at": "fyi_shown",
       "after": 3.8,
       "hold": 2.0,
-      "text": "FYI, just to highlight how this paradigm works.",
+      "text": "Nerdster's built in FYI, just to highlight how this paradigm works.",
       "anchor": [
         540,
         1224
@@ -94,7 +94,7 @@
     },
     {
       "at": "loading",
-      "after": 2.0,
+      "after": 0.6,
       "hold": 3.0,
       "text": "Fetching statements, verifying signatures ..",
       "anchor": [
@@ -103,9 +103,9 @@
       ],
       "spotlight": [
         0,
-        250,
+        226,
         1080,
-        90
+        62
       ],
       "y": 560
     }

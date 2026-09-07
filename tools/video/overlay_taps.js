@@ -87,14 +87,38 @@ let idx = marks.taps.length;
   prev = `v${ripple}`;
 });
 
-const filter = [last, ...chain].join(';').replace(new RegExp(`\\[${prev}\\]$`), '');
+let filter = [last, ...chain].join(';').replace(new RegExp(`\\[${prev}\\]$`), '');
 // Trim everything before the sync flash: that head is staging -- app launches,
 // the white flash itself -- not part of the video. Taps are already expressed in
 // video time, so shift them back by the same amount after trimming.
 const out = src.replace(/\.mp4$/, '_taps.mp4');
 const HEAD = OFFSET + TRIM_PAD;          // past the flash and its fade
+
+// HOLD THE LAST FRAME OUT TO THE LAST MARK.
+//
+// screenrecord writes a frame only when the screen CHANGES, so a take that ends
+// on a still screen ends its FILE at the last thing that moved -- `nerdster`
+// finishes on a settled feed and came back 2.4s shorter than the take really
+// ran, with gaps of three and a half seconds mid-file where nothing moved. The
+// marks are on the script's clock and keep running through all of it, so a cue
+// anchored in that final hold pointed past the end of the video and annotate.js
+// stopped with "past the end of ... anchored on mark". Nothing was lost: those
+// seconds ARE the still frame, so clone it out far enough to cover them.
+const srcDur = +execFileSync('ffprobe', ['-v', 'error', '-show_entries',
+  'format=duration', '-of', 'csv=p=0', src], { encoding: 'utf8' }).trim();
+const lastMark = Math.max(0, ...Object.values(marks)
+  .filter(v => typeof v === 'number'));
+// A mark at T sits at T - TRIM_PAD once the head is gone; the extra second is
+// room for a cue that is anchored on the last mark with an `after` on it.
+const need = lastMark - TRIM_PAD + 1;
+const pad = +(need - (srcDur - HEAD)).toFixed(3);
+if (pad > 0) {
+  filter += `,tpad=stop_mode=clone:stop_duration=${pad}`;
+}
+
 execFileSync('ffmpeg', ['-y', '-v', 'error', '-ss', HEAD.toFixed(3), '-i', src, ...inputs,
   '-filter_complex', filter, '-an', '-c:v', 'libx264', '-crf', '20',
   '-preset', 'medium', '-pix_fmt', 'yuv420p', out], { stdio: 'inherit' });
 console.log(out, `(${marks.taps.length} taps, ${(marks.swipes || []).length} swipes, ` +
-                 `trimmed ${HEAD.toFixed(2)}s of head)`);
+                 `trimmed ${HEAD.toFixed(2)}s of head` +
+                 (pad > 0 ? `, held the last frame ${pad.toFixed(2)}s` : '') + ')');

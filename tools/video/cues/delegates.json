@@ -67,7 +67,7 @@
       "lines": [
         "Close account?",
         "There is no account.",
-        "Delegates I own and control instead."
+        "We use delegate keys I own and control instead."
       ]
     },
     {
@@ -77,6 +77,17 @@
       "lines": [
         "Now let's return to the Nerdster",
         "which is still up and hasn't been refreshed."
+      ]
+    },
+    {
+      "at": "nerdster_refreshed",
+      "after": 4.6,
+      "hold": 4.0,
+      "lines": [
+        "Get on the Same Page",
+        "Like a NYT comment, the same person's on Twitter, too.",
+        "Good Marketface transaction, same person's on Ebay, maybe likes movies, too.",
+        "Crypto signed content by our delegate keys allows tech to play nice together and for new emerging tech to already have a network."
       ]
     }
   ],

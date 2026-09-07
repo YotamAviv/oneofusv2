@@ -21,6 +21,7 @@ const { buildDir } = require('./lib/build_dir');
 const OUT = buildDir('home');
 const d = device();
 const APP_ICON = [536, 818];        // ONE-OF-US.NET on the home screen
+const PKG = 'net.oneofus.app';      // what that icon has to open
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
@@ -31,7 +32,7 @@ const APP_ICON = [536, 818];        // ONE-OF-US.NET on the home screen
 
   // Everything the other takes leave in front, put away -- the Play Store above
   // all, since the browser take ends by opening it and it is still there.
-  d.E('shell', 'am', 'force-stop', 'net.oneofus.app');
+  d.E('shell', 'am', 'force-stop', PKG);
   d.E('shell', 'am', 'force-stop', 'com.android.chrome');
   d.E('shell', 'am', 'force-stop', 'com.android.vending');
   d.E('shell', 'input', 'keyevent', '3');   // HOME, before the camera is rolling
@@ -67,6 +68,22 @@ const APP_ICON = [536, 818];        // ONE-OF-US.NET on the home screen
   mark('tap_app_icon');
   await sleep(1000);                        // the app starting to open: the cut
   mark('done');
+
+  // AND CHECK SOMETHING OPENED. APP_ICON is a fixed point, and the icon that
+  // belongs there was dragged out of the app drawer by hand -- a rebuilt AVD,
+  // or a reinstall, has a bare home screen. The tap then lands on wallpaper and
+  // this take records a finger prodding nothing, which is a perfectly good file
+  // of the wrong thing: it joined the preamble and got as far as a cut video
+  // before anyone noticed the app never opened. ./place_app_icon.sh puts it
+  // back, and says so.
+  try {
+    await d.waitForApp(PKG, 8000);
+  } catch {
+    throw new Error(`the tap at ${APP_ICON} did not open ${PKG}. The home screen `
+      + 'is probably bare -- the icon is dragged out of the app drawer, not '
+      + 'installed with the app, so a rebuilt AVD has none. Run '
+      + './place_app_icon.sh and shoot this again.');
+  }
 
   // Stop it on the DEVICE and wait for the file to settle. Killing the local
   // adb first severs the shell before screenrecord can write its moov atom,

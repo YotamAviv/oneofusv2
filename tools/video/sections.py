@@ -203,6 +203,29 @@ def newest_take(where, stem):
 # A successful shoot saves both into its own build directory, so every complete
 # build carries the state of the world as it left it.
 #
+# SO A RESHOOT COSTS NOTHING DOWNSTREAM -- with one exception, which is worth
+# knowing exactly because it is the only one.
+#
+# Nothing on screen names a key. Two delegates that like the same book film
+# identically, so re-recording a section NEVER obliges you to re-record the ones
+# after it. Reshoot what changed, restore around it, leave the rest alone.
+#
+# THE EXCEPTION IS `sign_in_to_services`, and it is not about how the video
+# looks. Restore REWINDS: truncate deletes a tail and moves the head back, and
+# there is no operation anywhere here that puts a statement back. That is exact
+# for every section, because each one only ever appends -- except sign-in, whose
+# step 1 truncates the identity's stream to its FIRST statement to make the app
+# ask "Create Delegate Key?" again. That deletes the delegate statement every
+# EARLIER saved state was recorded against. Restoring one of those afterwards
+# hands the phone its old key back and finds nothing to rewind on the network,
+# so the ratings that key signed stay orphaned and stay out of the feed.
+#
+# The finished sections are still fine and still never need recutting. What is
+# gone is the ability to SHOOT one of them again from its saved state: the world
+# it expects no longer exists, and the only way back is to re-run the chain from
+# sign-in down, which re-records them as a side effect of rebuilding the state.
+# That is the cost of reshooting sign-in, and it is the whole of it.
+#
 # WHAT THIS DOES NOT DO YET, and it is the interesting half. Several takes RESET
 # things on purpose so that they can be re-shot in isolation:
 #

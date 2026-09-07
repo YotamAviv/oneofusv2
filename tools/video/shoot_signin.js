@@ -34,24 +34,17 @@ const OUT = buildDir('signin');
 const E = (...a) => execFileSync('adb', ['-s', SERIAL, ...a], { stdio: 'ignore' });
 const Eout = (...a) => execFileSync('adb', ['-s', SERIAL, ...a]).toString();
 
-/// Wait until the screen stops changing. The identity app is native Flutter with
-/// no accessibility tree to query, so this is the closest thing to a condition:
-/// grab frames and compare. Covers the case waitForApp cannot -- the app is
-/// foreground but still on its splash screen, where a tap hits nothing.
-async function waitForStillScreen(timeout = 15000, quietMs = 900) {
-  const grab = () => execFileSync('bash',
-    ['-c', `adb -s ${SERIAL} exec-out screencap -p | md5sum | cut -d' ' -f1`],
-    { encoding: 'utf8' }).trim();
-  const t0 = Date.now();
-  let last = '', since = Date.now();
-  while (Date.now() - t0 < timeout) {
-    const now = grab();
-    if (now === last) { if (Date.now() - since >= quietMs) return true; }
-    else { last = now; since = Date.now(); }
-    await sleep(250);
-  }
-  return false;                              // caller asserts on content anyway
-}
+/// The device helpers, which own every "wait until the screen does X" here.
+///
+/// This file used to keep its OWN waitForStillScreen, and it hashed the WHOLE
+/// screen -- status bar included. The clock ticks and a recording chip sits up
+/// there for the length of every take, so the hash never repeated, the wait ran
+/// its full timeout every single time, and the take carried thirteen seconds of
+/// a drawn dialog. lib/device.js crops that strip off and says why; the copy
+/// here never got the fix. Do not start another one.
+const dev = require('./lib/device').device();
+const { waitForRegionColour } = dev;
+
 
 /// Which app is in front. Lets the app-side waits be conditions rather than
 /// generous sleeps -- the whole point is that the video moves along.
@@ -109,7 +102,7 @@ const toDevice = (x, y) => VIEW2DEV
   // Re-forward AFTER the restart above. shoot.sh sets the forward up before it
   // runs this, and force-stopping Chrome invalidates it -- which surfaces later
   // as "socket hang up" from connectOverCDP, several steps from the cause.
-  await require('./lib/device').device().forwardDevtools();
+  await dev.forwardDevtools();
   await sleep(1200);                       // let the home page paint
 
   let { browser, page, cdp } = await attachToAvdChrome(chromium);
@@ -119,7 +112,7 @@ const toDevice = (x, y) => VIEW2DEV
   // Chrome opens a tab per VIEW intent and nothing closed them; thirty had
   // piled up, and enough of them throttle screenrecord. Swept before the
   // camera, so a crashed take is cleaned up by the next one.
-  await require('./lib/device').device().closeChromeTabs();
+  await dev.closeChromeTabs();
 
 
 
@@ -211,7 +204,25 @@ const toDevice = (x, y) => VIEW2DEV
 
   // --- identity app (APP-BLIND) ---
   await waitForApp('net.oneofus.app', 25000);
-  await waitForStillScreen();              // past the splash, dialog drawn
+  // WAIT FOR THE DIALOG, not for the screen to stop moving. Stillness is the
+  // wrong question here twice over: the app cold-starts in about nine seconds
+  // (see warmUp) so the screen is still for a while BEFORE the dialog is drawn,
+  // and the scanner it is drawn over is a live camera preview. Whichever way it
+  // guessed, it guessed late -- thirteen seconds of a fully drawn, static dialog
+  // went into the finished section, and it read as a slow emulator.
+  //
+  // The panel is a pale green nothing else on this screen is, and this strip of
+  // it is its left margin: inside the dialog, clear of every line of text.
+  const DIALOG_PANEL = 'crop=40:400:130:800';
+  if (!await waitForRegionColour(DIALOG_PANEL, c => c.r > 200 && c.g > 210 && c.b > 200,
+                                 25000, 'create-delegate dialog')) {
+    throw new Error('the "Create Delegate Key?" dialog never appeared. Steps 1-3 '
+      + 'clear the sign-in state so the app will ask again; if they did not, the '
+      + 'app is showing the ROTATE prompt or no dialog at all.');
+  }
+  // A HOLD, not settling time: the prompter line anchored on the tap below has
+  // to be readable before the dialog goes. Same reason as the hold at app_ready.
+  await sleep(3800);
   const shot = path.join(OUT, 'signin_dialog.png');
   execFileSync('bash', ['-c', `adb -s ${SERIAL} exec-out screencap -p > ${shot}`]);
   // Cheap proxy for an assertion on the app side: the reset should have produced
@@ -255,7 +266,7 @@ const toDevice = (x, y) => VIEW2DEV
   // Stop it on the DEVICE and wait for the file to settle. Killing the local
   // adb first severs the shell before screenrecord can write its moov atom,
   // and the pulled file is then not a video at all.
-  await require('./lib/device').device().stopRecording('/sdcard/signin.mp4');
+  await dev.stopRecording('/sdcard/signin.mp4');
   rec.kill();
   await browser.close();
   // Never overwrite: every take is kept, stamped, so a good one can't be lost

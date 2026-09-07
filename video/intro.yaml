@@ -61,7 +61,7 @@ sections:
 
   # -------------------------------------------------------------------------
   - id: vouch
-    title: "Get started\nVouch for someone's identity and humanity"
+    title: "Vouch for someone's identity and humanity"
     preconditions:
       - Nothing. It wipes the app and builds an identity from scratch, and the
         one deep link it uses (keymeid://vouch) is the ordinary one a real
@@ -230,6 +230,14 @@ sections:
         a NEW one and publishes its delegate statement.
       - Leaves the browser SIGNED IN -- which is what nerdster, crypto_teaser
         and hablotengo all need.
+      - THE ONE RESHOOT THAT INVALIDATES SAVED STATE. To make the app ask for a
+        delegate key again it truncates the identity's stream back to its
+        FIRST statement, deleting the delegate statement that every section
+        below it saved its state against. Restore only ever rewinds, so nothing
+        can put that statement back -- the ratings the old delegate signed are
+        orphaned and gone from the feed. Their finished videos are unaffected
+        and need no recutting -- but SHOOTING any of them again means re-running
+        the chain from here down. Every other section can be reshot alone.
     build: shoot_sign_in_to_services.sh
     status: to_build
     # THE SECTION THAT WAS MISSING. shoot_signin.js has existed and worked since
@@ -252,7 +260,10 @@ sections:
       # - {at: tap_launch, text: "Open the web app."}
       # - {at: app_ready, text: "It needs to know who I am.\nI have no account here, and I am not making one."}
       # - {at: tap_signin, text: "Sign in with ONE-OF-US.NET instead."}
-      - {at: tap_yes, after: -0.8, text: "Create and give the Nerdster a crypto key that will represent us there."}
+      # -3.5, not -0.8: the line starts as the dialog is drawn rather than a
+      # breath before it is dismissed. The take used to sit on that dialog long
+      # enough for either to work; it no longer does.
+      - {at: tap_yes, after: -3.5, text: "Create and give the Nerdster a crypto key that will represent us there."}
       # - {at: back_to_browser, text: "That key is a delegate: it speaks for me here,\nand nowhere else."}
       - {at: signed_in, text: "I've signed in. I've identified myself using my public identity and handed over a delegate key to represent me on this service."}
       # - {at: dismiss, text: "No password. No email. Nothing to be breached."}
@@ -335,8 +346,68 @@ sections:
       - block an identity (reprehensible)
 
   # -------------------------------------------------------------------------
+  - id: hablotengo
+    title: "HabloTengo!\nLet's talk"
+    preconditions:
+      - Signed in to the Nerdster with a delegate key (signin).
+      - An identity with a hablotengo.com delegate key in the feed (Hillel);
+        without one the Nerdster does not draw the HabloTengo link at all.
+    side_effects:
+      - Clears hablotengo.com sign-in state before recording, so the take can
+        reach Access Denied.
+      - Signs the identity in to HabloTengo -- identity only, no delegate key.
+    build: shoot_hablotengo.js
+    status: to_build
+    # The point is that a SECOND, unrelated service rides on the same identity
+    # network -- and that grounding it there is what lets it keep things private
+    # as well as authentic. It ends on being refused, which is the feature.
+    #
+    # The HabloTengo link only appears on a node that HAS a hablotengo.com
+    # delegate key, which is why the section goes to Hillel. It does NOT open his
+    # key list to prove that -- the link itself is the proof, and it is in the
+    # header. node_details.dart opens hablotengo.com/app?target=<identity> in a
+    # new tab.
+    #
+    # NOT YET SHOT. Written from Yotam's outline, 2 Sep 2026. The HabloTengo half
+    # -- signing in with the identity app but no delegate key, and the Access
+    # Denied that follows -- has never been driven by a script, so expect its
+    # selectors to need a pass on the device.
+    trim: feed
+    prompter:
+      - {at: pov_set,
+         text: "See content from someone else's Point of View (PoV). Notice that names and content change"}
+      - {at: tap_context_family, after: 1.4,
+         text: "Use Tom's family Context."}
+      - {at: filtered,
+         text: "Narrow content down by tags (and related tags)."}
+      - {at: node_details,
+         text: "Let's call Hillel."}
+      - {at: hablotengo_open,
+         text: "Same identities, our identities, on another, unconnected service."}
+    beats:
+      # Both boxes are MEASURED by the take and named here, rather than typed --
+      # see the note on crypto_teaser's signature beat for why.
+      - at: hablotengo_link_shown
+        after: 0.8
+        hold: 2.6
+        text: "Handy dandy shortcut to HabloTengo, a contact sharing service."
+        box: habloButtonBox
+        pad: 26
+        y: 1500
+      - at: denied
+        after: 1.0
+        hold: 3.2
+        text: "Access Denied.\nHabloTengo leverages our open, decentralized network to keep things private, not just authentic."
+        box: deniedBox
+        pad: 30
+        y: 1200
+    todo:
+      - The reset must leave HabloTengo SIGNED OUT, or the second run of this
+        take shows a signed-in app and never reaches Access Denied.
+
+  # -------------------------------------------------------------------------
   - id: crypto_teaser
-    title: "How Cryptography\nmakes this possible"
+    title: "How Cryptography makes this possible"
     preconditions:
       - Signed in to the Nerdster with a delegate key (signin).
     side_effects:
@@ -403,7 +474,7 @@ sections:
         # After the line at this mark, not on top of it.
         after: 3.8
         hold: 2.0
-        text: "FYI, just to highlight how this paradigm works."
+        text: "Nerdster's built in FYI, just to highlight how this paradigm works."
         anchor: [540, 1224]
         spotlight: [44, 1150, 992, 150]
         y: 820
@@ -437,16 +508,18 @@ sections:
       # The loading bar is on screen for a moment and gone. Stopping on it is the
       # only way anyone reads it, which is what a beat is for.
       - at: loading
-        # As above. This beat and the line at `loading` say nearly the same
-        # thing; the line should at least be readable before the beat repeats it.
-        # 2.0 rather than more: the screen is static after the refresh, and
-        # screenrecord is variable-rate, so the take ends sooner than its sleeps
-        # suggest -- 3.2 landed past the last frame.
-        after: 2.0
+        # MEASURED AGAINST THE FRAME, both of these. "Loading signed content from
+        # one-of-us.net (Trust)" is up from the refresh to about 1.2s after it and
+        # then gone, so 2.0 froze a frame it had already left -- the beat boxed an
+        # empty strip and the thing it points at was three seconds in the past.
+        # 0.6 is inside that window with room on either side.
+        after: 0.6
         hold: 3.0
         text: "Fetching statements, verifying signatures .."
+        # The line sits at y 246-268; the box was 250-340, cutting its top off and
+        # taking in the Me/<nerdster> row underneath instead.
         anchor: [540, 300]
-        spotlight: [0, 250, 1080, 90]
+        spotlight: [0, 226, 1080, 62]
         y: 560
     until: loading
     # Long enough to read the line anchored at this mark. At 1.0 the section
@@ -457,66 +530,6 @@ sections:
       # ships, either that video does or the line changes.
       - Measure the three beats against a real frame -- see the note above them.
       - Confirm the "upcoming video" promise is one we are keeping.
-
-  # -------------------------------------------------------------------------
-  - id: hablotengo
-    title: "HabloTengo!\nLet's talk"
-    preconditions:
-      - Signed in to the Nerdster with a delegate key (signin).
-      - An identity with a hablotengo.com delegate key in the feed (Hillel);
-        without one the Nerdster does not draw the HabloTengo link at all.
-    side_effects:
-      - Clears hablotengo.com sign-in state before recording, so the take can
-        reach Access Denied.
-      - Signs the identity in to HabloTengo -- identity only, no delegate key.
-    build: shoot_hablotengo.js
-    status: to_build
-    # The point is that a SECOND, unrelated service rides on the same identity
-    # network -- and that grounding it there is what lets it keep things private
-    # as well as authentic. It ends on being refused, which is the feature.
-    #
-    # The HabloTengo link only appears on a node that HAS a hablotengo.com
-    # delegate key, which is why the section goes to Hillel. It does NOT open his
-    # key list to prove that -- the link itself is the proof, and it is in the
-    # header. node_details.dart opens hablotengo.com/app?target=<identity> in a
-    # new tab.
-    #
-    # NOT YET SHOT. Written from Yotam's outline, 2 Sep 2026. The HabloTengo half
-    # -- signing in with the identity app but no delegate key, and the Access
-    # Denied that follows -- has never been driven by a script, so expect its
-    # selectors to need a pass on the device.
-    trim: feed
-    prompter:
-      - {at: pov_set,
-         text: "See content from someone else's Point of View (PoV). Notice that names and content change"}
-      - {at: tap_context_family, after: 1.4,
-         text: "Use Tom's family Context."}
-      - {at: filtered,
-         text: "Narrow content down by tags (and related tags)."}
-      - {at: node_details,
-         text: "Let's call Hillel."}
-      - {at: hablotengo_open,
-         text: "Same identities, our identities, on another, unconnected service."}
-    beats:
-      # Both boxes are MEASURED by the take and named here, rather than typed --
-      # see the note on crypto_teaser's signature beat for why.
-      - at: hablotengo_link_shown
-        after: 0.8
-        hold: 2.6
-        text: "Handy dandy shortcut to HabloTengo, a contact sharing service."
-        box: habloButtonBox
-        pad: 26
-        y: 1500
-      - at: denied
-        after: 1.0
-        hold: 3.2
-        text: "Access Denied.\nHabloTengo leverages our open, decentralized network to keep things private, not just authentic."
-        box: deniedBox
-        pad: 30
-        y: 1200
-    todo:
-      - The reset must leave HabloTengo SIGNED OUT, or the second run of this
-        take shows a signed-in app and never reaches Access Denied.
 
   # -------------------------------------------------------------------------
   - id: delegates
@@ -550,10 +563,10 @@ sections:
     trim: opening
     # END ON THE BEAT, not on the take running out. The last thing said is the
     # bubble about the delegate key; what followed it was nine seconds of an
-    # empty feed. until_after has to clear the beat's own anchor (4.5s) so the
-    # splice counts as part of the section.
+    # empty feed. until_after has to clear the closing card's anchor (4.7s) so
+    # the splice counts as part of the section.
     until: nerdster_refreshed
-    until_after: 4.6
+    until_after: 4.7
     # THE POINT OF THE SECTION. Every other service ends with "delete my account",
     # and there is no account here to delete -- so the question has no answer, and
     # that IS the answer. What can be undone is undone from the phone, by the
@@ -565,7 +578,7 @@ sections:
         lines:
           - "Close account?"
           - "There is no account."
-          - "Delegates I own and control instead."
+          - "We use delegate keys I own and control instead."
       # BETWEEN THE TWO HALVES. The clear has just been published from the phone;
       # what follows only means anything because the Nerdster has been sitting
       # there loaded since before it, so the card says so before the cut.
@@ -575,6 +588,20 @@ sections:
         lines:
           - "Now let's return to the Nerdster"
           - "which is still up and hasn't been refreshed."
+      # Closes the section, after the beat on the same anchor. ANCHORED IN TAKE
+      # TIME, which is not the finished video's clock: a splice's hold is
+      # inserted, so the beat at 4.5 occupies 4.5 -> 9.5 of the CUT while costing
+      # the take only an instant. 4.6 is therefore already after it. Asking for
+      # 9.6 instead demanded nine and a half seconds of real footage past the
+      # refresh, and the take holds 9.56 -- it failed by four hundredths.
+      - at: nerdster_refreshed
+        after: 4.6
+        hold: 4.0
+        lines:
+          - "Get on the Same Page"
+          - "Like a NYT comment, the same person's on Twitter, too."
+          - "Good Marketface transaction, same person's on Ebay, maybe likes movies, too."
+          - "Crypto signed content by our delegate keys allows tech to play nice together and for new emerging tech to already have a network."
     prompter:
       - {at: people,
          text: "I can clear or edit my outstanding vouches here."}
@@ -633,10 +660,9 @@ sections:
         hold: 0.9
         word: "Decentralized"
     todo:
-      - FINISH THE TAKE. The ONE-OF-US.NET half works end to end, clear included
-        (two dialogs -- "Clear Delegation", then "Remove Local Key?"). It stops at
-        the Nerdster's degrees-of-separation control, which is a slider in a
-        popup and does not take the keyboard -- it needs a measured drag.
+      - DEFER. The degrees-of-separation control is set by tapping its track at a
+        measured offset (setDegrees in shoot_delegates.js). A real drag along the
+        track would look better; tapping is not broken.
       - Wire the snapshot/rewind into the build, so this section can be shot as
         often as the order changes instead of costing state each time.
       - AFTER V1, from Yotam. Show the exported keys before clearing rather than

@@ -27,10 +27,19 @@ function device(serial = process.env.AVD || 'emulator-5554') {
   /// there too, so hashing the whole screen means "still" never happens and
   /// every wait runs to its timeout. That turned a 25-second take into 90
   /// seconds of mostly nothing.
-  const waitForStillScreen = async (timeout = 20000, quietMs = 900) => {
+  ///
+  /// PASS A CROP whenever anything LIVE shares the screen with what you are
+  /// waiting for. The identity app draws its dialogs over the QR scanner, which
+  /// is a camera preview and never hashes the same twice -- see the note on
+  /// waitForRegionMotion below. The whole-screen default can then never settle,
+  /// and because this RETURNS FALSE on timeout rather than throwing, the caller
+  /// carries on none the wiser: sign_in_to_services sat on a drawn dialog for
+  /// thirteen seconds of finished video, and it read as a slow emulator.
+  const waitForStillScreen = async (timeout = 20000, quietMs = 900,
+                                    crop = 'crop=in_w:in_h-220:0:120') => {
     const grab = () => execFileSync('bash', ['-c',
       `adb -s ${serial} exec-out screencap -p | ` +
-      `ffmpeg -v error -i - -vf crop=in_w:in_h-220:0:120 -f rawvideo - | md5sum | cut -d' ' -f1`],
+      `ffmpeg -v error -i - -vf ${crop} -f rawvideo - | md5sum | cut -d' ' -f1`],
       { encoding: 'utf8' }).trim();
     const t0 = Date.now();
     let last = '', since = Date.now();
