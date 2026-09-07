@@ -558,7 +558,28 @@ def _build(section, where):
         if not cards or len(cards) != 1:
             sys.exit(f"'{sid}' builds as a card but has "
                      f"{len(cards or [])} of them; it needs exactly one")
-        render_card(sid, cards[0], out)
+        # A CARD WITH FLASHES STILL GOES THROUGH ANNOTATION. card.js draws the
+        # words and nothing else, so a `flashes:` block on a card-built section
+        # was inert -- written, generated into the cue file, and silently never
+        # drawn. Render the card, then lay the flashes over it exactly as they
+        # are laid over a take. Their times are the clip's own, since there is
+        # no take clock here and nothing spliced to shift them.
+        if not section.get('flashes'):
+            render_card(sid, cards[0], out)
+            write_manifest(section, where, out)
+            print(f'\n  {out.relative_to(HERE)}')
+            return
+        plain = where / 'card.mp4'
+        render_card(sid, cards[0], plain)
+        # ONLY the flashes. The section's own cue file still holds the card, and
+        # to annotate.js a card is something to SPLICE IN -- it would try to open
+        # a pause for the very clip it is drawing on, and stops on the card
+        # having no `at` or `t` because a card-built one never needed either.
+        only = where / 'flashes.json'
+        only.write_text(json.dumps({'flashes': section['flashes']}, indent=2,
+                                   ensure_ascii=False) + '\n')
+        run(['node', 'annotate.js', str(only), str(plain)])
+        shutil.copy2(plain.with_name(plain.stem + '_annotated.mp4'), out)
         write_manifest(section, where, out)
         print(f'\n  {out.relative_to(HERE)}')
         return
