@@ -27,6 +27,16 @@ CREDENTIALS, and none of them in the repo:
 `auth` opens a browser, so run it yourself once -- it cannot be done over a
 pipe. Everything after it is unattended.
 
+USE A PROJECT OF ITS OWN, not the one the app and Firebase live in: the consent
+screen is per-project, `youtube` is a sensitive scope, and adding it to the
+screen real users see puts a verification warning in front of them for something
+they never use. Quota is per-project too.
+
+AND SET THAT PROJECT'S CONSENT SCREEN TO "IN PRODUCTION". In "Testing" Google
+revokes refresh tokens after SEVEN DAYS, so this stops working every week for a
+reason that looks like a bug here. In production without verification the
+browser shows an "unverified app" interstitial once, and the token keeps.
+
 THE ONE THING THAT WILL SURPRISE YOU. Google locks videos uploaded through an
 unaudited API project to private, and neither this script nor YouTube Studio can
 make them public until the project passes an audit. So `upload` defaults to
