@@ -457,7 +457,7 @@ sections:
       - {at: pretty_printed,
          text: "Pretty-print..."}
       - {at: zoomed, after: 0.8,
-         text: "Signed by my delegate key.\nYou (or anyone) can verify (See menu item); Trust cryptography, not the Nerdster."}
+         text: "Signed by my delegate key.\nYou (or anyone) can verify (See menu item); Trust this because it's signed, not because it's served from nerdster.org - Portable!."}
       - {at: dismissed,
          text: "All three apps work this way: signed statements,\nsigned, published using keys you trust."}
       - {at: loading,
@@ -521,10 +521,40 @@ sections:
         anchor: [540, 300]
         spotlight: [0, 226, 1080, 62]
         y: 560
+    cards:
+      # Closes the section, after the beat on the same anchor. ANCHORED IN TAKE
+      # TIME: a splice's hold is inserted, so 0.7 is already past the beat at 0.6
+      # however long that beat holds. Same trap as the delegates closing card.
+      - at: loading
+        after: 0.7
+        hold: 5.0
+        lines:
+          - "Complete cryptographic signature chains to all content you see."
+          - "Trust rooted in your identity and your network."
+          - "Any service can access and trust this same data, ground it with your public identity key."
+    # FLASHES ON THAT CARD, which is what `into` is for -- see layFlashes. They
+    # share the card's `at` and `after` so they find it; `into` is seconds from
+    # the moment the slide comes up, and each word is clear of the last before
+    # the next arrives. Placed off the centre line and away from each other so
+    # four in a row do not read as one word changing colour; x and y are
+    # fractions of the frame and everything here is meant to be tweaked.
+    flashes:
+      - {at: loading, after: 0.7, into: 0.5, hold: 0.9,
+         word: "decentralized", colour: "#39FF14", x: 0.50, y: 0.11}
+      - {at: loading, after: 0.7, into: 1.6, hold: 0.9,
+         word: "portable", colour: "#FF7A18", x: 0.30, y: 0.79}
+      - {at: loading, after: 0.7, into: 2.7, hold: 0.9,
+         word: "open", colour: "#FF3FA4", x: 0.72, y: 0.17}
+      # 96px, not the default 128: at the full size this one is wider than the
+      # frame, and the line is set nowrap so it would simply run off both edges.
+      - {at: loading, after: 0.7, into: 3.8, hold: 0.9,
+         word: "heterogeneous", colour: "#FFC933", x: 0.46, y: 0.86, size: 96}
     until: loading
-    # Long enough to read the line anchored at this mark. At 1.0 the section
-    # ended almost as the words appeared.
-    until_after: 4.5
+    # Clears the closing card's anchor (0.7) so the splice counts as part of the
+    # section; end_seconds then counts the card's own hold, so the cut lands on
+    # its last frame. It used to be 4.5, holding on a static post-refresh screen
+    # that the card now closes instead.
+    until_after: 0.8
     todo:
       # The card's second line names a video that does not exist. Before this
       # ships, either that video does or the line changes.
@@ -645,7 +675,7 @@ sections:
         # was landing on top of it after 1.4s.
         after: 4.5
         hold: 5.0
-        text: "The delegate key I signed in with no longer represents me. This is what can allow us to use the 100s of services we enjoy without giving them our private identity key - delegation signed by your on your device, disposable key give to them know to represent you - until it doesn't"
+        text: "The delegate key I signed in with no longer represents me. This is what can allow us to use the 100s of services we enjoy without giving them our private identity key - delegation signed by your identity key on your device, disposable key given to them know to represent you - until it doesn't"
         box: keyIssueBox
         pad: 26
         y: 1400

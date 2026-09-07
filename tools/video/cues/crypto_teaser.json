@@ -45,7 +45,7 @@
     {
       "at": "zoomed",
       "after": 0.8,
-      "text": "Signed by my delegate key.\nYou (or anyone) can verify (See menu item); Trust cryptography, not the Nerdster."
+      "text": "Signed by my delegate key.\nYou (or anyone) can verify (See menu item); Trust this because it's signed, not because it's served from nerdster.org - Portable!."
     },
     {
       "at": "dismissed",
@@ -108,6 +108,61 @@
         62
       ],
       "y": 560
+    }
+  ],
+  "cards": [
+    {
+      "at": "loading",
+      "after": 0.7,
+      "hold": 5.0,
+      "lines": [
+        "Complete cryptographic signature chains to all content you see.",
+        "Trust rooted in your identity and your network.",
+        "Any service can access and trust this same data, ground it with your public identity key."
+      ]
+    }
+  ],
+  "flashes": [
+    {
+      "at": "loading",
+      "after": 0.7,
+      "into": 0.5,
+      "hold": 0.9,
+      "word": "decentralized",
+      "colour": "#39FF14",
+      "x": 0.5,
+      "y": 0.11
+    },
+    {
+      "at": "loading",
+      "after": 0.7,
+      "into": 1.6,
+      "hold": 0.9,
+      "word": "portable",
+      "colour": "#FF7A18",
+      "x": 0.3,
+      "y": 0.79
+    },
+    {
+      "at": "loading",
+      "after": 0.7,
+      "into": 2.7,
+      "hold": 0.9,
+      "word": "open",
+      "colour": "#FF3FA4",
+      "x": 0.72,
+      "y": 0.17
+    },
+    {
+      "at": "loading",
+      "after": 0.7,
+      "into": 3.8,
+      "hold": 0.9,
+      "word": "heterogeneous",
+      "colour": "#FFC933",
+      "x": 0.46,
+      "y": 0.86,
+      "size": 96
     }
   ]
 }

@@ -54,7 +54,7 @@
       "at": "nerdster_refreshed",
       "after": 4.5,
       "hold": 5.0,
-      "text": "The delegate key I signed in with no longer represents me. This is what can allow us to use the 100s of services we enjoy without giving them our private identity key - delegation signed by your on your device, disposable key give to them know to represent you - until it doesn't",
+      "text": "The delegate key I signed in with no longer represents me. This is what can allow us to use the 100s of services we enjoy without giving them our private identity key - delegation signed by your identity key on your device, disposable key given to them know to represent you - until it doesn't",
       "box": "keyIssueBox",
       "pad": 26,
       "y": 1400

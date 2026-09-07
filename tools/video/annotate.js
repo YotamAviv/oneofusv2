@@ -295,7 +295,7 @@ fs.mkdirSync(work, { recursive: true });
     await strip.setViewportSize({ width: W, height: H });
     const n = Math.max(2, Math.round(f.hold * FLASH_FPS));
     for (let k = 0; k < n; k++) {
-      await strip.setContent(flashPage(f.word, k / (n - 1)));
+      await strip.setContent(flashPage(f, k / (n - 1)));
       if (k === 0) await strip.evaluate(() => document.fonts.ready);
       await strip.screenshot({ path: path.join(dir, `f${String(k).padStart(3, '0')}.png`),
                                omitBackground: true });
@@ -528,8 +528,21 @@ function layPrompter(src, out, geom) {
 /// The vectors are DERIVED FROM THE LETTER'S INDEX, not random. Re-rendering
 /// the same cue has to give the same frames, or a rebuild quietly produces a
 /// different video from the one that was approved.
+///
+/// COLOUR AND PLACE ARE THE CUE'S. Amber over the middle is the default and was
+/// once the only option, which is fine for one flash and wrong for four in a
+/// row -- they land on top of each other and read as one word changing. `colour`
+/// takes any CSS colour and the glow is derived from it; `x` and `y` are
+/// fractions of the frame, naming where the word's centre goes; `size` is the
+/// font in px, for a long word that would otherwise run off the edge.
 const FLASH_FPS = 25;
-function flashPage(word, p) {
+const FLASH_DEFAULTS = { colour: '#FF9A12', x: 0.5, y: 0.38, size: 128 };
+function flashPage(f, p) {
+  const word = f.word;
+  const { colour, x, y, size } = { ...FLASH_DEFAULTS,
+    ...(f.color != null ? { colour: f.color } : {}),
+    ...Object.fromEntries(Object.entries(f).filter(([k, v]) =>
+      v != null && ['colour', 'x', 'y', 'size'].includes(k))) };
   const IN = 0.16, OUT = 0.55;          // assemble by 16%, start leaving at 55%
   const inP = Math.min(1, p / IN);
   const ease = 1 - Math.pow(1 - inP, 3);
@@ -559,16 +572,19 @@ function flashPage(word, p) {
     ${bubble.fontFaces(FONTS)}
     html,body { margin:0; width:${W}px; height:${H}px; overflow:hidden; background:transparent; }
     #f {
-      position:absolute; left:0; right:0; top:38%;
-      font: 800 128px/1.05 'Inter', system-ui, sans-serif;
+      position:absolute; left:0; right:0; top:${(y * 100).toFixed(2)}%;
+      transform: translateX(${((x - 0.5) * W).toFixed(0)}px);
+      font: 800 ${size}px/1.05 'Inter', system-ui, sans-serif;
       text-align:center; letter-spacing:-2px; white-space:nowrap;
-      /* Hot amber, not white: white washed out against a light app screen.
-         A gradient through the glyphs was tried first and came out INVISIBLE --
+      /* Not white: white washed out against a light app screen. A gradient
+         through the glyphs was tried first and came out INVISIBLE --
          background-clip:text paints nothing that survives a screenshot taken
-         with omitBackground, and the flash silently rendered as empty frames. */
-      color:#FF9A12;
-      text-shadow: 0 0 2px rgba(120,40,0,.9), 0 4px 16px rgba(0,0,0,.55),
-                   0 0 40px rgba(255,140,20,.75);
+         with omitBackground, and the flash silently rendered as empty frames.
+         The dark inner edge and the black drop are what keep a light colour
+         legible over a light frame; the outer glow is the colour itself. */
+      color:${colour};
+      text-shadow: 0 0 2px rgba(0,0,0,.85), 0 4px 16px rgba(0,0,0,.55),
+                   0 0 40px ${colour};
     }
   </style><div id="f">${spans}</div>`;
 }
@@ -634,7 +650,27 @@ function layFlashes(src, out) {
   // second beat, and the sentence arrived four seconds after the word it follows.
   const layers = [];
   flashes.forEach((f, i) => {
-    const at = shift(f.t);
+    // `into` PUTS THE FLASH ON THE CARD, which nothing else here can express. A
+    // flash is placed at shift(t), and shift() adds the hold of every splice at
+    // or before t -- so a flash sharing a card's anchor lands the far side of it,
+    // and one a hair earlier lands just before it starts. Neither is over it. A
+    // card's still occupies shift(t) - hold to shift(t), so `into` counts from
+    // the start of that still, and the word plays while the slide holds.
+    let at;
+    if (f.into != null) {
+      const sp = splices.find(b => Math.abs(b.t - f.t) < 0.001);
+      if (!sp) throw new Error(
+        `flash "${f.word}" has \`into: ${f.into}\`, which means "this far into the ` +
+        `card or beat at the same moment" -- but nothing is spliced in at ${f.t}s.\n` +
+        '  Give it the same `at` and `after` as the card it belongs on, or drop `into`.');
+      if (f.into + f.hold > sp.hold + 0.001) throw new Error(
+        `flash "${f.word}" runs to ${(f.into + f.hold).toFixed(2)}s into a ` +
+        `${sp.hold}s ${sp.kind}, so it would carry on over the footage after it.\n` +
+        '  Shorten `into` or `hold`, or hold the ' + sp.kind + ' longer.');
+      at = shift(f.t) - sp.hold + f.into;
+    } else {
+      at = shift(f.t);
+    }
     // A word cut short by the end of the take is a word; a SENTENCE cut short is
     // copy that goes missing from a build reporting success, which is the
     // failure this file exists to make loud. So the word still clamps and the
