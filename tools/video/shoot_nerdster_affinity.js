@@ -284,63 +284,59 @@ const boxOf = node => {
     mark('both_visible');
     await sleep(2600);
 
-    // --- block Tom for <nerdster> ------------------------------------------
-    await openDetails(TOM, /^Tom$/, 'tom');
-    mark('tom_details');
-    await sleep(2400);
-    await setContext('Block', 'tom', 'tom');
+    // --- ONE TRIP, from Eyal's graph ---------------------------------------
+    //
+    // His name in the feed opens the PATH -- Me -> Tom -> Eyal -- and in
+    // <identity> both of them are nodes on it, so both follow decisions can be
+    // made from here without going back to the feed for the second one.
+    await tapNode(EYAL, 'eyal_name');
+    await sleep(2200);
+    mark('path_eyal');
     await sleep(2000);
 
-    await tapNode(/^Close$/, 'close_tom');
-    await sleep(1600);
-    await tapNode(/^Back$/, 'back_from_tom');
-    await sleep(3000);
-    await assertVisible(page, /Read Write Own/);
-    // Tom's contributions are gone; Eyal's are not. THIS is the shot.
-    if (await find(page, TOM)) throw new Error(
-      'Tom is still in the feed after blocking him for <nerdster>.\n'
-      + '  Either the publish did not land or the feed did not reload itself --\n'
-      + '  both are worth knowing before this is cut.');
-    mark('tom_gone');
-    await sleep(3000);
-
-    // --- <identity>: everyone who is a person -------------------------------
+    // <identity> first: this is the graph of who is a PERSON, which is what the
+    // affinity network is about to be built on top of.
     await setFeedContext(/^<identity>$/, 'identity_context');
     mark('identity_context');
-    await sleep(3400);
+    await sleep(3600);
 
-    // --- follow Eyal explicitly, FROM HERE ----------------------------------
-    //
-    // AND IT HAS TO BE FROM HERE. Eyal was in the feed at all because Tom
-    // vouched for him -- Me -> Tom -> Eyal -- so blocking Tom for <nerdster>
-    // took Eyal out of that follow network with him. In <nerdster> there is now
-    // nobody called Eyal to open. In <identity> he is exactly where he was,
-    // which is the whole reason this step comes after the context switch rather
-    // than before it.
-    await showMore();
-    await openDetails(EYAL, /^Eyal F$/, 'eyal');
+    // Follow Eyal, explicitly, for <nerdster>.
+    await tapNode(/^Eyal F$/, 'eyal_node');
+    await sleep(1800);
+    await assertVisible(page, /How I follow\/block/);
     await setContext('Follow', 'eyal', 'eyal');
     mark('eyal_followed');
-    await sleep(4200);
+    await sleep(3200);
     await tapNode(/^Close$/, 'close_eyal');
-    await sleep(2000);
+    await sleep(2200);
 
-    // --- the graph, in both contexts ---------------------------------------
-    // The path view's own top bar IS the follow-network picker: point of view,
-    // context, and degrees. Switching context redraws the graph, which is the
-    // whole demonstration -- two hops through Tom in <identity>, one hop direct
-    // in <nerdster>, and Tom in one graph and not the other.
-    mark('graph_identity');
-    await sleep(3800);
+    // And block Tom, for the same context and from the same graph.
+    await tapNode(/^Tom$/, 'tom_node');
+    await sleep(1800);
+    await assertVisible(page, /How I follow\/block/);
+    await setContext('Block', 'tom', 'tom');
+    mark('tom_blocked');
+    await sleep(3200);
+    await tapNode(/^Close$/, 'close_tom');
+    await sleep(2200);
+
+    // --- and now the same graph, in <nerdster> ------------------------------
+    // The redraw IS the argument: Tom gone from the follow network though he is
+    // still a person, and Eyal no longer reached through him but followed
+    // directly -- one hop. An affinity network built out of an identity one.
     await setFeedContext(/^<nerdster>$/, 'back_to_nerdster');
-    mark('back_to_nerdster');
-    await sleep(3800);
     mark('graph_nerdster');
-    await sleep(3600);
+    await sleep(4000);
+    if (await find(page, /^Tom$/)) console.error(
+      '  WARNING: Tom is still on the graph in <nerdster>. The take is recorded,\n'
+      + '  but the shot it is built around did not happen -- check the block.');
+    await sleep(1200);
 
     // --- and back to the feed ----------------------------------------------
     await tapNode(/^Back$/, 'back_to_feed');
-    await sleep(3400);
+    await sleep(3600);
+    await showMore();
+    await sleep(1200);
     await assertVisible(page, EYAL);
     if (await find(page, TOM)) console.error(
       '  WARNING: Tom is back in the feed at the end. The take is recorded, but\n'

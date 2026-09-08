@@ -15,44 +15,29 @@
       "text": "Tom and Eyal, both here."
     },
     {
-      "at": "tom_details",
-      "text": "Not the block button this time."
-    },
-    {
-      "at": "tom_context_added",
-      "text": "A follow context, and what I want to say in it."
-    },
-    {
-      "at": "tom_published",
-      "side": "top",
-      "text": "Signed by my DELEGATE key. No phone, no handoff."
-    },
-    {
-      "at": "tom_gone",
-      "text": "Tom's gone. Eyal stayed."
+      "at": "path_eyal",
+      "text": "How I know Eyal at all: through Tom."
     },
     {
       "at": "identity_context",
-      "text": "<identity> is everyone who is a person."
-    },
-    {
-      "at": "back_to_nerdster",
-      "text": "Back to the people I actually follow."
+      "text": "<identity>: the graph of who is a person."
     },
     {
       "at": "eyal_followed",
-      "text": "And Eyal, explicitly, in <nerdster>."
+      "text": "Follow Eyal for <nerdster>, explicitly."
+    },
+    {
+      "at": "tom_blocked",
+      "side": "top",
+      "text": "And Tom, for the same context, blocked. \"Talks too much.\""
     },
     {
       "at": "graph_nerdster",
-      "text": "Followed directly. One hop."
-    },
-    {
-      "at": "graph_identity",
-      "text": "Still human, two hops away, through Tom."
+      "text": "Tom's gone. Eyal is one hop, followed directly."
     },
     {
       "at": "final_feed",
+      "side": "top",
       "text": "Eyal's contributions. Not Tom's."
     }
   ],
@@ -78,21 +63,10 @@
       "y": 1300
     },
     {
-      "at": "identity_context",
-      "after": 3.7,
-      "hold": 5.5,
-      "text": "Everything is back.\n<identity> follows everyone who is a person -- which we probably don't want often. Existing doesn't mean I care what you say.",
-      "anchor": [
-        540,
-        640
-      ],
-      "y": 1350
-    },
-    {
-      "at": "graph_identity",
-      "after": 3.8,
-      "hold": 5.0,
-      "text": "Tom is still a person, and still how I know Eyal is one.\nI stopped listening to him. I didn't unknow him.",
+      "at": "graph_nerdster",
+      "after": 3.6,
+      "hold": 6.5,
+      "text": "Leveraging our identity network to form our affinity network.\nTom is still a person and still how I came to know Eyal. He is just not someone I follow. Eyal I follow directly -- one hop.",
       "anchor": [
         540,
         800

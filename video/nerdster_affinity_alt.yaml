@@ -100,27 +100,21 @@ sections:
          text: "The same feed. A different thing to do about somebody."}
       - {at: both_visible,
          text: "Tom and Eyal, both here."}
-      - {at: tom_details,
-         text: "Not the block button this time."}
-      - {at: tom_context_added,
-         text: "A follow context, and what I want to say in it."}
+      - {at: path_eyal,
+         text: "How I know Eyal at all: through Tom."}
+      - {at: identity_context,
+         text: "<identity>: the graph of who is a person."}
+      - {at: eyal_followed,
+         text: "Follow Eyal for <nerdster>, explicitly."}
+      # ON TOP, like the one at final_feed: Close is at the bottom right of the
+      # sheet (950,2043) and a bottom caption covers the tap on it.
+      - {at: tom_blocked, side: top,
+         text: "And Tom, for the same context, blocked. \"Talks too much.\""}
+      - {at: graph_nerdster,
+         text: "Tom's gone. Eyal is one hop, followed directly."}
       # ON TOP: Close sits at the bottom right of the sheet (950,2043) and a
       # bottom caption covers the tap on it.
-      - {at: tom_published, side: top,
-         text: "Signed by my DELEGATE key. No phone, no handoff."}
-      - {at: tom_gone,
-         text: "Tom's gone. Eyal stayed."}
-      - {at: identity_context,
-         text: "<identity> is everyone who is a person."}
-      - {at: back_to_nerdster,
-         text: "Back to the people I actually follow."}
-      - {at: eyal_followed,
-         text: "And Eyal, explicitly, in <nerdster>."}
-      - {at: graph_nerdster,
-         text: "Followed directly. One hop."}
-      - {at: graph_identity,
-         text: "Still human, two hops away, through Tom."}
-      - {at: final_feed,
+      - {at: final_feed, side: top,
          text: "Eyal's contributions. Not Tom's."}
     cards:
       - at: final_feed
@@ -131,8 +125,8 @@ sections:
           - "One identity network underneath, as many follow networks as you have interests."
           - "You may trust a guy to rent your room but not to fix your car or recommend music."
     beats:
-      # THE ARGUMENT, and the opposite of the one in the identity block. Boxed on
-      # the context row, which is the whole of what is being said.
+      # THE ARGUMENT, and the opposite of the identity block's. Boxed on the
+      # context row, which is the whole of what is being said.
       - at: tap_tom_set_block
         after: 1.0
         hold: 6.5
@@ -146,16 +140,11 @@ sections:
         text: "A Nerdster thing, not an identity-network thing.\nAnd still public: anyone can read that I blocked Tom for a general-interest context. That is what an open network is, not a hole in one."
         anchor: [540, 700]
         y: 1300
-      - at: identity_context
-        after: 3.7
-        hold: 5.5
-        text: "Everything is back.\n<identity> follows everyone who is a person -- which we probably don't want often. Existing doesn't mean I care what you say."
-        anchor: [540, 640]
-        y: 1350
-      - at: graph_identity
-        after: 3.8
-        hold: 5.0
-        text: "Tom is still a person, and still how I know Eyal is one.\nI stopped listening to him. I didn't unknow him."
+      # THE PAYOFF, and the line Yotam wanted said out loud.
+      - at: graph_nerdster
+        after: 3.6
+        hold: 6.5
+        text: "Leveraging our identity network to form our affinity network.\nTom is still a person and still how I came to know Eyal. He is just not someone I follow. Eyal I follow directly -- one hop."
         anchor: [540, 800]
         y: 1400
     flashes:
