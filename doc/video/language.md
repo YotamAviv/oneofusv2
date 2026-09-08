@@ -22,15 +22,9 @@ The compressed stuff. Card and bubble candidates.
 | --- | --- | --- | --- |
 | | "The Internet liberated lies and pornography. Crypto on the web can liberate trust." | I, T | Extended form on I: "Let's litter the Interweb with signed, authentic content instead." T's variant says "trust and reputation" |
 | | "A network of the people, by the people, for the people." | I | Site tagline |
-| | "Retis, ergo sum." (I network, therefore I am) | I | |
-| | "Our Own Open Decentralized Identity Network" | I, P | The formal name of the thing |
-| | "I am not a robot" | I | |
-| | "You reading this now are either one of us or one of them." | I | |
 | | "I am who your network says I am. Everywhere." | I, P | P pairs it: "You are who my network says you are. / I am who your network says I am." |
 | | "People not accounts" | I, T | |
-| | "People are real. Accounts are a construct." | I | |
 | | "The Nerdster is public as the moon." | P | |
-| | "We build the network. We let them use it." | I, P | |
 | | "The network must be ours." | P | |
 | | "Not ONE-OF-US.NET's, not mine. Ours, yours!" | I | |
 | | "Our own = everybody's, anybody's. Decentralized = yours." | T | |
@@ -38,12 +32,8 @@ The compressed stuff. Card and bubble candidates.
 | | "No dictators, but you dictate who grounds you to reality." | I | |
 | | "Bottom line: You gotta believe." | T | |
 | | "Get a crypto key, get recognized. Just in case.." | T | |
-| | "Break the algorithm monopoly of our metadata silos." | P | |
 | | "Litter the Internet with statements signed by our own keys." | P, I, T | Recurs in all three |
 | | "Digital signatures work. ChatGPT can't steal your Bitcoin." | I | The "why trust crypto" one-liner |
-| | "Not trusted because of where you found it, but because of who signed it." | T, P | |
-| | "That's it, by the way — that's how you build our / your network." | T | Post-scan beat |
-| | "Congratulations! I have a cryptographic public/private key pair." | P | Key-creation beat |
 
 ## B. Melodramatic expressions (the branded buzzwords)
 
@@ -54,9 +44,6 @@ T explicitly calls these out as a set: "Melodramatic expressions."
 | | **"Liberated Trust"** | I, P, T | Signed content is distributed and portable; verifiable no matter who serves it |
 | | **"First Amendment 2.0"** / "Freedom of Speech 2.0" | I, P, T | Public key distribution is an *ability* to speak authentically, not a requirement |
 | | **"Democracy 2.0"** | I, P, T | Decentralized organization; no center, no hierarchy |
-| | **"Our own, open, decentralized"** | all | The three-adjective spine |
-| | **"A different paradigm (like the Internet was)"** | P | |
-| | **"Identities first, decentralized organization to follow"** | T | Roadmap in five words |
 
 ## C. Core mechanism concepts
 
@@ -102,36 +89,8 @@ Concrete, non-technical, audience-facing.
 | | **The Airbnb host** — "If I enjoy my stay at your Airbnb, who's a good host: you or your Airbnb account?" | P | Same argument, tighter |
 | | **The stranger's car** — "Do you want to get in a stranger's car because he has 4.8 stars, or because your own network trusts him?" | P (deferred) | Marked DEFER in source; strong for video |
 | | **Incognito farmers' market** (Jones comic) — "If everyone went using incognito windows, no one would know who's who or who's even a person." | I | |
-| | **The feed slop** (Sheila comic) — "ad, promoted content, pseudonymous fakenews meme repost, a trillion likes - wow!" | I | |
-| | **Filter for humans** (punk comic) — "Compassion? Empathy? Seems human generated. There should literally be a way to filter those out, right?" | I | AI-era relevance; probably the most timely of the three comics |
-| | **Are you moved by anonymous likes?** | I | |
-| | **Hans Blix WMD quote** — "100 percent confidence about WMD existence, but zero certainty about where they are" | I | Deep cut; likely too oblique for video |
-| | **Silo lock-in** — Facebook likes, Airbnb ratings, LinkedIn connections "can only be trusted when served by them" | P, I | |
 | | **"X is never going to leverage Facebook's network, right?"** | P | |
 | | **They want this but can't do it** — "They can't do it because they don't get along" / "each seeks dominance" | I, T | Answers "why hasn't this happened already?" |
-
-## F. The "not another one of these" defense
-
-Pre-empts the reflex objection. Probably one line's worth in the video.
-
-| Rank | Line | Src |
-| --- | --- | --- |
-| | "This isn't 'yet another..' account type, incompatible messenger, or aspiring silo. It's the opposite — it connects the incompatible." | I |
-| | "We don't want to own another one of your accounts, we want to give you your identity." | I |
-| | "No, we don't need another incompatible network / social app." | P |
-| | "When you scan someone's phone, you're not building the Nerdster network." | P |
-| | "Not another network." | script |
-
-## G. The open-web analogy
-
-| Rank | Line | Src |
-| --- | --- | --- |
-| | "Consider Netscape 1.0 and the early WWW. It was open, decentralized, and heterogeneous, and it evolved specifically because of those qualities." | I |
-| | "One company's server serves another's data, viewed with browsers from yet another variety of companies, and none of them are locked in." | I |
-| | "Just like the Internet isn't Google's or Amazon's." | P |
-| | "Any service can use this now, right away." | I |
-| | "Other services are expected and invited to do a better job, to compete for our attention and trust." | I |
-| | "Let the Internet figure it out.. heterogeneous open competition" | T | Note: T flags `s/heterogeneous/open` — the word "heterogeneous" is being retired |
 
 ## H. Social / cultural aspirations
 
