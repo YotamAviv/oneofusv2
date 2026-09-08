@@ -1,0 +1,192 @@
+# FOLLOW CONTEXTS -- the other kind of blocking, and the one that is not a
+# category error. This file is the copy.
+#
+# THE BRIEF IS doc/video/affinity_vs_identity.md. Read that first: this section
+# only makes sense against the identity block it is the answer to.
+#
+# ITS OWN FILE, and not a second section in oneofus_block_alt.yaml, though it is
+# the same subject. Two reasons, both structural rather than editorial:
+# sections.py restores a section from the one BEFORE it in its file, so a second
+# section there would start from a world where Eyal is already blocked -- and
+# this one has to start from the same place the identity block does. And
+# `--assemble` joins a file's sections in order into one video, which would make
+# these two halves of one cut rather than two cuts.
+#
+#   python3 tools/video/sections.py --cues nerdster_affinity
+#   python3 tools/video/sections.py --restore crypto_teaser   # ALWAYS, first
+#   python3 tools/video/sections.py --build nerdster_affinity
+#   python3 tools/video/sections.py --assemble nerdster_affinity_alt
+#
+# THE SCHEMA IS IN video/README.md.
+
+title: "Follow contexts: who you listen to, and who you merely know"
+
+youtube:
+  title: "ONE-OF-US.NET — following, and not following"
+  description: >-
+    Blocking somebody's opinions is not the same act as denying they are a
+    person. One is a follow context on a service; the other is an identity
+    statement. This is the first one.
+
+sections:
+  # -------------------------------------------------------------------------
+  - id: nerdster_affinity
+    title: "Follow contexts"
+    preconditions:
+      # THE SAME WORLD THE IDENTITY BLOCK STARTS FROM, deliberately -- these are
+      # two answers to the same situation and they have to open on the same feed.
+      - >-
+        The world as intro.yaml's crypto_teaser left it. `sections.py --restore
+        crypto_teaser` puts it back, and it must be run before every take: this
+        one is in its own file with nothing before it, so --build restores
+        nothing by itself.
+      - >-
+        Tom and Eyal both reachable and both commenting on "Read Write Own:
+        Building the Next Era of the Internet", which the #tech tag brings up
+        directly. Confirmed on the device.
+      - >-
+        NO follow contexts outstanding for either of them. The editor opens on
+        "Not following in any context", and a leftover row changes what the take
+        films rather than failing.
+    side_effects:
+      - >-
+        PUBLISHES TWO FOLLOW STATEMENTS to nerdster.org, signed by the DELEGATE
+        key -- a `<nerdster>` block of Tom and a `<nerdster>` follow of Eyal.
+        Content statements, not identity ones. Nothing is said about whether
+        either of them is a person, which is the entire point of the section.
+      - >-
+        UNDOABLE. Append-only hash chains again, and `--restore crypto_teaser`
+        rewinds the nerdster.org stream along with the identity's.
+      - Nothing on the phone changes. The identity app is never opened.
+    teardown:
+      - >-
+        `sections.py --restore crypto_teaser`, which is also how the next take
+        starts. Do not leave the follows standing -- every take shot afterwards
+        would open on a feed with Tom missing from it.
+    build: shoot_nerdster_affinity.js
+    status: to_build
+    # NOT SHOT YET.
+    #
+    # WHAT IT SAYS. The identity block says "you are not a person I will stand
+    # behind" and is a lie when what you mean is "you bore me". This says the
+    # true thing instead, and it is a different act in a different place: no
+    # identity key, no phone, no handoff. The Nerdster can sign this one itself,
+    # because a follow is a CONTENT statement made by the delegate key the
+    # service already holds.
+    #
+    # And then the honest complication, which the copy does not dodge: it is
+    # still public. Anybody can read that this identity blocked Tom for a
+    # general-interest follow context. That is what an open network means, and
+    # it is the point of it rather than a leak in it.
+    #
+    # THE ROUTE, walked by hand on the device before this was written. Nothing
+    # here needed the Nerdster instrumented -- the one control with no semantics
+    # node is the "Add context" field, and tapping its device coordinates opens a
+    # suggestion list whose entries ARE reachable by name.
+    #
+    #   Tags -> tech, the book, Show more     both comments on screen at once
+    #   Tom@nerdster.org -> Tom               path view, then NodeDetail
+    #   the Add context field (540,1356)      device tap; no semantics node
+    #   <nerdster>                            a row appears: Block/Neutral/Follow
+    #   Block, then Publish                   the feed refreshes itself
+    #   the context control, top of screen    <nerdster> -> <identity> and back
+    #   Eyal, same editor                     <nerdster>, Follow, Publish
+    #   the graph view's own top bar          IS the follow-network picker
+    trim: feed
+    until: final_feed
+    until_after: 3.6
+    prompter:
+      - {at: feed, after: 0.4,
+         text: "The same feed. A different thing to do about somebody."}
+      - {at: both_visible,
+         text: "Tom and Eyal, both here."}
+      - {at: tom_details,
+         text: "Not the block button this time."}
+      - {at: tom_context_added,
+         text: "A follow context, and what I want to say in it."}
+      # ON TOP: Close sits at the bottom right of the sheet (950,2043) and a
+      # bottom caption covers the tap on it.
+      - {at: tom_published, side: top,
+         text: "Signed by my DELEGATE key. No phone, no handoff."}
+      - {at: tom_gone,
+         text: "Tom's gone. Eyal stayed."}
+      - {at: identity_context,
+         text: "<identity> is everyone who is a person."}
+      - {at: back_to_nerdster,
+         text: "Back to the people I actually follow."}
+      - {at: eyal_followed,
+         text: "And Eyal, explicitly, in <nerdster>."}
+      - {at: graph_nerdster,
+         text: "Followed directly. One hop."}
+      - {at: graph_identity,
+         text: "Still human, two hops away, through Tom."}
+      - {at: final_feed,
+         text: "Eyal's contributions. Not Tom's."}
+    cards:
+      - at: final_feed
+        after: 2.5
+        hold: 6.0
+        lines:
+          - "Know everyone. Follow who you like."
+          - "One identity network underneath, as many follow networks as you have interests."
+          - "You may trust a guy to rent your room but not to fix your car or recommend music."
+    beats:
+      # THE ARGUMENT, and the opposite of the one in the identity block. Boxed on
+      # the context row, which is the whole of what is being said.
+      - at: tap_tom_set_block
+        after: 1.0
+        hold: 6.5
+        text: "This one is NOT reprehensible.\nI am using the identity network to know WHO Tom is -- that part still works -- and saying separately that I am not interested in his opinions. Two different claims, and only one of them is about him being a person."
+        box: tomContextRowBox
+        pad: 26
+        y: 1250
+      - at: tom_published
+        after: 4.4
+        hold: 5.5
+        text: "A Nerdster thing, not an identity-network thing.\nAnd still public: anyone can read that I blocked Tom for a general-interest context. That is what an open network is, not a hole in one."
+        anchor: [540, 700]
+        y: 1300
+      - at: identity_context
+        after: 3.7
+        hold: 5.5
+        text: "Everything is back.\n<identity> follows everyone who is a person -- which we probably don't want often. Existing doesn't mean I care what you say."
+        anchor: [540, 640]
+        y: 1350
+      - at: graph_identity
+        after: 3.8
+        hold: 5.0
+        text: "Tom is still a person, and still how I know Eyal is one.\nI stopped listening to him. I didn't unknow him."
+        anchor: [540, 800]
+        y: 1400
+    flashes:
+      - {at: final_feed, after: 2.5, into: 0.6, hold: 0.9,
+         word: "affinity", colour: "#39FF14", x: 0.48, y: 0.12}
+      - {at: final_feed, after: 2.5, into: 2.2, hold: 0.9,
+         word: "per context", colour: "#FF7A18", x: 0.36, y: 0.82, size: 104}
+      - {at: final_feed, after: 2.5, into: 3.9, hold: 0.9,
+         word: "still ours", colour: "#FF3FA4", x: 0.66, y: 0.19, size: 104}
+    actions:
+      - Filter by the tag "tech"; expand the book's comments so Tom and Eyal are both on screen.
+      - Open Tom's NodeDetail through his name and the path view.
+      - >-
+        Add the <nerdster> follow context and set it to Block. "Talks too much"
+        is the reason and it is said in the NARRATION ONLY -- the follow editor
+        has no comment field and is not getting one.
+      - Publish. The feed refreshes itself and Tom's contributions go.
+      - >-
+        Switch the context control from <nerdster> to <identity>: everything
+        comes back, because that context follows everyone who is a person.
+      - Switch back, then follow Eyal explicitly in <nerdster>.
+      - >-
+        In the graph view, use the same top bar to show Eyal one hop away in
+        <nerdster> and two hops away through Tom in <identity> -- Tom is out of
+        the follow network and still in the identity network.
+      - Back to the feed: Eyal's contributions are there and Tom's are not.
+    todo:
+      - >-
+        Shoot it. Every selector is confirmed except the graph view's redraw
+        between contexts, which was read from the top bar rather than watched.
+      - >-
+        WATCH THE LENGTH. This is the longest take in the repo by some way and
+        screenrecord is capped at 180s; if it runs over, the split is after the
+        first publish.

@@ -1,0 +1,149 @@
+{
+  "_comment": [
+    "Generated from video/ -- section 'nerdster_affinity'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/video/sections.py --cues nerdster_affinity"
+  ],
+  "prompter": [
+    {
+      "at": "feed",
+      "after": 0.4,
+      "text": "The same feed. A different thing to do about somebody."
+    },
+    {
+      "at": "both_visible",
+      "text": "Tom and Eyal, both here."
+    },
+    {
+      "at": "tom_details",
+      "text": "Not the block button this time."
+    },
+    {
+      "at": "tom_context_added",
+      "text": "A follow context, and what I want to say in it."
+    },
+    {
+      "at": "tom_published",
+      "side": "top",
+      "text": "Signed by my DELEGATE key. No phone, no handoff."
+    },
+    {
+      "at": "tom_gone",
+      "text": "Tom's gone. Eyal stayed."
+    },
+    {
+      "at": "identity_context",
+      "text": "<identity> is everyone who is a person."
+    },
+    {
+      "at": "back_to_nerdster",
+      "text": "Back to the people I actually follow."
+    },
+    {
+      "at": "eyal_followed",
+      "text": "And Eyal, explicitly, in <nerdster>."
+    },
+    {
+      "at": "graph_nerdster",
+      "text": "Followed directly. One hop."
+    },
+    {
+      "at": "graph_identity",
+      "text": "Still human, two hops away, through Tom."
+    },
+    {
+      "at": "final_feed",
+      "text": "Eyal's contributions. Not Tom's."
+    }
+  ],
+  "beats": [
+    {
+      "at": "tap_tom_set_block",
+      "after": 1.0,
+      "hold": 6.5,
+      "text": "This one is NOT reprehensible.\nI am using the identity network to know WHO Tom is -- that part still works -- and saying separately that I am not interested in his opinions. Two different claims, and only one of them is about him being a person.",
+      "box": "tomContextRowBox",
+      "pad": 26,
+      "y": 1250
+    },
+    {
+      "at": "tom_published",
+      "after": 4.4,
+      "hold": 5.5,
+      "text": "A Nerdster thing, not an identity-network thing.\nAnd still public: anyone can read that I blocked Tom for a general-interest context. That is what an open network is, not a hole in one.",
+      "anchor": [
+        540,
+        700
+      ],
+      "y": 1300
+    },
+    {
+      "at": "identity_context",
+      "after": 3.7,
+      "hold": 5.5,
+      "text": "Everything is back.\n<identity> follows everyone who is a person -- which we probably don't want often. Existing doesn't mean I care what you say.",
+      "anchor": [
+        540,
+        640
+      ],
+      "y": 1350
+    },
+    {
+      "at": "graph_identity",
+      "after": 3.8,
+      "hold": 5.0,
+      "text": "Tom is still a person, and still how I know Eyal is one.\nI stopped listening to him. I didn't unknow him.",
+      "anchor": [
+        540,
+        800
+      ],
+      "y": 1400
+    }
+  ],
+  "cards": [
+    {
+      "at": "final_feed",
+      "after": 2.5,
+      "hold": 6.0,
+      "lines": [
+        "Know everyone. Follow who you like.",
+        "One identity network underneath, as many follow networks as you have interests.",
+        "You may trust a guy to rent your room but not to fix your car or recommend music."
+      ]
+    }
+  ],
+  "flashes": [
+    {
+      "at": "final_feed",
+      "after": 2.5,
+      "into": 0.6,
+      "hold": 0.9,
+      "word": "affinity",
+      "colour": "#39FF14",
+      "x": 0.48,
+      "y": 0.12
+    },
+    {
+      "at": "final_feed",
+      "after": 2.5,
+      "into": 2.2,
+      "hold": 0.9,
+      "word": "per context",
+      "colour": "#FF7A18",
+      "x": 0.36,
+      "y": 0.82,
+      "size": 104
+    },
+    {
+      "at": "final_feed",
+      "after": 2.5,
+      "into": 3.9,
+      "hold": 0.9,
+      "word": "still ours",
+      "colour": "#FF3FA4",
+      "x": 0.66,
+      "y": 0.19,
+      "size": 104
+    }
+  ]
+}

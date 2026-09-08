@@ -97,9 +97,11 @@ sections:
     #     which decodes the key and runs the ordinary scan handler with
     #     TrustVerb.block -- the same screen a scanned key gets.
     trim: feed
-    # Ends on the refreshed feed, not on whatever the browser did next.
-    until: refreshed
-    until_after: 4.5
+    # Ends on the coda, not on the refresh. `until_after` clears the closing
+    # card's anchor (0.7) so the splice counts as part of the section; end_seconds
+    # then counts the card's own hold, so the cut lands on its last frame.
+    until: eyal_from_tom
+    until_after: 2.8
     prompter:
       - {at: feed, after: 0.4,
          text: "Somebody in my network I no longer want in it."}
@@ -107,18 +109,36 @@ sections:
          text: "Eyal rated this book. His comment is here because my network reaches him."}
       - {at: path_shown,
          text: "How I know him at all: through Tom, who vouched for him."}
-      - {at: node_details,
+      # ON TOP: the Block control is at the bottom of the sheet (y 2043) and a
+      # bottom caption covers the tap on it, so the control reacts with nothing
+      # visibly pressed.
+      - {at: node_details, side: top,
          text: "His details, and every way I could change my mind about him."}
       - {at: harsh_dialog,
-         text: "The Nerdster asks first -- and it can't do this itself."}
+         text: "The Nerdster asks first."}
       - {at: identity_app,
-         text: "It handed the intention to the phone, which is where the identity key lives."}
+         text: "It handed the intention to the phone, which holds the identity key."}
+      - {at: typed_reason,
+         text: "\"poor hygiene.\" Which is not a claim that he isn't a person."}
+      # SHORT, all four of these. A beat anchored on the same mark ends the line
+      # under it, so a sentence that needs six seconds to read gets whatever the
+      # beat leaves -- annotate warns, and the first cut of this section had four
+      # lines up for under a second each. Say it in one breath and let the beat
+      # carry the elaboration.
       - {at: block_published,
-         text: "Signed by my identity key. Not by the Nerdster, and not by a delegate."}
+         text: "Signed by my identity key, on the phone."}
       - {at: pov_before,
-         text: "He's still here -- his point of view, and his comment. Nothing has been refreshed."}
+         text: "He is still here. Nothing has been refreshed."}
       - {at: refreshed,
-         text: "Now he isn't. Nothing was deleted -- I withdrew the path that reached him."}
+         text: "Now he isn't. Nothing was deleted."}
+      # THE HEADER READS "Yotam" HERE, not "Tom". Monikers are per point of view:
+      # "Tom" is what the demo identity calls him, and from his own point of view
+      # he uses his own name for himself. The copy says "Tom" because that is who
+      # he is to us, which is the whole idea.
+      - {at: as_tom,
+         text: "And from Tom's point of view? He names himself, so he reads as Yotam here."}
+      - {at: eyal_from_tom,
+         text: "Eyal is exactly where he was."}
     cards:
       # BETWEEN THE TWO HALVES, exactly as in `delegates`, and for the same
       # reason: what follows only means anything because the browser has been
@@ -132,13 +152,13 @@ sections:
       # Closes the section, after the beat on the same anchor. ANCHORED IN TAKE
       # TIME: a splice's hold is inserted, so this is already past a beat at 0.6
       # however long that beat holds. Same trap as the other two closing cards.
-      - at: refreshed
-        after: 0.7
-        hold: 4.5
+      - at: eyal_from_tom
+        after: 2.7
+        hold: 5.0
         lines:
           - "A network is who you keep"
           - "Blocking is not deleting his content. It is withdrawing my claim that he's one of us."
-          - "Everything that reached me only through him goes with it."
+          - "Everything that reached me only through him goes with it -- and nothing at all leaves anybody else's."
     beats:
       # MEASURED BY THE TAKE, not typed here. Every box below is a name the shoot
       # script records from the semantics tree in device pixels, the way
@@ -152,19 +172,28 @@ sections:
         pad: 26
         y: 1300
       - at: harsh_dialog
-        after: 0.8
+        after: 2.6
         hold: 4.5
-        text: "\"You'd be removing this identity from existing.\"\nThe web app cannot sign this. It has no identity key."
+        text: "\"You'd be removing this identity from existing.\"\nThe Nerdster cannot sign this and never could: it has no identity key, so it can express neither a vouch nor a block. All it can do is ask the app that does."
         box: harshDialogBox
         pad: 24
         y: 1200
+      # THE ARGUMENT OF THE WHOLE SECTION, and it is against what is on screen.
+      # No box: the identity app has no reachable semantics tree, and the subject
+      # is the sentence rather than a control.
+      - at: typed_reason
+        after: 5.5
+        hold: 6.0
+        text: "This is reprehensible.\nThe identity network is for knowing who is HUMAN -- not who is nice, and not who we like. We do not block people here for disagreeing with us. That is what affinity networks are for."
+        anchor: [540, 700]
+        y: 1300
       # NO BOX. This beat is on the identity app, which is Flutter NATIVE -- its
       # semantics tree is not reachable over CDP the way the web apps' is, so a
       # take cannot measure anything here, and a hand-typed rectangle on a dialog
       # that has just closed would be pointing at nothing anyway. The whole frame
       # is the subject: the statement was signed over there, not in the browser.
       - at: block_published
-        after: 0.8
+        after: 3.7
         hold: 4.0
         text: "One block statement, signed on the phone.\nThe Nerdster was never asked to be trusted with this."
         # No spotlight, so the whole frame stays sharp. The anchor is only where
@@ -174,7 +203,7 @@ sections:
       # BEFORE the refresh: he is still in the point-of-view list, because the
       # browser is showing what it loaded before the block existed.
       - at: pov_before
-        after: 0.5
+        after: 3.6
         hold: 3.5
         text: "Eyal, still offered as a point of view.\nThis page has not been refreshed."
         box: povListBox
@@ -190,16 +219,33 @@ sections:
       # NO BOX EITHER, and for a better reason: what this beat is about is not on
       # the screen any more. Boxing the empty space where Eyal used to be is a
       # highlight around nothing; the frame minus him IS the shot.
+      # THE POINT OF THE CODA, and it needs its own beat because it is the one
+      # thing here a viewer could otherwise read as censorship. Boxed on Eyal's
+      # comment as Tom sees it -- the same comment, in the same place, untouched.
+      - at: eyal_from_tom
+        after: 2.6
+        hold: 4.5
+        text: "Tom never vouched for me.\nSo my block says nothing to his network, and Eyal is still in it."
+        # The point-of-view LIST, not Eyal's comment. The #tech tag came from the
+        # demo's own comment, so Tom's feed does not contain that book under the
+        # filter at all -- and unfiltered his feed is long and ordered by recency,
+        # so reaching it means scrolling, which works once. This control is always
+        # in the same place and says the same thing.
+        box: eyalFromTomBox
+        pad: 26
+        y: 1250
       - at: refreshed
-        after: 0.6
+        after: 3.3
         hold: 5.0
         text: "Gone from the list, and his comment with it.\nHe still has his key and his statements; they just no longer reach me."
         anchor: [540, 640]
         y: 1400
     flashes:
-      - {at: refreshed, after: 0.7, into: 0.6, hold: 0.9,
+      - {at: eyal_from_tom, after: 2.7, into: 0.6, hold: 0.9,
          word: "consequence", colour: "#FF3FA4", x: 0.50, y: 0.12}
-      - {at: refreshed, after: 0.7, into: 2.0, hold: 0.9,
+      - {at: eyal_from_tom, after: 2.7, into: 2.2, hold: 0.9,
+         word: "yours alone", colour: "#FFC933", x: 0.62, y: 0.20, size: 104}
+      - {at: eyal_from_tom, after: 2.7, into: 3.8, hold: 0.9,
          word: "reversible", colour: "#39FF14", x: 0.34, y: 0.82, size: 112}
     actions:
       # THE ROUTE: one filter, not two. The demo identity has itself commented on
@@ -230,6 +276,10 @@ sections:
         the section is about not having happened yet.
       - Show his comment on the book, still there.
       - Refresh, and show both gone.
+      - >-
+        Switch the point of view to Tom -- the reload no longer matters, this is
+        the end -- and open the list again. Eyal is still in it. Tom never
+        vouched for the demo identity, so nothing it signs reaches his network.
     todo:
       - >-
         SHOW MORE DOES NOT TAKE A SEMANTICS TAP. probe.js --tap finds the node and

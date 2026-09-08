@@ -69,6 +69,9 @@ const SERIAL = process.env.AVD || 'emulator-5554';
 const OUT = buildDir('oneofus_block');
 const d = device();
 const TARGET = /Eyal F/;
+// Typed into the block statement's REASON field. Deliberately not about whether
+// he is a person -- see the narration, and doc/video/affinity_vs_identity.md.
+const REASON = 'poor hygiene';
 
 // Semantics coordinates are VIEWPORT coordinates and the viewport starts below
 // Chrome's URL bar. Same calibration as shoot_delegates.js and
@@ -128,9 +131,10 @@ const boxOf = node => {
     await assertVisible(page, TARGET);
   };
 
-  // Is a name in the point-of-view list? Opens the menu, reads it, closes it.
-  // WITHOUT SWITCHING: choosing a point of view reloads the feed, which is the
-  // one thing this take must not do before the refresh.
+  // Is a name in the point-of-view list? Opens the menu and reads it, and LEAVES
+  // IT OPEN -- the last use of it goes on to pick Tom out of the same menu.
+  // Reading it does not switch: choosing a point of view reloads the feed, which
+  // is the one thing this take must not do before the refresh.
   const povHas = async () => {
     await tapNode(/^Point of View/, 'pov');
     await sleep(1200);
@@ -262,11 +266,28 @@ const boxOf = node => {
     mark('identity_app');
     await sleep(2600);
 
-    // "New Block", verb locked. The REASON field is RECOMMENDED, not required,
-    // so BLOCK KEY is live straight away and the take leaves the reason empty --
-    // this is a real statement about a real person and there is nothing to say
-    // in it that is true. Measured, not typed: a docked keyboard moves the dialog
-    // and a fixed coordinate then lands on a key.
+    // THE REASON IS THE POINT OF THE SECTION. "poor hygiene" is not a claim that
+    // Eyal is not a person -- it is a claim that he is unpleasant, which is the
+    // wrong thing to say with this key, and the narration says so. Blank, the
+    // take showed the mechanism and made no argument.
+    //
+    // APP-BLIND: the field is measured off the dialog (x 178-902, y 938-1215 on
+    // a 1080x2220 screen), like every other coordinate on this half.
+    d.E('shell', 'input', 'tap', '540', '1076');
+    marks.taps.push({ t: at(), x: 540, y: 1076, what: 'reason_field' });
+    mark('tap_reason');
+    // WAIT FOR THE KEYBOARD, do not sleep at it. `input text` goes to whatever
+    // holds the input connection, and if the tap has not focused the field the
+    // characters go nowhere at all, silently -- three vouch takes went that way.
+    await d.waitForKeyboard();
+    await sleep(400);
+    await d.typeSlow(REASON, 200);
+    mark('typed_reason');
+    // A HOLD, not settling time. The line anchored here is the argument of the
+    // section and the beat that elaborates it comes after; both need the reason
+    // to still be on screen. At 1.8s the line was up for six tenths of a second.
+    await sleep(6000);
+
     const shot = path.join(OUT, 'block_dialog.png');
     execFileSync('bash', ['-c', `adb -s ${SERIAL} exec-out screencap -p > ${shot}`]);
     const pub = findFilledButton(shot, { what: 'BLOCK KEY button', hue: 'red' });
@@ -341,10 +362,51 @@ const boxOf = node => {
       '  WARNING: Eyal is STILL in the point-of-view list after the refresh.\n'
       + '  The take is recorded, but its payoff is not on it -- check whether the\n'
       + '  block actually published before cutting this.');
-    const povNode = await find(page, /^Point of View/);
-    if (povNode) marks.povGoneBox = boxOf(povNode);
+    mark('eyal_gone');
+    await sleep(2600);
+
+    // --- and now from TOM's point of view ----------------------------------
+    //
+    // THE OTHER HALF OF WHAT A BLOCK IS. Everything so far could be read as
+    // censorship -- a man wrote something and now nobody can see it. Switching
+    // the point of view says otherwise: Tom has not vouched for this identity,
+    // so nothing it signs reaches him, and from where he stands Eyal is exactly
+    // where he was. The block removed Eyal from MY network and from nobody
+    // else's.
+    //
+    // The menu is already open, from povHas above. Choosing a point of view
+    // RELOADS the feed, which is why nothing before the refresh was allowed to
+    // do it; here it is the last thing the take does, so it costs nothing.
+    //
+    // AND THE HEADER THEN READS "Yotam", not "Tom". Monikers are per point of
+    // view: "Tom" is what THIS identity calls him, and from his own point of
+    // view he uses his own name for himself. Nothing is wrong when that changes
+    // on screen.
+    await tapNode(/^Tom$/, 'pov_tom');
+    await sleep(3000);
+    await waitFor(page, /Follow network: \d+ degree/, {}, 60000);
+    await sleep(2200);
+    mark('as_tom');
+    await sleep(1600);
+
+    // THE LIST, not his comment on the book. Two things make the book the wrong
+    // proof here. The #tech tag came from the DEMO's own comment, so with that
+    // filter still on Tom's feed does not contain the book at all; and cleared,
+    // his feed is long and ordered by recency, so reaching the book means
+    // scrolling for it -- which is exactly the kind of thing that works once and
+    // then does not. The point-of-view list is one control, always in the same
+    // place, and it says the same thing: Eyal is still in Tom's network.
+    const fromTom = await povHas();
+    if (!fromTom) throw new Error(
+      'Eyal is missing from the point-of-view list from Tom\'s point of view too.\n'
+      + '  That would mean the block reached further than this identity, which is\n'
+      + '  the opposite of what this coda is here to show -- do not cut it until\n'
+      + '  you know why.');
+    marks.eyalFromTomBox = boxOf(fromTom);
+    mark('eyal_from_tom');
+    await sleep(3800);
     await povClose();
-    await sleep(2400);
+    await sleep(1200);
     mark('done');
   } finally {
     await pullTake();

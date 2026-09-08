@@ -20,27 +20,40 @@
     },
     {
       "at": "node_details",
+      "side": "top",
       "text": "His details, and every way I could change my mind about him."
     },
     {
       "at": "harsh_dialog",
-      "text": "The Nerdster asks first -- and it can't do this itself."
+      "text": "The Nerdster asks first."
     },
     {
       "at": "identity_app",
-      "text": "It handed the intention to the phone, which is where the identity key lives."
+      "text": "It handed the intention to the phone, which holds the identity key."
+    },
+    {
+      "at": "typed_reason",
+      "text": "\"poor hygiene.\" Which is not a claim that he isn't a person."
     },
     {
       "at": "block_published",
-      "text": "Signed by my identity key. Not by the Nerdster, and not by a delegate."
+      "text": "Signed by my identity key, on the phone."
     },
     {
       "at": "pov_before",
-      "text": "He's still here -- his point of view, and his comment. Nothing has been refreshed."
+      "text": "He is still here. Nothing has been refreshed."
     },
     {
       "at": "refreshed",
-      "text": "Now he isn't. Nothing was deleted -- I withdrew the path that reached him."
+      "text": "Now he isn't. Nothing was deleted."
+    },
+    {
+      "at": "as_tom",
+      "text": "And from Tom's point of view? He names himself, so he reads as Yotam here."
+    },
+    {
+      "at": "eyal_from_tom",
+      "text": "Eyal is exactly where he was."
     }
   ],
   "beats": [
@@ -55,16 +68,27 @@
     },
     {
       "at": "harsh_dialog",
-      "after": 0.8,
+      "after": 2.6,
       "hold": 4.5,
-      "text": "\"You'd be removing this identity from existing.\"\nThe web app cannot sign this. It has no identity key.",
+      "text": "\"You'd be removing this identity from existing.\"\nThe Nerdster cannot sign this and never could: it has no identity key, so it can express neither a vouch nor a block. All it can do is ask the app that does.",
       "box": "harshDialogBox",
       "pad": 24,
       "y": 1200
     },
     {
+      "at": "typed_reason",
+      "after": 5.5,
+      "hold": 6.0,
+      "text": "This is reprehensible.\nThe identity network is for knowing who is HUMAN -- not who is nice, and not who we like. We do not block people here for disagreeing with us. That is what affinity networks are for.",
+      "anchor": [
+        540,
+        700
+      ],
+      "y": 1300
+    },
+    {
       "at": "block_published",
-      "after": 0.8,
+      "after": 3.7,
       "hold": 4.0,
       "text": "One block statement, signed on the phone.\nThe Nerdster was never asked to be trusted with this.",
       "anchor": [
@@ -75,7 +99,7 @@
     },
     {
       "at": "pov_before",
-      "after": 0.5,
+      "after": 3.6,
       "hold": 3.5,
       "text": "Eyal, still offered as a point of view.\nThis page has not been refreshed.",
       "box": "povListBox",
@@ -92,8 +116,17 @@
       "y": 1300
     },
     {
+      "at": "eyal_from_tom",
+      "after": 2.6,
+      "hold": 4.5,
+      "text": "Tom never vouched for me.\nSo my block says nothing to his network, and Eyal is still in it.",
+      "box": "eyalFromTomBox",
+      "pad": 26,
+      "y": 1250
+    },
+    {
       "at": "refreshed",
-      "after": 0.6,
+      "after": 3.3,
       "hold": 5.0,
       "text": "Gone from the list, and his comment with it.\nHe still has his key and his statements; they just no longer reach me.",
       "anchor": [
@@ -114,20 +147,20 @@
       ]
     },
     {
-      "at": "refreshed",
-      "after": 0.7,
-      "hold": 4.5,
+      "at": "eyal_from_tom",
+      "after": 2.7,
+      "hold": 5.0,
       "lines": [
         "A network is who you keep",
         "Blocking is not deleting his content. It is withdrawing my claim that he's one of us.",
-        "Everything that reached me only through him goes with it."
+        "Everything that reached me only through him goes with it -- and nothing at all leaves anybody else's."
       ]
     }
   ],
   "flashes": [
     {
-      "at": "refreshed",
-      "after": 0.7,
+      "at": "eyal_from_tom",
+      "after": 2.7,
       "into": 0.6,
       "hold": 0.9,
       "word": "consequence",
@@ -136,9 +169,20 @@
       "y": 0.12
     },
     {
-      "at": "refreshed",
-      "after": 0.7,
-      "into": 2.0,
+      "at": "eyal_from_tom",
+      "after": 2.7,
+      "into": 2.2,
+      "hold": 0.9,
+      "word": "yours alone",
+      "colour": "#FFC933",
+      "x": 0.62,
+      "y": 0.2,
+      "size": 104
+    },
+    {
+      "at": "eyal_from_tom",
+      "after": 2.7,
+      "into": 3.8,
       "hold": 0.9,
       "word": "reversible",
       "colour": "#39FF14",
