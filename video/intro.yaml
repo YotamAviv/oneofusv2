@@ -628,7 +628,10 @@ sections:
         after: 4.6
         hold: 4.0
         lines:
-          - "Get on the Same Page"
+          # TODO(aviv):
+          - "Get on the same page, our page"
+          # - "When you like on Facebook (tweet on Twitter, rate on Airbnb, etc...) you're using an account you created with them, available to them, owned by them"
+          # - "Why use your identity with us"
           - "Like a NYT comment, the same person's on Twitter, too."
           - "Good Marketface transaction, same person's on Ebay, maybe likes movies, too."
           - "Crypto signed content by our delegate keys allows tech to play nice together and for new emerging tech to already have a network."
