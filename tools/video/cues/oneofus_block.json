@@ -1,0 +1,150 @@
+{
+  "_comment": [
+    "Generated from video/ -- section 'oneofus_block'.",
+    "Edit the copy THERE, not here, and run:",
+    "  python3 tools/video/sections.py --cues oneofus_block"
+  ],
+  "prompter": [
+    {
+      "at": "feed",
+      "after": 0.4,
+      "text": "Somebody in my network I no longer want in it."
+    },
+    {
+      "at": "eyal_book",
+      "text": "Eyal rated this book. His comment is here because my network reaches him."
+    },
+    {
+      "at": "path_shown",
+      "text": "How I know him at all: through Tom, who vouched for him."
+    },
+    {
+      "at": "node_details",
+      "text": "His details, and every way I could change my mind about him."
+    },
+    {
+      "at": "harsh_dialog",
+      "text": "The Nerdster asks first -- and it can't do this itself."
+    },
+    {
+      "at": "identity_app",
+      "text": "It handed the intention to the phone, which is where the identity key lives."
+    },
+    {
+      "at": "block_published",
+      "text": "Signed by my identity key. Not by the Nerdster, and not by a delegate."
+    },
+    {
+      "at": "pov_before",
+      "text": "He's still here -- his point of view, and his comment. Nothing has been refreshed."
+    },
+    {
+      "at": "refreshed",
+      "text": "Now he isn't. Nothing was deleted -- I withdrew the path that reached him."
+    }
+  ],
+  "beats": [
+    {
+      "at": "eyal_comment",
+      "after": 0.6,
+      "hold": 3.5,
+      "text": "Eyal's comment, signed by his delegate key.\nIt is in my feed because my network vouches for him.",
+      "box": "eyalCommentBox",
+      "pad": 26,
+      "y": 1300
+    },
+    {
+      "at": "harsh_dialog",
+      "after": 0.8,
+      "hold": 4.5,
+      "text": "\"You'd be removing this identity from existing.\"\nThe web app cannot sign this. It has no identity key.",
+      "box": "harshDialogBox",
+      "pad": 24,
+      "y": 1200
+    },
+    {
+      "at": "block_published",
+      "after": 0.8,
+      "hold": 4.0,
+      "text": "One block statement, signed on the phone.\nThe Nerdster was never asked to be trusted with this.",
+      "anchor": [
+        540,
+        700
+      ],
+      "y": 1250
+    },
+    {
+      "at": "pov_before",
+      "after": 0.5,
+      "hold": 3.5,
+      "text": "Eyal, still offered as a point of view.\nThis page has not been refreshed.",
+      "box": "povListBox",
+      "pad": 22,
+      "y": 1350
+    },
+    {
+      "at": "before_refresh",
+      "after": 0.3,
+      "hold": 2.4,
+      "text": "Refresh",
+      "box": "refreshBox",
+      "pad": 22,
+      "y": 1300
+    },
+    {
+      "at": "refreshed",
+      "after": 0.6,
+      "hold": 5.0,
+      "text": "Gone from the list, and his comment with it.\nHe still has his key and his statements; they just no longer reach me.",
+      "anchor": [
+        540,
+        640
+      ],
+      "y": 1400
+    }
+  ],
+  "cards": [
+    {
+      "at": "back_to_browser",
+      "after": 0.3,
+      "hold": 3.4,
+      "lines": [
+        "Now let's return to the Nerdster",
+        "which is still up and hasn't been refreshed."
+      ]
+    },
+    {
+      "at": "refreshed",
+      "after": 0.7,
+      "hold": 4.5,
+      "lines": [
+        "A network is who you keep",
+        "Blocking is not deleting his content. It is withdrawing my claim that he's one of us.",
+        "Everything that reached me only through him goes with it."
+      ]
+    }
+  ],
+  "flashes": [
+    {
+      "at": "refreshed",
+      "after": 0.7,
+      "into": 0.6,
+      "hold": 0.9,
+      "word": "consequence",
+      "colour": "#FF3FA4",
+      "x": 0.5,
+      "y": 0.12
+    },
+    {
+      "at": "refreshed",
+      "after": 0.7,
+      "into": 2.0,
+      "hold": 0.9,
+      "word": "reversible",
+      "colour": "#39FF14",
+      "x": 0.34,
+      "y": 0.82,
+      "size": 112
+    }
+  ]
+}

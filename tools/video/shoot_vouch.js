@@ -44,6 +44,7 @@ const { device, sleep } = require('./lib/device');
 
 const APP = 'net.oneofus.app';
 const { buildDir } = require('./lib/build_dir');
+const { findTealButton } = require('./lib/filled_button');
 const OUT = buildDir('vouch');
 const d = device();
 
@@ -99,77 +100,16 @@ function dialogStillUp() {
   return raw[0] < 180;
 }
 
-/// Where PUBLISH actually is, and proof that it is enabled.
-///
-/// NOT a fixed coordinate. A docked keyboard pushes the dialog up, and the
-/// coordinate that is right without one lands on a key -- which is how a take
-/// once typed `j` into the moniker instead of publishing. Gboard on this
-/// emulator docks about as often as it floats, so neither position can be
-/// assumed.
-///
-/// The button is the only large filled TEAL BLOB on screen at this moment:
-/// enabled it is solid teal, disabled it is grey, and CANCEL is thin text. So
-/// finding it also proves the moniker landed -- PUBLISH stays disabled until it
-/// does.
-///
-/// THE LARGEST CONNECTED REGION, not the bounding box of every teal pixel. A
-/// FOCUSED TEXT FIELD draws a teal outline, and there is always one focused here
-/// -- the moniker was just typed into. Boxing all the teal together spanned the
-/// outline and the button, and the centre of that box is the gap between them:
-/// the tap landed in the comment field, the dialog stayed up, and it presented
-/// as "PUBLISH did not close the dialog", which reads as a missed publish rather
-/// than a measurement that was never on the button. The outline survives the
-/// pixel-count guard too -- outline plus button is well over the threshold.
+/// Where PUBLISH actually is, and proof that it is enabled -- see
+/// lib/filled_button.js, which shoot_oneofus_block.js uses for the same button on
+/// the block statement dialog.
 function findPublish() {
   const shot = grab();
-  const raw = execFileSync('ffmpeg', ['-v', 'error', '-i', shot,
-    '-vf', 'crop=1080:1400:0:820', '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'],
-    { maxBuffer: 1 << 26 });
-  fs.rmSync(shot, { force: true });
-  const W = 1080, H = 1400, Y0 = 820;
-  const teal = new Uint8Array(W * H);
-  let n = 0;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const p = y * W + x, i = p * 3;
-      const r = raw[i], g = raw[i + 1], b = raw[i + 2];
-      if (g - r > 55 && g > 90 && Math.abs(g - b) < 45) { teal[p] = 1; n++; }
-    }
+  try {
+    return findTealButton(shot, { what: 'PUBLISH button' });
+  } finally {
+    fs.rmSync(shot, { force: true });
   }
-  // Flood fill each region in turn and keep the biggest. An explicit stack, not
-  // recursion: a filled button is tens of thousands of pixels deep.
-  let best = null;
-  const seen = new Uint8Array(W * H);
-  const stack = new Int32Array(W * H);
-  for (let p0 = 0; p0 < W * H; p0++) {
-    if (!teal[p0] || seen[p0]) continue;
-    let top = 0, area = 0;
-    let minX = W, minY = H, maxX = -1, maxY = -1;
-    stack[top++] = p0; seen[p0] = 1;
-    while (top) {
-      const p = stack[--top], x = p % W, y = (p - x) / W;
-      area++;
-      if (x < minX) minX = x; if (x > maxX) maxX = x;
-      if (y < minY) minY = y; if (y > maxY) maxY = y;
-      if (x > 0 && teal[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; stack[top++] = p - 1; }
-      if (x < W - 1 && teal[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; stack[top++] = p + 1; }
-      if (y > 0 && teal[p - W] && !seen[p - W]) { seen[p - W] = 1; stack[top++] = p - W; }
-      if (y < H - 1 && teal[p + W] && !seen[p + W]) { seen[p + W] = 1; stack[top++] = p + W; }
-    }
-    if (!best || area > best.area) best = { area, minX, minY, maxX, maxY };
-  }
-  // A filled button is thousands of pixels; teal TEXT and a field outline are
-  // hundreds each, and now they are measured one at a time rather than together.
-  if (!best || best.area < 2500) {
-    throw new Error('no enabled PUBLISH button on screen '
-      + `(largest teal region ${best ? best.area : 0} px, ${n} teal in all). `
-      + 'It stays disabled until the moniker lands, so the typing probably did '
-      + 'not reach the field.');
-  }
-  return {
-    x: Math.round((best.minX + best.maxX) / 2),
-    y: Math.round(Y0 + (best.minY + best.maxY) / 2),
-  };
 }
 
 (async () => {

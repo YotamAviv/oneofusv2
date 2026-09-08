@@ -121,7 +121,19 @@ function fromBox(b, marks) {
   };
 }
 
-const beats = resolve(cues.beats, 'beat').map(b => fromBox(b, marks));
+const beats = resolve(cues.beats, 'beat').map(b => fromBox(b, marks)).map(b => {
+  // A BEAT HAS TO POINT SOMEWHERE. `box` supplies an anchor, and a beat with no
+  // box has to name one itself -- a boxless, anchorless beat used to reach
+  // bubbles.js and die there on `const [ax, ay] = cue.anchor` as "undefined is
+  // not iterable", which names neither the cue nor the missing key.
+  if (!b.anchor) throw new Error(
+    `beat at ${b.at || b.t} has no \`anchor\` and no \`box\` to get one from.\n` +
+    '  A beat points at something: give it `box: <a box the take measured>`, or\n' +
+    '  an explicit `anchor: [x, y]`. With no `spotlight` the whole frame stays\n' +
+    '  sharp, which is what to use when the point is the frame rather than a\n' +
+    '  thing in it.');
+  return b;
+});
 const cards = resolve(cues.cards, 'card');
 // A card and a beat are the same act: stop the take at a mark, hold a still for
 // a moment, carry on. They differ only in what the still is -- a dimmed frame

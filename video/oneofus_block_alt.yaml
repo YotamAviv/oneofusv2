@@ -1,0 +1,259 @@
+# BLOCKING SOMEBODY, end to end. This file is the copy.
+#
+# Its own file, not a section in intro.yaml, and for the same reason
+# hablotengo_alt.yaml is: section ids have to be unique across all of video/*.yaml,
+# and the order of `sections:` in a file IS its running order, so anything parked
+# in intro.yaml becomes part of the intro. This is a bonus cut. The intro does not
+# know it exists.
+#
+#   python3 tools/video/sections.py --cues oneofus_block
+#   python3 tools/video/sections.py --build oneofus_block
+#   python3 tools/video/sections.py --assemble oneofus_block_alt
+#
+# THE SCHEMA IS IN video/README.md.
+
+title: Blocking, and what it takes away
+
+youtube:
+  title: "ONE-OF-US.NET — blocking somebody"
+  description: >-
+    Blocking is an identity-key act, so the web app cannot do it: it hands the
+    intention to the phone, which holds the key. Then the network forgets him.
+
+sections:
+  # -------------------------------------------------------------------------
+  - id: oneofus_block
+    title: "Block"
+    preconditions:
+      # THE SAME WORLD `delegates` STARTS FROM, deliberately. This take wants a
+      # signed-in browser, a delegate key that works, and a feed with history in
+      # it -- which is exactly the state sign_in_to_services -> nerdster ->
+      # hablotengo -> crypto_teaser leaves behind, and exactly what `delegates`
+      # consumes before it clears anything. So: restore the state saved by
+      # crypto_teaser (the section before `delegates` in intro.yaml) and shoot
+      # from there. Do NOT shoot this after `delegates` -- it deletes the
+      # delegate key, and this take needs it alive.
+      - >-
+        The world as intro.yaml's crypto_teaser left it: an identity on the phone,
+        a nerdster.org delegate outstanding, signed in on the Nerdster in Chrome
+        on the device, and ratings in the feed. `sections.py --restore
+        crypto_teaser` puts it back.
+      - >-
+        Eyal F@nerdster.org reachable from the demo identity's point of view.
+        CONFIRMED on the device: he is in the PoV dropdown, and his comment is the
+        third one on "Read Write Own: Building the Next Era of the Internet" -- the
+        only thing he has rated. Both halves of the payoff are there.
+      - >-
+        NO existing block for Eyal from the demo identity. A second block of the
+        same key is not the take: the app's conflict warning changes, and there is
+        nothing left to watch disappear.
+      - A filmTools build of the identity app, for app_state.sh.
+    side_effects:
+      - >-
+        PUBLISHES A BLOCK of Eyal, signed by the identity key. A real ONE-OF-US.NET
+        statement about a real person, on production.
+      - >-
+        UNDOABLE, the same way `delegates` is: the streams are append-only hash
+        chains, so snapshot the head before and truncate --keep back to it after.
+        The block is the newest statement, so the rewind is exact.
+      - >-
+        Nothing on the phone changes. Unlike `delegates`, no key is created or
+        deleted here -- the identity key signs and stays where it is.
+    teardown:
+      - >-
+        Rewind the identity's stream to the head recorded before the take:
+        snapshot_statements.js --token <identityToken> --project oneofus --prod
+        before, truncate_statements.js --keep <that head> after, with
+        I_MEAN_IT=yes. sections.py does both around a build; by hand it is two
+        commands.
+      - >-
+        Do NOT leave the block standing. Everything downstream of the demo
+        identity's point of view is computed from these statements, and a
+        forgotten block quietly removes a person from every take shot afterwards.
+    build: shoot_oneofus_block.js
+    status: to_build
+    # NOT SHOT, AND NOT YET WRITTEN. There is no shoot_oneofus_block.js. This
+    # file is the copy and the shape; the script is the next piece of work, and
+    # the todo below says which parts of it are guesses.
+    #
+    # WHAT IT SAYS. The intro's `delegates` section takes a key away from a
+    # SERVICE. This takes a person out of a NETWORK, and the difference is where
+    # the act has to happen: a delegate key can clear itself, but a block is an
+    # identity-layer statement, so the web app cannot make one. It can only hand
+    # the intention to the phone. Then the same trick `delegates` uses -- leave
+    # the browser sitting there and refresh at the end -- shows what the block
+    # actually did, which is not "hide a comment" but "remove a person, and
+    # everything that reached you through him".
+    #
+    # THE MECHANISM, read from source rather than from a device:
+    #   nerdster/lib/ui/dialogs/node_details.dart:439 _passIntention -- BLOCK first
+    #     shows "⚠️ Blocking is Harsh!" with Cancel / "Block anyway" (red), and
+    #     only then hands off. It also adds a line if you have vouched for the
+    #     person, suggesting you clear the vouch instead.
+    #   Same device (the sign-in transport this setup uses) launches the magic
+    #     link DIRECTLY, with no intermediate dialog -- https://one-of-us.net/block
+    #     #<base64url of the target key JSON>. nerdster/doc/pass_the_intention.md.
+    #   oneofus lib/ui/app_shell.dart:620 routes /block# to _handleKeyFragment,
+    #     which decodes the key and runs the ordinary scan handler with
+    #     TrustVerb.block -- the same screen a scanned key gets.
+    trim: feed
+    # Ends on the refreshed feed, not on whatever the browser did next.
+    until: refreshed
+    until_after: 4.5
+    prompter:
+      - {at: feed, after: 0.4,
+         text: "Somebody in my network I no longer want in it."}
+      - {at: eyal_book,
+         text: "Eyal rated this book. His comment is here because my network reaches him."}
+      - {at: path_shown,
+         text: "How I know him at all: through Tom, who vouched for him."}
+      - {at: node_details,
+         text: "His details, and every way I could change my mind about him."}
+      - {at: harsh_dialog,
+         text: "The Nerdster asks first -- and it can't do this itself."}
+      - {at: identity_app,
+         text: "It handed the intention to the phone, which is where the identity key lives."}
+      - {at: block_published,
+         text: "Signed by my identity key. Not by the Nerdster, and not by a delegate."}
+      - {at: pov_before,
+         text: "He's still here -- his point of view, and his comment. Nothing has been refreshed."}
+      - {at: refreshed,
+         text: "Now he isn't. Nothing was deleted -- I withdrew the path that reached him."}
+    cards:
+      # BETWEEN THE TWO HALVES, exactly as in `delegates`, and for the same
+      # reason: what follows only means anything because the browser has been
+      # sitting there untouched since before the block was published.
+      - at: back_to_browser
+        after: 0.3
+        hold: 3.4
+        lines:
+          - "Now let's return to the Nerdster"
+          - "which is still up and hasn't been refreshed."
+      # Closes the section, after the beat on the same anchor. ANCHORED IN TAKE
+      # TIME: a splice's hold is inserted, so this is already past a beat at 0.6
+      # however long that beat holds. Same trap as the other two closing cards.
+      - at: refreshed
+        after: 0.7
+        hold: 4.5
+        lines:
+          - "A network is who you keep"
+          - "Blocking is not deleting his content. It is withdrawing my claim that he's one of us."
+          - "Everything that reached me only through him goes with it."
+    beats:
+      # MEASURED BY THE TAKE, not typed here. Every box below is a name the shoot
+      # script records from the semantics tree in device pixels, the way
+      # shoot_delegates records keyOkBox and shoot_hablotengo_delegate records
+      # deniedBox. Raw anchor/spotlight pixels do not survive a reshoot.
+      - at: eyal_comment
+        after: 0.6
+        hold: 3.5
+        text: "Eyal's comment, signed by his delegate key.\nIt is in my feed because my network vouches for him."
+        box: eyalCommentBox
+        pad: 26
+        y: 1300
+      - at: harsh_dialog
+        after: 0.8
+        hold: 4.5
+        text: "\"You'd be removing this identity from existing.\"\nThe web app cannot sign this. It has no identity key."
+        box: harshDialogBox
+        pad: 24
+        y: 1200
+      # NO BOX. This beat is on the identity app, which is Flutter NATIVE -- its
+      # semantics tree is not reachable over CDP the way the web apps' is, so a
+      # take cannot measure anything here, and a hand-typed rectangle on a dialog
+      # that has just closed would be pointing at nothing anyway. The whole frame
+      # is the subject: the statement was signed over there, not in the browser.
+      - at: block_published
+        after: 0.8
+        hold: 4.0
+        text: "One block statement, signed on the phone.\nThe Nerdster was never asked to be trusted with this."
+        # No spotlight, so the whole frame stays sharp. The anchor is only where
+        # the bubble's tail points; there is no one thing to put it on.
+        anchor: [540, 700]
+        y: 1250
+      # BEFORE the refresh: he is still in the point-of-view list, because the
+      # browser is showing what it loaded before the block existed.
+      - at: pov_before
+        after: 0.5
+        hold: 3.5
+        text: "Eyal, still offered as a point of view.\nThis page has not been refreshed."
+        box: povListBox
+        pad: 22
+        y: 1350
+      - at: before_refresh
+        after: 0.3
+        hold: 2.4
+        text: "Refresh"
+        box: refreshBox
+        pad: 22
+        y: 1300
+      # NO BOX EITHER, and for a better reason: what this beat is about is not on
+      # the screen any more. Boxing the empty space where Eyal used to be is a
+      # highlight around nothing; the frame minus him IS the shot.
+      - at: refreshed
+        after: 0.6
+        hold: 5.0
+        text: "Gone from the list, and his comment with it.\nHe still has his key and his statements; they just no longer reach me."
+        anchor: [540, 640]
+        y: 1400
+    flashes:
+      - {at: refreshed, after: 0.7, into: 0.6, hold: 0.9,
+         word: "consequence", colour: "#FF3FA4", x: 0.50, y: 0.12}
+      - {at: refreshed, after: 0.7, into: 2.0, hold: 0.9,
+         word: "reversible", colour: "#39FF14", x: 0.34, y: 0.82, size: 112}
+    actions:
+      # THE ROUTE: one filter, not two. The demo identity has itself commented on
+      # this book with #tech, so filtering by that tag brings it up directly --
+      # no type filter and no re-sorting.
+      - Filter the feed by the tag "tech".
+      - >-
+        Expand the book's comments with SHOW MORE. Eyal is the third of three,
+        under Me@ and Tom@, and the card is collapsed to two until you do -- the
+        comment count in the header reads 3 the whole time.
+      # TWO TAPS, not one. His name in the feed opens a PATH view first --
+      # Me -> Tom -> Eyal F, which is how the demo identity knows him at all --
+      # and his avatar THERE opens the NodeDetail. Confirmed on the device.
+      - >-
+        Tap Eyal's name on the comment. A path opens: Me -> Tom -> Eyal F.
+      - >-
+        Tap Eyal in that path to open his NodeDetail -- "Set as PoV", "How I
+        follow/block Eyal F" (it reads "Not following in any context"), and the
+        Vouch / Block / Clear row. BLOCK is "Block this identity".
+      - BLOCK. Confirm "Block anyway" on the harshness dialog.
+      - >-
+        Let the handoff open the identity app, read its warning, complete the
+        block, and let it publish.
+      - Back to the browser, which has not been refreshed.
+      - >-
+        Open the point-of-view dropdown to show Eyal is still offered. DO NOT
+        switch to it -- switching reloads, which is the very thing the rest of
+        the section is about not having happened yet.
+      - Show his comment on the book, still there.
+      - Refresh, and show both gone.
+    todo:
+      - >-
+        SHOW MORE DOES NOT TAKE A SEMANTICS TAP. probe.js --tap finds the node and
+        reports success, and the card stays collapsed -- which is worth knowing
+        because the tree then looks exactly like a feed with no Eyal in it, and
+        that is how this file first came to say he was not there. `adb shell input
+        tap` on the node's own device coordinates works. Whatever the script does,
+        it must ASSERT the comment is on screen afterwards rather than trusting
+        the tap.
+      - >-
+        WRITE shoot_oneofus_block.js. The Nerdster half can be driven from the
+        semantics tree the way shoot_delegates drives it; the identity app half is
+        app-blind and needs measured coordinates or a colour probe, like the
+        Create Delegate Key dialog in shoot_signin.
+      - >-
+        COUNT THE WARNINGS. The harshness warning is certain on the Nerdster side
+        ("Blocking is Harsh!", node_details.dart). Whether the identity app raises
+        one of its own for a person you have no statement about is not settled --
+        the orange "Conflict Detected" panel
+        (lib/ui/widgets/verb_conflict_warning.dart) fires only when a statement
+        already exists. There may be one warning here or two. The copy at
+        `identity_app` assumes the app says something; watch a take and adjust.
+      - >-
+        DECIDE WHETHER THE POV DROPDOWN IS THE RIGHT PROOF. It is the strongest
+        one available without switching, but it is a menu, and a menu open over
+        the feed hides the comment that is the other half of the payoff. It may
+        want two beats rather than one.
