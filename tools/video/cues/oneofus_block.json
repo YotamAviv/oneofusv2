@@ -48,6 +48,10 @@
       "text": "Now he isn't. Nothing was deleted."
     },
     {
+      "at": "notification",
+      "text": "And the network noticed."
+    },
+    {
       "at": "as_tom",
       "text": "And from Tom's point of view? He names himself, so he reads as Yotam here."
     },
@@ -114,6 +118,15 @@
       "box": "refreshBox",
       "pad": 22,
       "y": 1300
+    },
+    {
+      "at": "notification",
+      "after": 2.6,
+      "hold": 6.0,
+      "text": "Tom vouched for Eyal. I blocked him.\nThe network doesn't resolve that -- it shows it. Both statements stand, and anyone can see they disagree.",
+      "box": "conflictBox",
+      "pad": 24,
+      "y": 1250
     },
     {
       "at": "eyal_from_tom",

@@ -114,6 +114,12 @@ const boxOf = node => {
     return n;
   };
 
+  const tapDevice = (x, y, what) => {
+    d.E('shell', 'input', 'tap', String(x), String(y));
+    marks.taps.push({ t: at(), x, y, what });
+    mark(`tap_${what}`);
+  };
+
   // SHOW MORE TAKES A REAL TAP, not a semantics one. tapNamed finds the node and
   // reports success, and the card stays collapsed -- so the tree afterwards looks
   // exactly like a feed that has no Eyal in it, which is how this section was
@@ -354,7 +360,34 @@ const boxOf = node => {
     await tapNode(/^Refresh$/, 'refresh');
     await page.waitForTimeout(7000);
     mark('refreshed');
-    await sleep(1200);
+    // LONG ENOUGH TO CLEAR THE BEAT ON THIS MARK, which sits at +3.3 so the line
+    // under it can be read. Open the bell sooner and that beat freezes a frame
+    // with the notification popup already up -- pointing at the feed through it.
+    await sleep(4600);
+
+    // --- what the network makes of it -------------------------------------
+    //
+    // THE BELL HAS NO SEMANTICS NODE, so it is tapped by position -- but derived
+    // from its neighbour rather than hardcoded: "Submit new content" is the next
+    // control along, and the bell sits about 36 viewport px to its left. A fixed
+    // device coordinate would survive until the toolbar moved.
+    //
+    // The notification itself IS reachable, and is the point: Tom vouched for
+    // Eyal, this identity blocked him, and the network can see those two
+    // statements disagree. Nobody adjudicates it -- it is shown, to me, about my
+    // own network.
+    const submit = await findStill(page, /^Submit new content$/);
+    const bell = toDevice(submit.x - 36, submit.y);
+    tapDevice(bell.x, bell.y, 'bell');
+    await sleep(2200);
+    await assertVisible(page, /Attempt to trust blocked key/);
+    const conflict = await findStill(page, /Attempt to trust blocked key/);
+    marks.conflictBox = boxOf(conflict);
+    mark('notification');
+    await sleep(4200);
+    // Dismiss it the way the page expects: tap the bell again.
+    tapDevice(bell.x, bell.y, 'bell_close');
+    await sleep(1800);
 
     // ...and now he is not. Nothing was deleted; a claim was withdrawn.
     const gone = await povHas();

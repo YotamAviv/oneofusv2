@@ -135,6 +135,8 @@ sections:
       # "Tom" is what the demo identity calls him, and from his own point of view
       # he uses his own name for himself. The copy says "Tom" because that is who
       # he is to us, which is the whole idea.
+      - {at: notification,
+         text: "And the network noticed."}
       - {at: as_tom,
          text: "And from Tom's point of view? He names himself, so he reads as Yotam here."}
       - {at: eyal_from_tom,
@@ -216,6 +218,18 @@ sections:
         box: refreshBox
         pad: 22
         y: 1300
+      # THE CONFLICT, boxed on the notification itself. Tom vouched for Eyal and
+      # I blocked him, and those two statements disagree -- so the Nerdster says
+      # so, to me, about my own network. Nobody adjudicates it and nobody is
+      # overruled: both statements stand, signed, and the disagreement is a fact
+      # about the network rather than a fault in it.
+      - at: notification
+        after: 2.6
+        hold: 6.0
+        text: "Tom vouched for Eyal. I blocked him.\nThe network doesn't resolve that -- it shows it. Both statements stand, and anyone can see they disagree."
+        box: conflictBox
+        pad: 24
+        y: 1250
       # NO BOX EITHER, and for a better reason: what this beat is about is not on
       # the screen any more. Boxing the empty space where Eyal used to be is a
       # highlight around nothing; the frame minus him IS the shot.
