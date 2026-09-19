@@ -22,7 +22,7 @@ if [ "$EXPORT" = true ]; then
     mkdir -p exports
     gcloud config set project one-of-us-net
     gcloud firestore export gs://one-of-us-net/oneofus-$NOW
-    gsutil -m cp -r gs://one-of-us-net/oneofus-$NOW exports/
+    gcloud storage cp -r gs://one-of-us-net/oneofus-$NOW exports/
     IMPORT="exports/oneofus-$NOW"
 elif [ "$EMPTY" = true ]; then
     IMPORT=""
