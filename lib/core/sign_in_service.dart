@@ -133,6 +133,10 @@ class SignInService {
             if (!confirmed) return false;
           }
 
+          // Must land before we hand the service the delegate key below: the service looks
+          // the `delegate` statement up the moment it signs us in, and reports "Delegate
+          // key not associated" if it isn't readable yet. Relies on the channel being
+          // non-optimistic (Config.initChannelFactory).
           final published = await channel.push(statementJson, signer);
           if (onAfterPublish != null) {
             await onAfterPublish(published);

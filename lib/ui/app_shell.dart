@@ -221,6 +221,12 @@ class AppShellState extends State<AppShell> with TickerProviderStateMixin {
 
   bool _isRefreshing = false;
 
+  /// True from the moment a publish starts until its follow-up refresh is done.
+  /// push() waits for the network (optimisticWrites: false), and [_loadAllData] only
+  /// starts the refresh icon spinning once it runs, so without this the app sits idle
+  /// through a whole write round-trip after the user tapped PUBLISH.
+  bool _isPublishing = false;
+
   /// Refresh everything, publishing the attempt as [_dataReady] while it runs.
   ///
   /// A wrapper, not a flag inside the body: the future has to exist before the
@@ -990,6 +996,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
     }
 
     try {
+      if (mounted) setState(() => _isPublishing = true);
+      _refreshRotationController.repeat();
+
       final published = await _executePush(statement, isMyDelegate, isRevoking, isClearing, token);
 
       if (mounted && _showLgtm) {
@@ -1010,10 +1019,10 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
 
       if (mounted) {
         // Reload first, announce second. The write is already committed by the
-        // time _executePush returns -- this app never takes the writer's
-        // optimistic path, which is gated on an optimisticConcurrencyFailed
-        // callback it does not pass -- so this ordering is about what the
-        // screen says, not about what is true.
+        // time _executePush returns -- this app's ChannelFactory is built with
+        // optimisticWrites: false, so push() does not return until the write has
+        // landed -- so this ordering is about what the screen says, not about
+        // what is true.
         await loadAllData();
         if (announce && mounted) _showSuccessSnackBar(statement);
       }
@@ -1022,6 +1031,19 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error pushing statement: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isPublishing = false);
+      } else {
+        _isPublishing = false;
+      }
+      // A refresh in flight owns the rotation and stops it itself -- ours to stop only
+      // when the write threw before [loadAllData] ran, or when onWriteError's reload
+      // has not started one.
+      if (!_isRefreshing && !isLoadingData.value) {
+        _refreshRotationController.stop();
+        _refreshRotationController.reset();
       }
     }
   }
@@ -1335,7 +1357,9 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
                                 const SizedBox(width: 6),
                               ],
                               GestureDetector(
-                                onTap: (_isRefreshing || isLoadingData.value) ? null : loadAllData,
+                                onTap: (_isRefreshing || _isPublishing || isLoadingData.value)
+                                    ? null
+                                    : loadAllData,
                                 child: SizedBox(
                                   width: 24,
                                   height: 24,

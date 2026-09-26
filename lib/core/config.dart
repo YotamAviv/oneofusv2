@@ -48,7 +48,10 @@ class Config {
   }
 
   static void initChannelFactory() {
-    channelFactory = ChannelFactory(fireChoice);
+    // No optimistic writes: every statement here is a deliberate act by the user, who
+    // must be told whether it landed. Nerdster and hablotengo want the opposite — they
+    // take rapid repeated writes and cannot block the UI on each one.
+    channelFactory = ChannelFactory(fireChoice, optimisticWrites: false);
     channelFactory.register(
       'one-of-us.net',
       firestore: fireChoice == FireChoice.fake ? db : null,
