@@ -11,7 +11,7 @@ To the camera app that is just text.
 | QR | Shown by | Payload today |
 |---|---|---|
 | Identity card | oneofus app, [card_screen.dart:36](../lib/features/card_screen.dart#L36) → [identity_card_surface.dart:139](../lib/ui/identity_card_surface.dart#L139) | `{"key":{JWK},"url":"https://export.one-of-us.net"}` |
-| Sign-in | nerdster & hablotengo web, `QrSignInDialog` in `packages/nerdster_common/lib/ui/sign_in_dialog.dart:601` (via `JsonQrDisplay`) | pretty-printed `{"domain","url","servicePk","encryptionPk"}` |
+| Sign-in | nerdster & hablotengo web, `QrSignInDialog` in `packages/nerdster_common/lib/ui/sign_in_dialog.dart:603` (via `JsonQrDisplay`) | pretty-printed `{"domain","url","servicePk","encryptionPk"}` |
 | Someone else's identity ("vouch/block this key") | nerdster, `lib/ui/dialogs/node_details.dart:335` and `:1224` | pretty-printed JWK or payload |
 | vouch.html / block.html / clear.html | one-of-us.net web fallback pages | pretty-printed payload JSON |
 | "Show Home link QR Code" | oneofus app | `https://one-of-us.net` (already a URL) |
