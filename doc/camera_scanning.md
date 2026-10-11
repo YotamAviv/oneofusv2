@@ -1,6 +1,6 @@
 # Camera Scanning: QR codes that work from the phone's own camera
 
-Status: plan, nothing implemented. Written 2026-09-29.
+Status: rejected 2026-10-11, see [qr_identity_app_only.md](qr_identity_app_only.md). Written 2026-09-29. The association-file audit below still applies.
 
 ## The problem
 
