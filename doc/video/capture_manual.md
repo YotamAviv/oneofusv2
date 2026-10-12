@@ -186,10 +186,11 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 `shoot_signin.sh` re-approves the app link itself on every run (§4), so that one needs no
 step here.
 
-The suite also needs `Config._fireChoice` set to `FireChoice.emulator` — it aborts on
-`ensureNotProd` otherwise, and that abort masks any later failure. **Set it back to `prod`
-before filming**, or every take publishes into the emulator instead of production and the
-video is of a network nobody else can see.
+`bin/run_all_tests.sh` builds the suite with `--dart-define=fire=emulator`; without it the
+suite aborts on `ensureNotProd`, and that abort masks any later failure. The test run
+installs that emulator build on the device, so **reinstall the filming build afterwards**,
+or every take publishes into the emulator instead of production and the video is of a
+network nobody else can see.
 
 Screen is **1080×2220**. For a 1080×1920 timeline: `crop=1080:1920:0:150` (drops the status
 bar and the gesture bar, keeps scale identical to the web footage so both halves look like
@@ -235,12 +236,9 @@ adb install -r build/app/outputs/flutter-apk/app-debug.apk
 > `adb uninstall` first — **which destroys the identity on that device.** `install -r`
 > between two debug builds preserves data.
 
-> **Which backend the app writes to is hardcoded** in `lib/core/config.dart`:
-> `static final FireChoice _fireChoice = FireChoice.prod;`
-> There is no dart-define. For filming, flip it to `FireChoice.emulator`, build, install,
-> then **revert the source immediately** so the change can't ship. The installed APK keeps
-> the filming setting; the tree stays clean. A red dot in the app's top bar indicates
-> non-prod.
+> **Which backend the app writes to is chosen at build time**, prod by default. For the
+> emulator, add `--dart-define=fire=emulator` to the build. A red dot in the app's top bar
+> indicates non-prod.
 
 ### AVD disk
 

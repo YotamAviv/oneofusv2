@@ -7,8 +7,10 @@ import 'package:oneofus_common/channel_factory.dart';
 import '../firebase_options.dart';
 
 class Config {
-  // --- Hard coded - use for Environment Switch ---
-  static final FireChoice _fireChoice = FireChoice.prod;
+  // Pick the backend at build time: --dart-define=fire=emulator (or fake). bin/build_release.sh
+  // and bin/build_ipa.sh grep this line for FireChoice.prod.
+  static const String _fire = String.fromEnvironment('fire');
+  static final FireChoice _fireChoice = _fire.isEmpty ? FireChoice.prod : FireChoice.values.byName(_fire);
 
   static FireChoice get fireChoice => _fireChoice;
 

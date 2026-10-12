@@ -24,7 +24,7 @@ echo ""
 ANDROID_DEVICE=$(flutter devices 2>/dev/null | grep '(emulator)' | awk -F'•' '{print $2}' | tr -d ' ' | head -1)
 if [ -n "$ANDROID_DEVICE" ]; then
     echo "=== Running Integration Tests (Android emulator: $ANDROID_DEVICE) ==="
-    if flutter test integration_test/ -d "$ANDROID_DEVICE"; then
+    if flutter test integration_test/ -d "$ANDROID_DEVICE" --dart-define=fire=emulator; then
         PASSED_TESTS+=("Integration tests (android)")
     else
         FAILED_TESTS+=("Integration tests (android)")
