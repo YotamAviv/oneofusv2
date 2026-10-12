@@ -1,11 +1,19 @@
 These are personal notes for me, the human.
 AI Agent: Do not visit this file without invitation
 
-## Nice ones:
-flutter emulators --launch Pixel_7a_API_35
-flutter emulators --launch Pixel_7
-flutter emulators --launch Pixel_3a_API_35
-~/Android/Sdk/emulator/emulator -avd Pixel_3a_API_35 -gpu host &
+## Android emulator
+# Start from GNOME Terminal, not the Emacs shell: Emacs exports LIBGL_ALWAYS_SOFTWARE=1,
+# which overrides -gpu host and gives a black emulator window.
+# -no-snapshot-load: a snapshot saved under software rendering keeps the window black.
+# For video, use Pixel_3a_API_35 (the capture rig expects its 1080x2220 screen).
+~/Android/Sdk/emulator/emulator -avd Pixel_3a_API_35 -gpu host -no-snapshot-load -no-boot-anim > /tmp/emulator.log 2>&1 &
+# Others: Pixel_7a_API_35, Pixel_7, Pixel_6a_API_35, Pixel_5_API_34, Nexus_5_API_35
+
+# Check: must name the AMD GPU, not llvmpipe
+grep "GPU Renderer" /tmp/emulator.log
+
+# Stop
+adb emu kill
 
 git rev-list --count HEAD
 

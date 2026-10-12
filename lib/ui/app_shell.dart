@@ -11,6 +11,7 @@ import 'package:oneofus_common/oou_signer.dart';
 import 'package:oneofus_common/statement.dart';
 import 'package:oneofus_common/statement_source.dart';
 import 'package:oneofus_common/trust_statement.dart';
+import 'package:oneofus_common/ui/qr_help.dart';
 
 import '../core/config.dart';
 import '../core/keys.dart';
@@ -1489,11 +1490,26 @@ scan a service's sign-in parameters to identify yourself and sign in.'''
               ),
               ListTile(
                 leading: const Icon(Icons.qr_code_rounded),
-                title: const Text('Show Home link QR Code'),
-                subtitle: const Text(ShareService.homeUrl),
+                title: const Text('Help someone get the app'),
+                subtitle: const Text('A QR their phone\'s camera can open, linking to ${ShareService.homeUrl}'),
                 onTap: () {
                   Navigator.pop(context);
-                  ShareService.showQrDialog(context, ShareService.homeUrl, ShareService.homeUrl);
+                  ShareService.showQrDialog(
+                      context, ShareService.homeUrl, 'Scan with your camera to get the app');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.help_outline),
+                title: const Text('Why can\'t a camera scan my card?'),
+                subtitle: const Text('Your card is for identity apps'),
+                onTap: () {
+                  Navigator.pop(context);
+                  QrHelpButton.show(context,
+                      what: 'The QR code on your card',
+                      holds: 'your identity key and where your statements are hosted',
+                      extra: 'If the person scanning doesn\'t have an identity app yet, choose "Help '
+                          'someone get the app" from the share menu. Their camera can open that '
+                          'QR code.');
                 },
               ),
             ],
